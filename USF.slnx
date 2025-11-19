@@ -12,8 +12,14 @@
         <File Path="src\Directory.Build.props" />
         <Project Path="src/Usf.Core/Usf.Core.csproj" />
     </Folder>
+    <Folder Name="/src/Transports/">
+        <Project Path="src/Transports/Usf.Transport.RabbitMq/Usf.Transport.RabbitMq.csproj" />
+    </Folder>
     <Folder Name="/tests/">
         <File Path="tests\Directory.Build.props" />
         <Project Path="tests/Usf.Core.Tests/Usf.Core.Tests.csproj" />
+    </Folder>
+    <Folder Name="/tests/Transports/">
+        <Project Path="tests/Transports/Usf.Transport.RabbitMq.Tests/Usf.Transport.RabbitMq.Tests.csproj" />
     </Folder>
 </Solution>
