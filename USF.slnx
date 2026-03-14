@@ -1,7 +1,12 @@
 <Solution>
+    <Folder Name="/ai-plans/">
+        <File Path="ai-plans\0001-message-publishing.md" />
+        <File Path="ai-plans\AGENTS.md" />
+    </Folder>
     <Folder Name="/SolutionItems/">
         <File Path=".editorconfig" />
         <File Path=".gitignore" />
+        <File Path="AGENTS.md" />
         <File Path="Directory.Build.props" />
         <File Path="Directory.Packages.props" />
         <File Path="global.json" />
