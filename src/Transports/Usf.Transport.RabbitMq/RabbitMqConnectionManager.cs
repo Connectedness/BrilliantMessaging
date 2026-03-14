@@ -11,7 +11,7 @@ internal sealed class RabbitMqConnectionManager : IAsyncDisposable, IDisposable
     private readonly Func<IServiceProvider, ConnectionFactory> _connectionFactoryFactory;
     private readonly SemaphoreSlim _gate = new (1, 1);
     private readonly IServiceProvider _serviceProvider;
-    private Task<IConnection>? _connectionTask;
+    private volatile Task<IConnection>? _connectionTask;
     private bool _disposed;
 
     public RabbitMqConnectionManager(RabbitMqPublishingConfiguration configuration, IServiceProvider serviceProvider)
