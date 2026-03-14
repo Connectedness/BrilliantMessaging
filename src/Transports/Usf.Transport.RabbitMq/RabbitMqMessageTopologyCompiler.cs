@@ -155,10 +155,8 @@ internal static class RabbitMqMessageTopologyCompiler
 
         foreach (var binding in configuration.Bindings
                     .OrderBy(static binding => binding.ExchangeName, StringComparer.Ordinal)
-                    .ThenBy(static binding => binding.QueueName, StringComparer.Ordinal).ThenBy(
-                         static binding => binding.RoutingKey,
-                         StringComparer.Ordinal
-                     ))
+                    .ThenBy(static binding => binding.QueueName, StringComparer.Ordinal)
+                    .ThenBy(static binding => binding.RoutingKey, StringComparer.Ordinal))
         {
             if (!exchangesByName.TryGetValue(binding.ExchangeName, out var exchange))
             {
