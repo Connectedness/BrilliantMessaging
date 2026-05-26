@@ -8,22 +8,13 @@ namespace Usf.Core.Messaging;
 
 public sealed class MessagePublishingHostedService : IHostedService
 {
-    private readonly IMessageTopology _messageTopology;
     private readonly IEnumerable<ITopologyProvisioner> _topologyProvisioners;
 
-    public MessagePublishingHostedService(
-        IMessageTopology messageTopology,
-        IEnumerable<ITopologyProvisioner> topologyProvisioners
-    )
-    {
-        _messageTopology = messageTopology ?? throw new ArgumentNullException(nameof(messageTopology));
+    public MessagePublishingHostedService(IEnumerable<ITopologyProvisioner> topologyProvisioners) =>
         _topologyProvisioners = topologyProvisioners ?? throw new ArgumentNullException(nameof(topologyProvisioners));
-    }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _ = _messageTopology;
-
         foreach (var topologyProvisioner in _topologyProvisioners)
         {
             await topologyProvisioner.ProvisionAsync(cancellationToken).ConfigureAwait(false);
