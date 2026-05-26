@@ -46,6 +46,7 @@ public sealed class AddRabbitMqMessagePublishingTests
         );
         using var serviceProvider = services.BuildServiceProvider();
 
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
         Action action = () => _ = serviceProvider.GetRequiredService<IMessageTopology>();
 
         var exception = action.Should().Throw<MessageTopologyValidationException>().Which;
