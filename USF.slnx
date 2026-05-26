@@ -2,6 +2,7 @@
     <Folder Name="/ai-plans/">
         <File Path="ai-plans\0001-0-message-publishing.md" />
         <File Path="ai-plans\0001-1-rabbitmq-topology-extension.md" />
+        <File Path="ai-plans\0001-2-move-serializer-to-core.md" />
         <File Path="ai-plans\AGENTS.md" />
     </Folder>
     <Folder Name="/SolutionItems/">
