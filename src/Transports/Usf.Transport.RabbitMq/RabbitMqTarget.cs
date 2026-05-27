@@ -7,24 +7,40 @@ using Usf.Core.Messaging;
 
 namespace Usf.Transport.RabbitMq;
 
-public abstract class RabbitMqTarget<TMessage> : Target<TMessage>
+public abstract class RabbitMqTarget<TMessage> : Target<TMessage>, IAsyncDisposable, IDisposable
 {
-    private readonly RabbitMqConnectionManager _connectionManager;
+    private readonly IRabbitMqChannelPool _channelPool;
     private readonly string _exchangeName;
     private readonly bool _isMandatory;
+    private readonly IRabbitMqChannelPool? _ownedChannelPool;
 
     protected RabbitMqTarget(
         string name,
         IMessageSerializer serializer,
-        RabbitMqConnectionManager connectionManager,
+        IRabbitMqChannelPool channelPool,
+        bool ownsChannelPool,
         string exchangeName,
         bool isMandatory
     )
         : base(name, "rabbitmq", serializer)
     {
-        _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
+        _channelPool = channelPool ?? throw new ArgumentNullException(nameof(channelPool));
+        _ownedChannelPool = ownsChannelPool ? channelPool : null;
         _exchangeName = exchangeName ?? throw new ArgumentNullException(nameof(exchangeName));
         _isMandatory = isMandatory;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_ownedChannelPool is not null)
+        {
+            await _ownedChannelPool.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    public void Dispose()
+    {
+        _ownedChannelPool?.Dispose();
     }
 
     protected sealed override async Task DispatchAsync(
@@ -33,11 +49,11 @@ public abstract class RabbitMqTarget<TMessage> : Target<TMessage>
         CancellationToken cancellationToken
     )
     {
-        var connection = await _connectionManager.GetConnectionAsync(cancellationToken).ConfigureAwait(false);
-        await using var channel =
-            await connection.CreateChannelAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        await using var lease = await _channelPool.AcquireAsync(cancellationToken).ConfigureAwait(false);
         var properties = CreateBasicProperties(serializedMessage, GetRouteHeaders(message));
-        await channel.BasicPublishAsync(
+        await lease
+           .Channel
+           .BasicPublishAsync(
                 exchange: _exchangeName,
                 routingKey: GetRoutingKey(message),
                 mandatory: _isMandatory,
@@ -107,11 +123,12 @@ public sealed class RabbitMqFanoutTarget<TMessage> : RabbitMqTarget<TMessage>
     public RabbitMqFanoutTarget(
         string name,
         IMessageSerializer serializer,
-        RabbitMqConnectionManager connectionManager,
+        IRabbitMqChannelPool channelPool,
+        bool ownsChannelPool,
         string exchangeName,
         bool isMandatory
     )
-        : base(name, serializer, connectionManager, exchangeName, isMandatory) { }
+        : base(name, serializer, channelPool, ownsChannelPool, exchangeName, isMandatory) { }
 }
 
 public abstract class RabbitMqRoutingKeyTarget<TMessage> : RabbitMqTarget<TMessage>
@@ -121,12 +138,13 @@ public abstract class RabbitMqRoutingKeyTarget<TMessage> : RabbitMqTarget<TMessa
     protected RabbitMqRoutingKeyTarget(
         string name,
         IMessageSerializer serializer,
-        RabbitMqConnectionManager connectionManager,
+        IRabbitMqChannelPool channelPool,
+        bool ownsChannelPool,
         string exchangeName,
         bool isMandatory,
         Func<TMessage, string> routingKeyFactory
     )
-        : base(name, serializer, connectionManager, exchangeName, isMandatory)
+        : base(name, serializer, channelPool, ownsChannelPool, exchangeName, isMandatory)
     {
         _routingKeyFactory = routingKeyFactory ?? throw new ArgumentNullException(nameof(routingKeyFactory));
     }
@@ -143,12 +161,13 @@ public sealed class RabbitMqDirectTarget<TMessage> : RabbitMqRoutingKeyTarget<TM
     public RabbitMqDirectTarget(
         string name,
         IMessageSerializer serializer,
-        RabbitMqConnectionManager connectionManager,
+        IRabbitMqChannelPool channelPool,
+        bool ownsChannelPool,
         string exchangeName,
         bool isMandatory,
         Func<TMessage, string> routingKeyFactory
     )
-        : base(name, serializer, connectionManager, exchangeName, isMandatory, routingKeyFactory) { }
+        : base(name, serializer, channelPool, ownsChannelPool, exchangeName, isMandatory, routingKeyFactory) { }
 }
 
 public sealed class RabbitMqTopicTarget<TMessage> : RabbitMqRoutingKeyTarget<TMessage>
@@ -156,12 +175,13 @@ public sealed class RabbitMqTopicTarget<TMessage> : RabbitMqRoutingKeyTarget<TMe
     public RabbitMqTopicTarget(
         string name,
         IMessageSerializer serializer,
-        RabbitMqConnectionManager connectionManager,
+        IRabbitMqChannelPool channelPool,
+        bool ownsChannelPool,
         string exchangeName,
         bool isMandatory,
         Func<TMessage, string> routingKeyFactory
     )
-        : base(name, serializer, connectionManager, exchangeName, isMandatory, routingKeyFactory) { }
+        : base(name, serializer, channelPool, ownsChannelPool, exchangeName, isMandatory, routingKeyFactory) { }
 }
 
 public sealed class RabbitMqHeadersTarget<TMessage> : RabbitMqTarget<TMessage>
@@ -171,12 +191,13 @@ public sealed class RabbitMqHeadersTarget<TMessage> : RabbitMqTarget<TMessage>
     public RabbitMqHeadersTarget(
         string name,
         IMessageSerializer serializer,
-        RabbitMqConnectionManager connectionManager,
+        IRabbitMqChannelPool channelPool,
+        bool ownsChannelPool,
         string exchangeName,
         bool isMandatory,
         IReadOnlyDictionary<string, object?> headers
     )
-        : base(name, serializer, connectionManager, exchangeName, isMandatory)
+        : base(name, serializer, channelPool, ownsChannelPool, exchangeName, isMandatory)
     {
         _headers = headers ?? throw new ArgumentNullException(nameof(headers));
     }

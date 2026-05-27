@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 using Usf.Core.Messaging;
 using Usf.Core.Messaging.Errors;
@@ -33,10 +35,21 @@ public static class RabbitMqMessageTopologyCompiler
         var connectionManager = serviceProvider.GetRequiredService<RabbitMqConnectionManager>();
         Dictionary<Type, Target> defaultTargetsByMessageType = new ();
         Dictionary<string, Target> targetsByName = new (StringComparer.Ordinal);
+        List<Target> targets = [];
+        IRabbitMqChannelPool? sharedChannelPool = null;
+
+        LogWorstCaseChannelCount(serviceProvider, configuration);
 
         foreach (var route in OrderRoutes(configuration.Routes))
         {
-            var target = CreateTarget(route, serviceProvider, connectionManager);
+            sharedChannelPool ??= configuration.ChannelPoolingMode == RabbitMqChannelPoolingMode.Shared ?
+                CreateChannelPool(connectionManager, configuration.SharedChannelPoolSize) :
+                null;
+            var channelPool = sharedChannelPool ??
+                              CreateChannelPool(connectionManager, configuration.MaxChannelsPerTarget);
+            var ownsChannelPool = configuration.ChannelPoolingMode == RabbitMqChannelPoolingMode.PerTarget;
+            var target = CreateTarget(route, serviceProvider, channelPool, ownsChannelPool);
+            targets.Add(target);
 
             if (string.IsNullOrWhiteSpace(route.TargetName))
             {
@@ -52,7 +65,9 @@ public static class RabbitMqMessageTopologyCompiler
             new MessageTopology(defaultTargetsByMessageType, targetsByName),
             configuration.Exchanges,
             configuration.Queues,
-            configuration.Bindings
+            configuration.Bindings,
+            targets,
+            sharedChannelPool
         );
     }
 
@@ -68,17 +83,19 @@ public static class RabbitMqMessageTopologyCompiler
     private static Target CreateTarget(
         RabbitMqPublishRouteConfiguration route,
         IServiceProvider serviceProvider,
-        RabbitMqConnectionManager connectionManager
+        IRabbitMqChannelPool channelPool,
+        bool ownsChannelPool
     )
     {
         var closedMethod = CreateTargetMethod.MakeGenericMethod(route.MessageType);
-        return (Target) closedMethod.Invoke(null, [route, serviceProvider, connectionManager])!;
+        return (Target) closedMethod.Invoke(null, [route, serviceProvider, channelPool, ownsChannelPool])!;
     }
 
     private static Target CreateTargetCore<TMessage>(
         RabbitMqPublishRouteConfiguration route,
         IServiceProvider serviceProvider,
-        RabbitMqConnectionManager connectionManager
+        IRabbitMqChannelPool channelPool,
+        bool ownsChannelPool
     )
     {
         var serializer = (IMessageSerializer) serviceProvider.GetRequiredService(route.SerializerType!);
@@ -91,14 +108,16 @@ public static class RabbitMqMessageTopologyCompiler
             RabbitMqFanoutPublishRouteConfiguration fanoutRoute => new RabbitMqFanoutTarget<TMessage>(
                 targetName,
                 serializer,
-                connectionManager,
+                channelPool,
+                ownsChannelPool,
                 fanoutRoute.ExchangeName,
                 fanoutRoute.IsMandatory
             ),
             RabbitMqDirectPublishRouteConfiguration directRoute => new RabbitMqDirectTarget<TMessage>(
                 targetName,
                 serializer,
-                connectionManager,
+                channelPool,
+                ownsChannelPool,
                 directRoute.ExchangeName,
                 directRoute.IsMandatory,
                 CreateRoutingKeyFactory<TMessage>(directRoute)
@@ -106,7 +125,8 @@ public static class RabbitMqMessageTopologyCompiler
             RabbitMqTopicPublishRouteConfiguration topicRoute => new RabbitMqTopicTarget<TMessage>(
                 targetName,
                 serializer,
-                connectionManager,
+                channelPool,
+                ownsChannelPool,
                 topicRoute.ExchangeName,
                 topicRoute.IsMandatory,
                 CreateRoutingKeyFactory<TMessage>(topicRoute)
@@ -114,7 +134,8 @@ public static class RabbitMqMessageTopologyCompiler
             RabbitMqHeadersPublishRouteConfiguration headersRoute => new RabbitMqHeadersTarget<TMessage>(
                 targetName,
                 serializer,
-                connectionManager,
+                channelPool,
+                ownsChannelPool,
                 headersRoute.ExchangeName,
                 headersRoute.IsMandatory,
                 headersRoute.Headers
@@ -151,6 +172,23 @@ public static class RabbitMqMessageTopologyCompiler
         if (configuration.ConnectionFactoryFactory is null)
         {
             validationErrors.Add("A RabbitMQ connection factory must be configured.");
+        }
+
+        if (!Enum.IsDefined(typeof(RabbitMqChannelPoolingMode), configuration.ChannelPoolingMode))
+        {
+            validationErrors.Add(
+                $"RabbitMQ channel pooling mode '{configuration.ChannelPoolingMode}' is unsupported."
+            );
+        }
+
+        if (configuration.MaxChannelsPerTarget < 1)
+        {
+            validationErrors.Add("RabbitMQ max channels per target must be greater than zero.");
+        }
+
+        if (configuration.SharedChannelPoolSize < 1)
+        {
+            validationErrors.Add("RabbitMQ shared channel pool size must be greater than zero.");
         }
 
         validationErrors.AddRange(
@@ -404,6 +442,64 @@ public static class RabbitMqMessageTopologyCompiler
             RabbitMqQueueBindingDefinition queueBinding => queueBinding.QueueName,
             RabbitMqExchangeBindingDefinition exchangeBinding => exchangeBinding.DestinationExchangeName,
             _ => string.Empty
+        };
+    }
+
+    private static DefaultRabbitMqChannelPool CreateChannelPool(
+        RabbitMqConnectionManager connectionManager,
+        int maximumChannelCount
+    )
+    {
+        return new DefaultRabbitMqChannelPool(
+            maximumChannelCount,
+            async cancellationToken =>
+            {
+                var connection = await connectionManager.GetConnectionAsync(cancellationToken).ConfigureAwait(false);
+                return await connection.CreateChannelAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+        );
+    }
+
+    private static void LogWorstCaseChannelCount(
+        IServiceProvider serviceProvider,
+        RabbitMqPublishingConfiguration configuration
+    )
+    {
+        var worstCaseChannelCount = GetWorstCaseChannelCount(configuration);
+        var loggerFactory = serviceProvider.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
+        var logger = loggerFactory.CreateLogger(typeof(RabbitMqMessageTopologyCompiler));
+        logger.LogInformation(
+            "RabbitMQ publish topology may open up to {ChannelCount} channels ({Description}).",
+            worstCaseChannelCount,
+            GetWorstCaseChannelCountDescription(configuration)
+        );
+    }
+
+    private static int GetWorstCaseChannelCount(RabbitMqPublishingConfiguration configuration)
+    {
+        if (configuration.Routes.Count == 0)
+        {
+            return 0;
+        }
+
+        return configuration.ChannelPoolingMode switch
+        {
+            RabbitMqChannelPoolingMode.PerTarget =>
+                checked(configuration.Routes.Count * configuration.MaxChannelsPerTarget),
+            RabbitMqChannelPoolingMode.Shared => configuration.SharedChannelPoolSize,
+            _ => 0
+        };
+    }
+
+    private static string GetWorstCaseChannelCountDescription(RabbitMqPublishingConfiguration configuration)
+    {
+        return configuration.ChannelPoolingMode switch
+        {
+            RabbitMqChannelPoolingMode.PerTarget =>
+                $"PerTarget mode, {configuration.Routes.Count} targets × max {configuration.MaxChannelsPerTarget}",
+            RabbitMqChannelPoolingMode.Shared =>
+                $"Shared mode, shared pool size {configuration.SharedChannelPoolSize}",
+            _ => "unknown pooling mode"
         };
     }
 }

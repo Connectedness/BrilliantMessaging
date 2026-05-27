@@ -8,9 +8,12 @@ namespace Usf.Transport.RabbitMq;
 public sealed class RabbitMqMessagePublishingBuilder
 {
     private readonly List<RabbitMqBindingDefinition> _bindingDefinitions = [];
+    private RabbitMqChannelPoolingMode _channelPoolingMode = RabbitMqChannelPoolingMode.PerTarget;
     private readonly List<RabbitMqExchangeDefinition> _exchangeDefinitions = [];
+    private int _maxChannelsPerTarget = 1;
     private readonly List<RabbitMqQueueDefinition> _queueDefinitions = [];
     private readonly List<RabbitMqPublishRouteConfiguration> _routes = [];
+    private int _sharedChannelPoolSize = 8;
     private Func<IServiceProvider, ConnectionFactory>? _connectionFactoryFactory;
 
     public RabbitMqMessagePublishingBuilder UseConnectionFactory(ConnectionFactory connectionFactory)
@@ -31,6 +34,51 @@ public sealed class RabbitMqMessagePublishingBuilder
     {
         _connectionFactoryFactory = connectionFactoryFactory ??
                                     throw new ArgumentNullException(nameof(connectionFactoryFactory));
+        return this;
+    }
+
+    public RabbitMqMessagePublishingBuilder UseChannelPoolingMode(RabbitMqChannelPoolingMode channelPoolingMode)
+    {
+        if (!Enum.IsDefined(typeof(RabbitMqChannelPoolingMode), channelPoolingMode))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(channelPoolingMode),
+                channelPoolingMode,
+                "Unsupported RabbitMQ channel pooling mode."
+            );
+        }
+
+        _channelPoolingMode = channelPoolingMode;
+        return this;
+    }
+
+    public RabbitMqMessagePublishingBuilder UseMaxChannelsPerTarget(int maxChannelsPerTarget)
+    {
+        if (maxChannelsPerTarget < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxChannelsPerTarget),
+                maxChannelsPerTarget,
+                "The value must be greater than zero."
+            );
+        }
+
+        _maxChannelsPerTarget = maxChannelsPerTarget;
+        return this;
+    }
+
+    public RabbitMqMessagePublishingBuilder UseSharedChannelPoolSize(int sharedChannelPoolSize)
+    {
+        if (sharedChannelPoolSize < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(sharedChannelPoolSize),
+                sharedChannelPoolSize,
+                "The value must be greater than zero."
+            );
+        }
+
+        _sharedChannelPoolSize = sharedChannelPoolSize;
         return this;
     }
 
@@ -113,6 +161,9 @@ public sealed class RabbitMqMessagePublishingBuilder
     {
         return new RabbitMqPublishingConfiguration(
             _connectionFactoryFactory,
+            _channelPoolingMode,
+            _maxChannelsPerTarget,
+            _sharedChannelPoolSize,
             _exchangeDefinitions.AsReadOnly(),
             _queueDefinitions.AsReadOnly(),
             _bindingDefinitions.AsReadOnly(),

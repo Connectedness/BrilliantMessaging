@@ -13,5 +13,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Required" PrivateAssets="all" />
+    <PackageReference Include="System.Threading.Channels" />
   </ItemGroup>
 </Project>

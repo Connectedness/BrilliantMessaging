@@ -4,17 +4,17 @@
 
 ## Acceptance Criteria
 
-- [ ] `RabbitMqTarget<TMessage>` no longer creates and disposes an `IChannel` per publish. Publishes acquire a reusable channel from a transport-owned pool and release or discard it after the operation completes.
-- [ ] The RabbitMQ transport supports two pooling modes selectable via `RabbitMqPublishingConfiguration`: `PerTarget` (default) and `Shared`.
-- [ ] In `PerTarget` mode, each compiled target owns a bounded pool. The default `MaxChannelsPerTarget` is `1`, which preserves serialized publish behavior and per-target ordering. Configurable per transport, with the API shape leaving room for a per-route override in a future slice.
-- [ ] In `Shared` mode, a single connection-level pool serves all targets. The default `SharedChannelPoolSize` is `8`. The configuration surface and XML doc comment on `Shared` mode must state that per-target publish ordering is not guaranteed in this mode.
-- [ ] Pools grow lazily on demand up to their configured bound. When all channels are busy, callers wait asynchronously for one to be returned. Pools do not shrink during normal operation in this slice.
-- [ ] A leased channel is never used concurrently by multiple publishers. The lease type guarantees exclusive ownership for the duration of the publish.
-- [ ] If a pooled channel is closed, faulted, or otherwise unusable, it is discarded (not returned), the pool's live-channel count is decremented, and a later publish can create a replacement within the configured bound. A `BasicPublishAsync` exception that reflects a broker-side message rejection (channel still open) must not cause the channel to be discarded.
-- [ ] At topology compile time, the transport computes and logs the worst-case channel count for the configured topology and mode.
-- [ ] On first successful connection, the transport compares the worst-case channel count against `IConnection.ChannelMax` and throws a topology validation exception if the topology cannot fit. This check lives alongside the existing connection-acquisition path so it runs exactly once per connection lifecycle.
-- [ ] Transport disposal tears down pooled channels before disposing the shared connection, without leaking channels or background work. Compiled targets and/or the shared pool participate in the transport's disposal flow explicitly.
-- [ ] Automated tests are written.
+- [x] `RabbitMqTarget<TMessage>` no longer creates and disposes an `IChannel` per publish. Publishes acquire a reusable channel from a transport-owned pool and release or discard it after the operation completes.
+- [x] The RabbitMQ transport supports two pooling modes selectable via `RabbitMqPublishingConfiguration`: `PerTarget` (default) and `Shared`.
+- [x] In `PerTarget` mode, each compiled target owns a bounded pool. The default `MaxChannelsPerTarget` is `1`, which preserves serialized publish behavior and per-target ordering. Configurable per transport, with the API shape leaving room for a per-route override in a future slice.
+- [x] In `Shared` mode, a single connection-level pool serves all targets. The default `SharedChannelPoolSize` is `8`. The configuration surface and XML doc comment on `Shared` mode must state that per-target publish ordering is not guaranteed in this mode.
+- [x] Pools grow lazily on demand up to their configured bound. When all channels are busy, callers wait asynchronously for one to be returned. Pools do not shrink during normal operation in this slice.
+- [x] A leased channel is never used concurrently by multiple publishers. The lease type guarantees exclusive ownership for the duration of the publish.
+- [x] If a pooled channel is closed, faulted, or otherwise unusable, it is discarded (not returned), the pool's live-channel count is decremented, and a later publish can create a replacement within the configured bound. A `BasicPublishAsync` exception that reflects a broker-side message rejection (channel still open) must not cause the channel to be discarded.
+- [x] At topology compile time, the transport computes and logs the worst-case channel count for the configured topology and mode.
+- [x] On first successful connection, the transport compares the worst-case channel count against `IConnection.ChannelMax` and throws a topology validation exception if the topology cannot fit. This check lives alongside the existing connection-acquisition path so it runs exactly once per connection lifecycle.
+- [x] Transport disposal tears down pooled channels before disposing the shared connection, without leaking channels or background work. Compiled targets and/or the shared pool participate in the transport's disposal flow explicitly.
+- [x] Automated tests are written.
 
 ## Technical Details
 
