@@ -1,9 +1,7 @@
 using System;
-using System.ComponentModel;
 
 namespace Usf.Transport.RabbitMq;
 
-[EditorBrowsable(EditorBrowsableState.Never)]
 public static class RabbitMqChannelBudget
 {
     public static (int WorstCaseChannelCount, string Description) Calculate(

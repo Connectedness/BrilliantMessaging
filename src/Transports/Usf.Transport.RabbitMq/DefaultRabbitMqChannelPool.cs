@@ -202,7 +202,6 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
         }
     }
 
-    [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class PooledChannel : IAsyncDisposable
     {
         private readonly IChannel _channel;

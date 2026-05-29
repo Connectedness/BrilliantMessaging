@@ -1,5 +1,4 @@
 using System;
-using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,6 +8,5 @@ public interface IRabbitMqChannelPool : IAsyncDisposable, IDisposable
 {
     ValueTask<RabbitMqChannelLease> AcquireAsync(CancellationToken cancellationToken = default);
 
-    [EditorBrowsable(EditorBrowsableState.Never)]
     ValueTask ReleaseAsync(in RabbitMqChannelLease lease);
 }
