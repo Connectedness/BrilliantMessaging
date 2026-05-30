@@ -10,11 +10,10 @@ namespace Usf.Transport.RabbitMq.Tests.TestSupport;
 public sealed class TestRabbitMqConnection
 {
     private readonly Queue<IChannel> _channels = new ();
-    private readonly IConnection _connection;
 
     public TestRabbitMqConnection(IList<string>? disposalEvents = null, string disposalEventName = "connection")
     {
-        _connection = RabbitMqDispatchProxy<IConnection>.Create(HandleInvoke);
+        Object = RabbitMqDispatchProxy<IConnection>.Create(HandleInvoke);
         DisposalEvents = disposalEvents;
         DisposalEventName = disposalEventName;
     }
@@ -27,13 +26,15 @@ public sealed class TestRabbitMqConnection
 
     public int DisposeCallCount { get; private set; }
 
+    public IList<CreateChannelOptions?> CreateChannelOptions { get; } = new List<CreateChannelOptions?>();
+
     public IList<string>? DisposalEvents { get; }
 
     public string DisposalEventName { get; }
 
     public bool IsOpen { get; private set; } = true;
 
-    public IConnection Object => _connection;
+    public IConnection Object { get; }
 
     public void EnqueueChannel(IChannel channel)
     {
@@ -51,6 +52,7 @@ public sealed class TestRabbitMqConnection
             case "get_CloseReason":
                 return CloseReason;
             case "CreateChannelAsync":
+                CreateChannelOptions.Add((CreateChannelOptions?) arguments![0]);
                 return Task.FromResult(_channels.Dequeue());
             case "DisposeAsync":
                 DisposeAsyncCallCount++;

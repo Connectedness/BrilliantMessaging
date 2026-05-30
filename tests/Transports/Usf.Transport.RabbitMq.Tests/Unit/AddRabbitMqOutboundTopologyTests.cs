@@ -141,4 +141,45 @@ public sealed class AddRabbitMqOutboundTopologyTests
            .GetRequiredTarget("headers-target").GetType()
            .Name.Should().Be("RabbitMqHeadersOutboundTarget`1");
     }
+
+    [Fact]
+    public void AddRabbitMqOutboundTopology_RejectsMandatoryTargetsUsingFireAndForgetPublishing()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<Utf8JsonMessageSerializer>();
+        services.AddRabbitMqOutboundTopology(
+            builder =>
+            {
+                builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                builder.WithDefaultPublisherConfirmMode(RabbitMqPublisherConfirmMode.FireAndForget);
+                builder.Exchange("orders", ExchangeType.Fanout);
+                builder.Address("orders-address", "orders");
+                builder.ChannelGroup("best-effort", 1, RabbitMqPublisherConfirmMode.FireAndForget);
+                builder.Publish<ValidationMessageA>(
+                    target => target
+                       .ToFanoutAddress("orders-address")
+                       .Mandatory()
+                       .WithSerializer<Utf8JsonMessageSerializer>()
+                );
+                builder.PublishNamed<ValidationMessageA>(
+                    "shared-best-effort",
+                    target => target
+                       .ToFanoutAddress("orders-address")
+                       .UseChannelGroup("best-effort")
+                       .Mandatory()
+                       .WithSerializer<Utf8JsonMessageSerializer>()
+                );
+            }
+        );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action action = () => _ = serviceProvider.GetRequiredService<IOutboundTopology>();
+
+        var exception = action.Should().Throw<OutboundTopologyValidationException>().Which;
+        exception.ValidationErrors.Should().BeEquivalentTo(
+            "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' enables mandatory routing but its effective channel group uses fire-and-forget publishing.",
+            "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'shared-best-effort' enables mandatory routing but its effective channel group uses fire-and-forget publishing."
+        );
+    }
 }

@@ -12,7 +12,6 @@ namespace Usf.Transport.RabbitMq;
 public sealed class RabbitMqOutboundTopology : IAsyncDisposable, IDisposable
 {
     private readonly SemaphoreSlim _channelBudgetValidationGate = new (1, 1);
-    private readonly IReadOnlyList<RabbitMqChannelGroup> _channelGroups;
     private readonly RabbitMqConnectionProvider _connectionProvider;
     private readonly int _worstCaseChannelCount;
     private readonly string _worstCaseChannelCountDescription;
@@ -37,7 +36,7 @@ public sealed class RabbitMqOutboundTopology : IAsyncDisposable, IDisposable
         Queues = queues ?? throw new ArgumentNullException(nameof(queues));
         Bindings = bindings ?? throw new ArgumentNullException(nameof(bindings));
         Addresses = addresses ?? throw new ArgumentNullException(nameof(addresses));
-        _channelGroups = channelGroups ?? throw new ArgumentNullException(nameof(channelGroups));
+        ChannelGroups = channelGroups ?? throw new ArgumentNullException(nameof(channelGroups));
         Targets = targets ?? throw new ArgumentNullException(nameof(targets));
         _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
         _worstCaseChannelCount = worstCaseChannelCount;
@@ -57,7 +56,7 @@ public sealed class RabbitMqOutboundTopology : IAsyncDisposable, IDisposable
 
     public IReadOnlyList<RabbitMqAddressDefinition> Addresses { get; }
 
-    public IReadOnlyList<RabbitMqChannelGroup> ChannelGroups => _channelGroups;
+    public IReadOnlyList<RabbitMqChannelGroup> ChannelGroups { get; }
 
     public IReadOnlyList<OutboundTarget> Targets { get; }
 
@@ -68,7 +67,7 @@ public sealed class RabbitMqOutboundTopology : IAsyncDisposable, IDisposable
             return;
         }
 
-        foreach (var channelGroup in _channelGroups)
+        foreach (var channelGroup in ChannelGroups)
         {
             await channelGroup.DisposeAsync().ConfigureAwait(false);
         }
@@ -84,7 +83,7 @@ public sealed class RabbitMqOutboundTopology : IAsyncDisposable, IDisposable
             return;
         }
 
-        foreach (var channelGroup in _channelGroups)
+        foreach (var channelGroup in ChannelGroups)
         {
             channelGroup.Dispose();
         }
@@ -97,6 +96,33 @@ public sealed class RabbitMqOutboundTopology : IAsyncDisposable, IDisposable
     {
         var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
         return await connection.CreateChannelAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IChannel> CreateChannelAsync(
+        RabbitMqPublisherConfirmMode publisherConfirmMode,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (!Enum.IsDefined(typeof(RabbitMqPublisherConfirmMode), publisherConfirmMode))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(publisherConfirmMode),
+                publisherConfirmMode,
+                "Unsupported publisher confirm mode."
+            );
+        }
+
+        if (publisherConfirmMode == RabbitMqPublisherConfirmMode.FireAndForget)
+        {
+            return await CreateChannelAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
+        CreateChannelOptions options = new (
+            publisherConfirmationsEnabled: true,
+            publisherConfirmationTrackingEnabled: true
+        );
+        return await connection.CreateChannelAsync(options, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<IConnection> GetConnectionAsync(CancellationToken cancellationToken = default)

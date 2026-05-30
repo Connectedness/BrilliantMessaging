@@ -43,7 +43,11 @@ public static class RabbitMqOutboundTopologyCompiler
 
         foreach (var channelGroupDefinition in OrderChannelGroups(configuration.ChannelGroups))
         {
-            var channelGroup = CreateChannelGroup(channelGroupDefinition, () => topology!);
+            var channelGroup = CreateChannelGroup(
+                channelGroupDefinition,
+                configuration.DefaultPublisherConfirmTimeout,
+                () => topology!
+            );
             explicitChannelGroupsByName.Add(channelGroup.Name, channelGroup);
             channelGroups.Add(channelGroup);
         }
@@ -62,6 +66,8 @@ public static class RabbitMqOutboundTopologyCompiler
                 targetName,
                 explicitChannelGroupsByName,
                 channelGroups,
+                configuration.DefaultPublisherConfirmMode,
+                configuration.DefaultPublisherConfirmTimeout,
                 () => topology!
             );
             var address = addressesByName[targetDefinition.AddressName];
@@ -130,13 +136,18 @@ public static class RabbitMqOutboundTopologyCompiler
 
     private static RabbitMqChannelGroup CreateChannelGroup(
         RabbitMqChannelGroupDefinition definition,
+        TimeSpan? defaultPublisherConfirmTimeout,
         Func<RabbitMqOutboundTopology> getTopology
     )
     {
         return new RabbitMqChannelGroup(
             definition.Name,
             definition.MaximumChannelCount,
-            async cancellationToken => await getTopology().CreateChannelAsync(cancellationToken).ConfigureAwait(false)
+            async cancellationToken => await getTopology()
+               .CreateChannelAsync(definition.PublisherConfirmMode, cancellationToken)
+               .ConfigureAwait(false),
+            definition.PublisherConfirmMode,
+            definition.PublisherConfirmTimeout ?? defaultPublisherConfirmTimeout
         );
     }
 
@@ -145,6 +156,8 @@ public static class RabbitMqOutboundTopologyCompiler
         string targetName,
         IReadOnlyDictionary<string, RabbitMqChannelGroup> explicitChannelGroupsByName,
         ICollection<RabbitMqChannelGroup> channelGroups,
+        RabbitMqPublisherConfirmMode defaultPublisherConfirmMode,
+        TimeSpan? defaultPublisherConfirmTimeout,
         Func<RabbitMqOutboundTopology> getTopology
     )
     {
@@ -154,7 +167,13 @@ public static class RabbitMqOutboundTopologyCompiler
         }
 
         var implicitChannelGroup = CreateChannelGroup(
-            new RabbitMqChannelGroupDefinition($"$implicit:{channelGroups.Count}:{targetName}", 1),
+            new RabbitMqChannelGroupDefinition(
+                $"$implicit:{channelGroups.Count}:{targetName}",
+                1,
+                defaultPublisherConfirmMode,
+                defaultPublisherConfirmTimeout
+            ),
+            defaultPublisherConfirmTimeout,
             getTopology
         );
         channelGroups.Add(implicitChannelGroup);
@@ -283,6 +302,7 @@ public static class RabbitMqOutboundTopologyCompiler
         ValidateExchangeDefinitions(configuration.Exchanges, validationErrors);
         ValidateQueueDefinitions(configuration.Queues, validationErrors);
         ValidateAddressDefinitions(configuration.Addresses, exchangesByName, validationErrors);
+        ValidateDefaultPublisherConfirmConfiguration(configuration, validationErrors);
         ValidateChannelGroupDefinitions(configuration.ChannelGroups, validationErrors);
         ValidateChannelGroupUsage(configuration.ChannelGroups, configuration.Targets, validationErrors);
         ValidateTargets(
@@ -291,6 +311,7 @@ public static class RabbitMqOutboundTopologyCompiler
             addressesByName,
             exchangesByName,
             channelGroupsByName,
+            configuration.DefaultPublisherConfirmMode,
             validationErrors
         );
         ValidateBindings(configuration.Bindings, exchangesByName, queuesByName, validationErrors);
@@ -367,6 +388,42 @@ public static class RabbitMqOutboundTopologyCompiler
                     $"Channel group '{channelGroup.Name}' maximum channel count must be greater than zero."
                 );
             }
+
+            if (!Enum.IsDefined(typeof(RabbitMqPublisherConfirmMode), channelGroup.PublisherConfirmMode))
+            {
+                validationErrors.Add(
+                    $"Channel group '{channelGroup.Name}' uses unsupported publisher confirm mode '{channelGroup.PublisherConfirmMode}'."
+                );
+            }
+
+            if (channelGroup.PublisherConfirmTimeout is not null &&
+                !RabbitMqPublisherConfirmDefaults.IsValidTimeout(channelGroup.PublisherConfirmTimeout.Value))
+            {
+                validationErrors.Add(
+                    $"Channel group '{channelGroup.Name}' publisher confirm timeout must be finite and greater than zero."
+                );
+            }
+        }
+    }
+
+    private static void ValidateDefaultPublisherConfirmConfiguration(
+        RabbitMqOutboundTopologyConfiguration configuration,
+        ICollection<string> validationErrors
+    )
+    {
+        if (!Enum.IsDefined(typeof(RabbitMqPublisherConfirmMode), configuration.DefaultPublisherConfirmMode))
+        {
+            validationErrors.Add(
+                $"RabbitMQ outbound topology uses unsupported default publisher confirm mode '{configuration.DefaultPublisherConfirmMode}'."
+            );
+        }
+
+        if (configuration.DefaultPublisherConfirmTimeout is not null &&
+            !RabbitMqPublisherConfirmDefaults.IsValidTimeout(configuration.DefaultPublisherConfirmTimeout.Value))
+        {
+            validationErrors.Add(
+                "RabbitMQ outbound topology publisher confirm timeout must be finite and greater than zero."
+            );
         }
     }
 
@@ -403,6 +460,7 @@ public static class RabbitMqOutboundTopologyCompiler
         IReadOnlyDictionary<string, RabbitMqAddressDefinition> addressesByName,
         IReadOnlyDictionary<string, RabbitMqExchangeDefinition> exchangesByName,
         IReadOnlyDictionary<string, RabbitMqChannelGroupDefinition> channelGroupsByName,
+        RabbitMqPublisherConfirmMode defaultPublisherConfirmMode,
         ICollection<string> validationErrors
     )
     {
@@ -432,6 +490,7 @@ public static class RabbitMqOutboundTopologyCompiler
                     addressesByName,
                     exchangesByName,
                     channelGroupsByName,
+                    defaultPublisherConfirmMode,
                     validationErrors
                 );
             }
@@ -444,6 +503,7 @@ public static class RabbitMqOutboundTopologyCompiler
         IReadOnlyDictionary<string, RabbitMqAddressDefinition> addressesByName,
         IReadOnlyDictionary<string, RabbitMqExchangeDefinition> exchangesByName,
         IReadOnlyDictionary<string, RabbitMqChannelGroupDefinition> channelGroupsByName,
+        RabbitMqPublisherConfirmMode defaultPublisherConfirmMode,
         ICollection<string> validationErrors
     )
     {
@@ -463,6 +523,20 @@ public static class RabbitMqOutboundTopologyCompiler
         {
             validationErrors.Add(
                 $"{targetDescription} references unknown channel group '{target.ChannelGroupName}'."
+            );
+        }
+
+        if (target.IsMandatory &&
+            TryGetPublisherConfirmMode(
+                target,
+                channelGroupsByName,
+                defaultPublisherConfirmMode,
+                out var publisherConfirmMode
+            ) &&
+            publisherConfirmMode == RabbitMqPublisherConfirmMode.FireAndForget)
+        {
+            validationErrors.Add(
+                $"{targetDescription} enables mandatory routing but its effective channel group uses fire-and-forget publishing."
             );
         }
 
@@ -487,6 +561,29 @@ public static class RabbitMqOutboundTopologyCompiler
         {
             ValidateRoutingKeyConfiguration(routingKeyTarget, targetDescription, validationErrors);
         }
+    }
+
+    private static bool TryGetPublisherConfirmMode(
+        RabbitMqOutboundTargetDefinition target,
+        IReadOnlyDictionary<string, RabbitMqChannelGroupDefinition> channelGroupsByName,
+        RabbitMqPublisherConfirmMode defaultPublisherConfirmMode,
+        out RabbitMqPublisherConfirmMode publisherConfirmMode
+    )
+    {
+        if (string.IsNullOrWhiteSpace(target.ChannelGroupName))
+        {
+            publisherConfirmMode = defaultPublisherConfirmMode;
+            return true;
+        }
+
+        if (channelGroupsByName.TryGetValue(target.ChannelGroupName!, out var channelGroup))
+        {
+            publisherConfirmMode = channelGroup.PublisherConfirmMode;
+            return true;
+        }
+
+        publisherConfirmMode = default;
+        return false;
     }
 
     private static void ValidateTargetAgainstExchange(
@@ -636,7 +733,7 @@ public static class RabbitMqOutboundTopologyCompiler
         var loggerFactory = serviceProvider.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
         var logger = loggerFactory.CreateLogger(typeof(RabbitMqOutboundTopologyCompiler));
         logger.LogInformation(
-            "RabbitMQ outbound topology may open up to {ChannelCount} channels ({Description}).",
+            "RabbitMQ outbound topology may open up to {ChannelCount} channels ({Description})",
             worstCaseChannelCount,
             description
         );

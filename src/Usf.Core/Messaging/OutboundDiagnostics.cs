@@ -13,6 +13,8 @@ public static class OutboundDiagnostics
 
     public const string OutcomeTagName = "usf.outbound.outcome";
 
+    public const string DeliveryFailureReasonTagName = "usf.outbound.delivery.failure.reason";
+
     public static readonly ActivitySource ActivitySource = new ("Usf.Outbound");
 
     public static readonly Meter Meter = new ("Usf.Outbound");

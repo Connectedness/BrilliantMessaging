@@ -10,24 +10,22 @@ namespace Usf.Transport.RabbitMq.Tests.TestSupport;
 
 public sealed class TestRabbitMqChannel
 {
-    private readonly IChannel _channel;
-    private readonly IList<string>? _disposalEvents;
     private readonly string _disposalEventName;
+    private readonly IList<string>? _disposalEvents;
     private AsyncEventHandler<ShutdownEventArgs>? _channelShutdownAsync;
-    private ShutdownEventArgs? _closeReason;
 
     public TestRabbitMqChannel(IList<string>? disposalEvents = null, string disposalEventName = "channel")
     {
-        _channel = RabbitMqDispatchProxy<IChannel>.Create(HandleInvoke);
+        Object = RabbitMqDispatchProxy<IChannel>.Create(HandleInvoke);
         _disposalEvents = disposalEvents;
         _disposalEventName = disposalEventName;
     }
 
-    public Func<ValueTask>? BasicPublishAsyncHandler { get; set; }
+    public Func<CancellationToken, ValueTask>? BasicPublishAsyncHandler { get; set; }
 
     public int BasicPublishCallCount { get; private set; }
 
-    public ShutdownEventArgs? CloseReason => _closeReason;
+    public ShutdownEventArgs? CloseReason { get; private set; }
 
     public int DisposeAsyncCallCount { get; private set; }
 
@@ -35,12 +33,12 @@ public sealed class TestRabbitMqChannel
 
     public bool IsOpen { get; private set; } = true;
 
-    public IChannel Object => _channel;
+    public IChannel Object { get; }
 
     public void Close(ushort replyCode = 200, string replyText = "Closed")
     {
         IsOpen = false;
-        _closeReason = CreateShutdownEvent(replyCode, replyText);
+        CloseReason = CreateShutdownEvent(replyCode, replyText);
     }
 
     public async Task ShutdownAsync(ushort replyCode = 200, string replyText = "Closed")
@@ -49,7 +47,7 @@ public sealed class TestRabbitMqChannel
 
         if (_channelShutdownAsync is not null)
         {
-            await _channelShutdownAsync(_channel, _closeReason!).ConfigureAwait(false);
+            await _channelShutdownAsync(Object, CloseReason!).ConfigureAwait(false);
         }
     }
 
@@ -62,7 +60,7 @@ public sealed class TestRabbitMqChannel
             case "get_IsClosed":
                 return !IsOpen;
             case "get_CloseReason":
-                return _closeReason;
+                return CloseReason;
             case "add_ChannelShutdownAsync":
                 _channelShutdownAsync += (AsyncEventHandler<ShutdownEventArgs>) arguments![0]!;
                 return null;
@@ -71,7 +69,7 @@ public sealed class TestRabbitMqChannel
                 return null;
             case "BasicPublishAsync":
                 BasicPublishCallCount++;
-                return BasicPublishAsyncHandler?.Invoke() ?? default(ValueTask);
+                return BasicPublishAsyncHandler?.Invoke((CancellationToken) arguments![^1]!) ?? default(ValueTask);
             case "DisposeAsync":
                 DisposeAsyncCallCount++;
                 IsOpen = false;

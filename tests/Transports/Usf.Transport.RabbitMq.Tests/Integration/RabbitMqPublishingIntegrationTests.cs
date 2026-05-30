@@ -7,8 +7,10 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 using Testcontainers.RabbitMq;
 using Usf.Core.Messaging;
+using Usf.Core.Messaging.Errors;
 using Usf.Core.Messaging.Serialization;
 using Usf.Transport.RabbitMq.Configuration;
 using Usf.Transport.RabbitMq.Tests.TestSupport;
@@ -27,7 +29,12 @@ public sealed class RabbitMqPublishingIntegrationTests
 
         try
         {
-            await DeclareExchangeAsync(container.GetConnectionString(), "orders-fanout", ExchangeType.Fanout, cancellationToken);
+            await DeclareExchangeAsync(
+                container.GetConnectionString(),
+                "orders-fanout",
+                ExchangeType.Fanout,
+                cancellationToken
+            );
 
             var services = new ServiceCollection();
             services.AddSingleton<Utf8JsonMessageSerializer>();
@@ -287,6 +294,65 @@ public sealed class RabbitMqPublishingIntegrationTests
             received.BasicProperties.CorrelationId.Should().Be("correlation-id-7");
             received.BasicProperties.Headers.Should().NotBeNull();
             ExtractHeaderValue(received.BasicProperties.Headers!, "tenant").Should().Be("tenant-7");
+        }
+        finally
+        {
+            await container.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task PublishMessageAsync_ThrowsReturnedDeliveryFailureForUnroutableMandatoryMessage()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var container = new RabbitMqBuilder("public.ecr.aws/docker/library/rabbitmq:3.13-management").Build();
+        await container.StartAsync(cancellationToken);
+
+        try
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<Utf8JsonMessageSerializer>();
+            services.AddRabbitMqOutboundTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(
+                        _ => new ConnectionFactory
+                        {
+                            Uri = new Uri(container.GetConnectionString())
+                        }
+                    );
+
+                    builder.Exchange("unroutable-fanout", ExchangeType.Fanout);
+                    builder.Address("unroutable-address", "unroutable-fanout");
+                    builder.Publish<RabbitMqPublishMessage>(
+                        route => route
+                           .ToFanoutAddress("unroutable-address")
+                           .Mandatory()
+                           .WithSerializer<Utf8JsonMessageSerializer>()
+                    );
+                }
+            );
+
+            await using var serviceProvider = services.BuildServiceProvider();
+
+            foreach (var hostedService in serviceProvider.GetServices<IHostedService>())
+            {
+                await hostedService.StartAsync(cancellationToken);
+            }
+
+            var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+
+            var action = async () => await publisher.PublishMessageAsync(
+                new RabbitMqPublishMessage(47, "unroutable"),
+                cancellationToken: cancellationToken
+            );
+
+            var exception = (await action.Should().ThrowAsync<MessageDeliveryException>()).Which;
+            exception
+               .TargetName.Should()
+               .Be(typeof(RabbitMqPublishMessage).FullName);
+            exception.Reason.Should().Be(MessageDeliveryFailureReason.Returned);
+            exception.InnerException.Should().BeAssignableTo<PublishException>();
         }
         finally
         {

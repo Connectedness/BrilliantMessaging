@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Text;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -124,5 +125,44 @@ public sealed class MessagePublisherTests
 
         await action.Should().ThrowAsync<ArgumentException>().WithParameterName("message");
         target.SerializedMessages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PublishMessageAsync_TagsDeliveryFailureReason()
+    {
+        var measurements = new List<KeyValuePair<string, object?>[]>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Name == "usf.outbound.publish.failures")
+            {
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) => measurements.Add(tags.ToArray()));
+        listener.Start();
+
+        var deliveryException = new MessageDeliveryException(
+            "target",
+            MessageDeliveryFailureReason.Returned,
+            new InvalidOperationException("returned")
+        );
+        var target = new ThrowingTarget<SampleMessage>(
+            "target",
+            new Utf8JsonMessageSerializer(),
+            deliveryException
+        );
+        var publisher = new MessagePublisher(new EmptyOutboundTopology());
+
+        var action = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"), target);
+
+        await action.Should().ThrowAsync<MessageDeliveryException>();
+        measurements.Should().ContainSingle();
+        measurements[0].Should().Contain(
+            new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "failure")
+        );
+        measurements[0].Should().Contain(
+            new KeyValuePair<string, object?>(OutboundDiagnostics.DeliveryFailureReasonTagName, "returned")
+        );
     }
 }

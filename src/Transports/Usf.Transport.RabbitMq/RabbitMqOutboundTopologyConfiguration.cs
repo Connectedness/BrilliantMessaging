@@ -12,5 +12,7 @@ public sealed record RabbitMqOutboundTopologyConfiguration(
     IReadOnlyList<RabbitMqBindingDefinition> Bindings,
     IReadOnlyList<RabbitMqAddressDefinition> Addresses,
     IReadOnlyList<RabbitMqChannelGroupDefinition> ChannelGroups,
-    IReadOnlyList<RabbitMqOutboundTargetDefinition> Targets
+    IReadOnlyList<RabbitMqOutboundTargetDefinition> Targets,
+    RabbitMqPublisherConfirmMode DefaultPublisherConfirmMode = RabbitMqPublisherConfirmMode.Confirms,
+    TimeSpan? DefaultPublisherConfirmTimeout = null
 );

@@ -101,6 +101,7 @@ public sealed class MessagePublisher : IMessagePublisher
         OutboundDiagnostics.PublishAttempts.Add(1, tags);
 
         var outcome = "success";
+        string? deliveryFailureReason = null;
 
         try
         {
@@ -113,15 +114,25 @@ public sealed class MessagePublisher : IMessagePublisher
             activity?.SetTag(OutboundDiagnostics.OutcomeTagName, outcome);
             throw;
         }
-        catch
+        catch (Exception exception)
         {
             outcome = "failure";
+            deliveryFailureReason = exception is MessageDeliveryException deliveryException ?
+                GetDeliveryFailureReasonName(deliveryException.Reason) :
+                null;
             OutboundDiagnostics.PublishFailures.Add(
                 1,
-                CreateBaseTags(messageTypeName, resolvedTarget.Name, resolvedTarget.TransportName, outcome)
+                CreateBaseTags(
+                    messageTypeName,
+                    resolvedTarget.Name,
+                    resolvedTarget.TransportName,
+                    outcome,
+                    deliveryFailureReason
+                )
             );
             activity?.SetStatus(ActivityStatusCode.Error);
             activity?.SetTag(OutboundDiagnostics.OutcomeTagName, outcome);
+            activity?.SetTag(OutboundDiagnostics.DeliveryFailureReasonTagName, deliveryFailureReason);
             throw;
         }
         finally
@@ -131,7 +142,8 @@ public sealed class MessagePublisher : IMessagePublisher
                 messageTypeName,
                 resolvedTarget.Name,
                 resolvedTarget.TransportName,
-                outcome
+                outcome,
+                deliveryFailureReason
             );
             OutboundDiagnostics.PublishDuration.Record(durationMilliseconds, durationTags);
             activity?.SetTag(OutboundDiagnostics.OutcomeTagName, outcome);
@@ -143,7 +155,8 @@ public sealed class MessagePublisher : IMessagePublisher
         string messageTypeName,
         string targetName,
         string transportName,
-        string? outcome = null
+        string? outcome = null,
+        string? deliveryFailureReason = null
     )
     {
         if (outcome is null)
@@ -156,12 +169,27 @@ public sealed class MessagePublisher : IMessagePublisher
             ];
         }
 
+        if (deliveryFailureReason is null)
+        {
+            return
+            [
+                new KeyValuePair<string, object?>(OutboundDiagnostics.MessageTypeTagName, messageTypeName),
+                new KeyValuePair<string, object?>(OutboundDiagnostics.TargetNameTagName, targetName),
+                new KeyValuePair<string, object?>(OutboundDiagnostics.TransportNameTagName, transportName),
+                new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, outcome)
+            ];
+        }
+
         return
         [
             new KeyValuePair<string, object?>(OutboundDiagnostics.MessageTypeTagName, messageTypeName),
             new KeyValuePair<string, object?>(OutboundDiagnostics.TargetNameTagName, targetName),
             new KeyValuePair<string, object?>(OutboundDiagnostics.TransportNameTagName, transportName),
-            new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, outcome)
+            new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, outcome),
+            new KeyValuePair<string, object?>(
+                OutboundDiagnostics.DeliveryFailureReasonTagName,
+                deliveryFailureReason
+            )
         ];
     }
 
@@ -174,6 +202,17 @@ public sealed class MessagePublisher : IMessagePublisher
     private static string GetMessageTypeName(Type messageType)
     {
         return messageType.FullName ?? messageType.Name;
+    }
+
+    private static string GetDeliveryFailureReasonName(MessageDeliveryFailureReason reason)
+    {
+        return reason switch
+        {
+            MessageDeliveryFailureReason.Nacked => "nacked",
+            MessageDeliveryFailureReason.Returned => "returned",
+            MessageDeliveryFailureReason.Timeout => "timeout",
+            _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unsupported delivery-failure reason.")
+        };
     }
 
     private static void SetCommonTags(

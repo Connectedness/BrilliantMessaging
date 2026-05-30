@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
+using Usf.Transport.RabbitMq.Configuration;
 
 namespace Usf.Transport.RabbitMq;
 
@@ -12,7 +13,9 @@ public sealed class RabbitMqChannelGroup : IAsyncDisposable, IDisposable
     public RabbitMqChannelGroup(
         string name,
         int maximumChannelCount,
-        Func<CancellationToken, Task<IChannel>> channelFactory
+        Func<CancellationToken, Task<IChannel>> channelFactory,
+        RabbitMqPublisherConfirmMode publisherConfirmMode = RabbitMqPublisherConfirmMode.Confirms,
+        TimeSpan? publisherConfirmTimeout = null
     )
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -29,8 +32,30 @@ public sealed class RabbitMqChannelGroup : IAsyncDisposable, IDisposable
             );
         }
 
+        if (!Enum.IsDefined(typeof(RabbitMqPublisherConfirmMode), publisherConfirmMode))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(publisherConfirmMode),
+                publisherConfirmMode,
+                "Unsupported publisher confirm mode."
+            );
+        }
+
+        var resolvedPublisherConfirmTimeout = publisherConfirmTimeout ?? RabbitMqPublisherConfirmDefaults.Timeout;
+
+        if (!RabbitMqPublisherConfirmDefaults.IsValidTimeout(resolvedPublisherConfirmTimeout))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(publisherConfirmTimeout),
+                resolvedPublisherConfirmTimeout,
+                "The value must be finite and greater than zero."
+            );
+        }
+
         Name = name;
         MaximumChannelCount = maximumChannelCount;
+        PublisherConfirmMode = publisherConfirmMode;
+        PublisherConfirmTimeout = resolvedPublisherConfirmTimeout;
         _channelPool = new DefaultRabbitMqChannelPool(
             maximumChannelCount,
             channelFactory ?? throw new ArgumentNullException(nameof(channelFactory))
@@ -41,10 +66,9 @@ public sealed class RabbitMqChannelGroup : IAsyncDisposable, IDisposable
 
     public int MaximumChannelCount { get; }
 
-    public ValueTask<RabbitMqChannelLease> AcquireAsync(CancellationToken cancellationToken = default)
-    {
-        return _channelPool.AcquireAsync(cancellationToken);
-    }
+    public RabbitMqPublisherConfirmMode PublisherConfirmMode { get; }
+
+    public TimeSpan PublisherConfirmTimeout { get; }
 
     public ValueTask DisposeAsync()
     {
@@ -54,5 +78,10 @@ public sealed class RabbitMqChannelGroup : IAsyncDisposable, IDisposable
     public void Dispose()
     {
         _channelPool.Dispose();
+    }
+
+    public ValueTask<RabbitMqChannelLease> AcquireAsync(CancellationToken cancellationToken = default)
+    {
+        return _channelPool.AcquireAsync(cancellationToken);
     }
 }

@@ -101,6 +101,15 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
         return this;
     }
 
+    /// <summary>
+    /// Requests a delivery failure when RabbitMQ cannot route a published message to a queue.
+    /// </summary>
+    /// <remarks>
+    /// Mandatory routing requires publisher confirmations on the target's channel group so the returned
+    /// message can be correlated with its publish. Confirmation tracking serializes outstanding publishes
+    /// per channel while awaiting broker outcomes; increase the channel-group size when relaxed ordering
+    /// is acceptable and additional throughput is required.
+    /// </remarks>
     public RabbitMqOutboundTargetBuilder<TMessage> Mandatory(bool mandatory = true)
     {
         IsMandatory = mandatory;
@@ -166,12 +175,4 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
 
         return value;
     }
-}
-
-public enum RabbitMqOutboundRouteScenario
-{
-    Fanout = 0,
-    Direct = 1,
-    Topic = 2,
-    Headers = 3
 }

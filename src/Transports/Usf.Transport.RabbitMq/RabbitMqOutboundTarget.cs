@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 using Usf.Core.Messaging;
+using Usf.Core.Messaging.Errors;
+using Usf.Transport.RabbitMq.Configuration;
 
 namespace Usf.Transport.RabbitMq;
 
@@ -83,17 +86,62 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
     {
         await using var lease = await _channelGroup.AcquireAsync(cancellationToken).ConfigureAwait(false);
         var properties = CreateBasicProperties(serializedMessage, routeHeaders);
-        await lease
-           .Channel
-           .BasicPublishAsync(
-                exchange: _exchangeName,
-                routingKey: routingKey,
-                mandatory: _isMandatory,
-                basicProperties: properties,
-                body: serializedMessage.Body,
-                cancellationToken: cancellationToken
-            )
-           .ConfigureAwait(false);
+
+        if (_channelGroup.PublisherConfirmMode == RabbitMqPublisherConfirmMode.FireAndForget)
+        {
+            await PublishAsync(lease.Channel, properties, serializedMessage.Body, routingKey, cancellationToken)
+               .ConfigureAwait(false);
+            return;
+        }
+
+        using var timeoutCancellationTokenSource =
+            new CancellationTokenSource(_channelGroup.PublisherConfirmTimeout);
+        using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            timeoutCancellationTokenSource.Token
+        );
+
+        try
+        {
+            await PublishAsync(
+                    lease.Channel,
+                    properties,
+                    serializedMessage.Body,
+                    routingKey,
+                    linkedCancellationTokenSource.Token
+                )
+               .ConfigureAwait(false);
+        }
+        catch (PublishException exception)
+        {
+            var reason = exception.IsReturn ?
+                MessageDeliveryFailureReason.Returned :
+                MessageDeliveryFailureReason.Nacked;
+            throw new MessageDeliveryException(Name, reason, exception);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
+                                                 timeoutCancellationTokenSource.IsCancellationRequested)
+        {
+            throw new MessageDeliveryException(Name, MessageDeliveryFailureReason.Timeout);
+        }
+    }
+
+    private ValueTask PublishAsync(
+        IChannel channel,
+        BasicProperties properties,
+        ReadOnlyMemory<byte> body,
+        string routingKey,
+        CancellationToken cancellationToken
+    )
+    {
+        return channel.BasicPublishAsync(
+            exchange: _exchangeName,
+            routingKey: routingKey,
+            mandatory: _isMandatory,
+            basicProperties: properties,
+            body: body,
+            cancellationToken: cancellationToken
+        );
     }
 
     private static BasicProperties CreateBasicProperties(

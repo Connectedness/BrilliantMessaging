@@ -8,6 +8,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 using Usf.Core.Messaging;
 using Usf.Core.Messaging.Errors;
 using Usf.Core.Messaging.Serialization;
@@ -29,6 +30,38 @@ public sealed class RabbitMqChannelGroupTests
         var configuration = builder.Build();
 
         configuration.ChannelGroups.Should().BeEmpty();
+        configuration.DefaultPublisherConfirmMode.Should().Be(RabbitMqPublisherConfirmMode.Confirms);
+        configuration.DefaultPublisherConfirmTimeout.Should().Be(TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void RabbitMqOutboundTopologyBuilder_AllowsPublisherConfirmDefaultsAndChannelGroupModeToBeOverridden()
+    {
+        var builder = new RabbitMqOutboundTopologyBuilder();
+
+        builder
+           .WithDefaultPublisherConfirmMode(RabbitMqPublisherConfirmMode.FireAndForget)
+           .WithDefaultPublisherConfirmTimeout(TimeSpan.FromSeconds(7))
+           .ChannelGroup(
+                "best-effort",
+                3,
+                RabbitMqPublisherConfirmMode.FireAndForget,
+                TimeSpan.FromSeconds(11)
+            );
+
+        var configuration = builder.Build();
+
+        configuration.DefaultPublisherConfirmMode.Should().Be(RabbitMqPublisherConfirmMode.FireAndForget);
+        configuration.DefaultPublisherConfirmTimeout.Should().Be(TimeSpan.FromSeconds(7));
+        configuration.ChannelGroups.Should().ContainSingle()
+           .Which.Should().Be(
+                new RabbitMqChannelGroupDefinition(
+                    "best-effort",
+                    3,
+                    RabbitMqPublisherConfirmMode.FireAndForget,
+                    TimeSpan.FromSeconds(11)
+                )
+            );
     }
 
     [Fact]
@@ -145,18 +178,24 @@ public sealed class RabbitMqChannelGroupTests
         await action.Should().ThrowAsync<OperationCanceledException>();
     }
 
-    [Fact]
-    public async Task RabbitMqOutboundTarget_ReusesChannelWhenPublishFailsButChannelStaysOpen()
+    [Theory]
+    [InlineData(false, MessageDeliveryFailureReason.Nacked)]
+    [InlineData(true, MessageDeliveryFailureReason.Returned)]
+    public async Task RabbitMqOutboundTarget_ReusesChannelWhenBrokerRejectsPublishButChannelStaysOpen(
+        bool isReturn,
+        MessageDeliveryFailureReason expectedReason
+    )
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var channel = new TestRabbitMqChannel();
+        var publishException = new PublishException(1, isReturn);
         var firstAttempt = true;
-        channel.BasicPublishAsyncHandler = () =>
+        channel.BasicPublishAsyncHandler = _ =>
         {
             if (firstAttempt)
             {
                 firstAttempt = false;
-                throw new InvalidOperationException("Broker rejected message.");
+                throw publishException;
             }
 
             return default;
@@ -177,7 +216,10 @@ public sealed class RabbitMqChannelGroupTests
 
         var firstPublish = async () => await target.PublishAsync(new ValidationMessageA("first"), cancellationToken);
 
-        await firstPublish.Should().ThrowAsync<InvalidOperationException>();
+        var deliveryException = (await firstPublish.Should().ThrowAsync<MessageDeliveryException>()).Which;
+        deliveryException.TargetName.Should().Be("target");
+        deliveryException.Reason.Should().Be(expectedReason);
+        deliveryException.InnerException.Should().BeSameAs(publishException);
         await target.PublishAsync(new ValidationMessageA("second"), cancellationToken);
 
         channel.BasicPublishCallCount.Should().Be(2);
@@ -191,7 +233,7 @@ public sealed class RabbitMqChannelGroupTests
         var firstChannel = new TestRabbitMqChannel();
         var secondChannel = new TestRabbitMqChannel();
         var channels = new Queue<TestRabbitMqChannel>([firstChannel, secondChannel]);
-        firstChannel.BasicPublishAsyncHandler = async () =>
+        firstChannel.BasicPublishAsyncHandler = async _ =>
         {
             await firstChannel.ShutdownAsync().ConfigureAwait(false);
             throw new InvalidOperationException("Publish failed.");
@@ -217,6 +259,112 @@ public sealed class RabbitMqChannelGroupTests
 
         firstChannel.DisposeAsyncCallCount.Should().Be(1);
         secondChannel.BasicPublishCallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task RabbitMqOutboundTarget_MapsTrackedPublishTimeoutAndReusesChannel()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var channel = new TestRabbitMqChannel
+        {
+            BasicPublishAsyncHandler = token => new ValueTask(Task.Delay(Timeout.InfiniteTimeSpan, token))
+        };
+        await using var channelGroup = new RabbitMqChannelGroup(
+            "group",
+            1,
+            _ => Task.FromResult(channel.Object),
+            publisherConfirmTimeout: TimeSpan.FromMilliseconds(20)
+        );
+        var target = new RabbitMqFanoutOutboundTarget<ValidationMessageA>(
+            "target",
+            new Utf8JsonMessageSerializer(),
+            channelGroup,
+            "exchange",
+            false
+        );
+
+        var firstPublish = async () => await target.PublishAsync(new ValidationMessageA("first"), cancellationToken);
+
+        var deliveryException = (await firstPublish.Should().ThrowAsync<MessageDeliveryException>()).Which;
+        deliveryException.TargetName.Should().Be("target");
+        deliveryException.Reason.Should().Be(MessageDeliveryFailureReason.Timeout);
+        deliveryException.InnerException.Should().BeNull();
+
+        channel.BasicPublishAsyncHandler = _ => default;
+        await target.PublishAsync(new ValidationMessageA("second"), cancellationToken);
+
+        channel.BasicPublishCallCount.Should().Be(2);
+        channel.DisposeAsyncCallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RabbitMqOutboundTarget_PropagatesCallerCancellationWithoutWrapping()
+    {
+        var channel = new TestRabbitMqChannel();
+        channel.BasicPublishAsyncHandler =
+            token => new ValueTask(Task.Delay(Timeout.InfiniteTimeSpan, token));
+        await using var channelGroup = new RabbitMqChannelGroup(
+            "group",
+            1,
+            _ => Task.FromResult(channel.Object),
+            publisherConfirmTimeout: TimeSpan.FromSeconds(5)
+        );
+        var target = new RabbitMqFanoutOutboundTarget<ValidationMessageA>(
+            "target",
+            new Utf8JsonMessageSerializer(),
+            channelGroup,
+            "exchange",
+            false
+        );
+        using var cancellationTokenSource = new CancellationTokenSource();
+
+        var publish = target.PublishAsync(new ValidationMessageA("first"), cancellationTokenSource.Token);
+        await cancellationTokenSource.CancelAsync();
+
+        var action = async () => await publish;
+        await action.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task PublishRawAsync_MapsBrokerReturnToMessageDeliveryException()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var channel = new TestRabbitMqChannel();
+        var publishException = new PublishException(1, isReturn: true);
+        channel.BasicPublishAsyncHandler = _ => throw publishException;
+        await using var channelGroup = new RabbitMqChannelGroup(
+            "group",
+            1,
+            _ => Task.FromResult(channel.Object)
+        );
+        var target = new RabbitMqFanoutOutboundTarget<ValidationMessageA>(
+            "target",
+            new Utf8JsonMessageSerializer(),
+            channelGroup,
+            "exchange",
+            true
+        );
+        var publisher = new MessagePublisher(
+            new OutboundTopology(
+                new Dictionary<Type, OutboundTarget>(),
+                new Dictionary<string, OutboundTarget>(StringComparer.Ordinal)
+            )
+        );
+        SerializedMessage message = new (
+            "body"u8.ToArray(),
+            null,
+            null,
+            new Dictionary<string, string?>(StringComparer.Ordinal),
+            null,
+            null
+        );
+
+        var action = async () => await publisher.PublishRawAsync(message, target, cancellationToken);
+
+        var deliveryException = (await action.Should().ThrowAsync<MessageDeliveryException>()).Which;
+        deliveryException.TargetName.Should().Be("target");
+        deliveryException.Reason.Should().Be(MessageDeliveryFailureReason.Returned);
+        deliveryException.InnerException.Should().BeSameAs(publishException);
     }
 
     [Fact]
@@ -321,6 +469,38 @@ public sealed class RabbitMqChannelGroupTests
     }
 
     [Fact]
+    public async Task RabbitMqOutboundTopology_ConfiguresTrackedChannelsOnlyForConfirmsMode()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var trackedChannel = new TestRabbitMqChannel();
+        var fireAndForgetChannel = new TestRabbitMqChannel();
+        var connection = new TestRabbitMqConnection();
+        connection.EnqueueChannel(trackedChannel.Object);
+        connection.EnqueueChannel(fireAndForgetChannel.Object);
+        await using var topology = CreateTopology(
+            new RabbitMqConnectionProvider(_ => Task.FromResult(connection.Object)),
+            Array.Empty<RabbitMqChannelGroup>(),
+            0,
+            "no channel groups"
+        );
+
+        await using var first = await topology.CreateChannelAsync(
+            RabbitMqPublisherConfirmMode.Confirms,
+            cancellationToken
+        );
+        await using var second = await topology.CreateChannelAsync(
+            RabbitMqPublisherConfirmMode.FireAndForget,
+            cancellationToken
+        );
+
+        connection.CreateChannelOptions.Should().HaveCount(2);
+        connection.CreateChannelOptions[0].Should().NotBeNull();
+        connection.CreateChannelOptions[0]!.PublisherConfirmationsEnabled.Should().BeTrue();
+        connection.CreateChannelOptions[0]!.PublisherConfirmationTrackingEnabled.Should().BeTrue();
+        connection.CreateChannelOptions[1].Should().BeNull();
+    }
+
+    [Fact]
     public void RabbitMqOutboundTopologyCompiler_RejectsInvalidChannelGroupSizes()
     {
         var services = new ServiceCollection();
@@ -407,7 +587,7 @@ public sealed class RabbitMqChannelGroupTests
         loggerProvider.Entries.Should().Contain(
             entry => entry.LogLevel == LogLevel.Information &&
                      entry.Message ==
-                     "RabbitMQ outbound topology may open up to 11 channels (channel group 'shared' max 11)."
+                     "RabbitMQ outbound topology may open up to 11 channels (channel group 'shared' max 11)"
         );
     }
 
@@ -487,6 +667,12 @@ public sealed class RabbitMqChannelGroupTests
         topology.Targets.Should().HaveCount(3);
         topology.ChannelGroups.Should().HaveCount(3);
         topology.ChannelGroups.Should().OnlyContain(channelGroup => channelGroup.MaximumChannelCount == 1);
+        topology.ChannelGroups.Should().OnlyContain(
+            channelGroup => channelGroup.PublisherConfirmMode == RabbitMqPublisherConfirmMode.Confirms
+        );
+        topology.ChannelGroups.Should().OnlyContain(
+            channelGroup => channelGroup.PublisherConfirmTimeout == TimeSpan.FromSeconds(30)
+        );
         channelGroups.Distinct().Should().HaveCount(3);
     }
 

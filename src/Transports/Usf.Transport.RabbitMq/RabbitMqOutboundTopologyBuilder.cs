@@ -14,6 +14,8 @@ public sealed class RabbitMqOutboundTopologyBuilder
     private readonly List<RabbitMqQueueDefinition> _queueDefinitions = [];
     private readonly List<RabbitMqOutboundTargetDefinition> _targets = [];
     private Func<IServiceProvider, ConnectionFactory>? _createConnectionFactory;
+    private RabbitMqPublisherConfirmMode _defaultPublisherConfirmMode = RabbitMqPublisherConfirmMode.Confirms;
+    private TimeSpan _defaultPublisherConfirmTimeout = RabbitMqPublisherConfirmDefaults.Timeout;
 
     public RabbitMqOutboundTopologyBuilder UseConnectionFactory(ConnectionFactory connectionFactory)
     {
@@ -93,7 +95,28 @@ public sealed class RabbitMqOutboundTopologyBuilder
         return this;
     }
 
-    public RabbitMqOutboundTopologyBuilder ChannelGroup(string name, int maximumChannelCount)
+    public RabbitMqOutboundTopologyBuilder WithDefaultPublisherConfirmMode(
+        RabbitMqPublisherConfirmMode publisherConfirmMode
+    )
+    {
+        ValidatePublisherConfirmMode(publisherConfirmMode, nameof(publisherConfirmMode));
+        _defaultPublisherConfirmMode = publisherConfirmMode;
+        return this;
+    }
+
+    public RabbitMqOutboundTopologyBuilder WithDefaultPublisherConfirmTimeout(TimeSpan publisherConfirmTimeout)
+    {
+        ValidatePublisherConfirmTimeout(publisherConfirmTimeout, nameof(publisherConfirmTimeout));
+        _defaultPublisherConfirmTimeout = publisherConfirmTimeout;
+        return this;
+    }
+
+    public RabbitMqOutboundTopologyBuilder ChannelGroup(
+        string name,
+        int maximumChannelCount,
+        RabbitMqPublisherConfirmMode publisherConfirmMode = RabbitMqPublisherConfirmMode.Confirms,
+        TimeSpan? publisherConfirmTimeout = null
+    )
     {
         if (maximumChannelCount < 1)
         {
@@ -104,8 +127,20 @@ public sealed class RabbitMqOutboundTopologyBuilder
             );
         }
 
+        ValidatePublisherConfirmMode(publisherConfirmMode, nameof(publisherConfirmMode));
+
+        if (publisherConfirmTimeout is not null)
+        {
+            ValidatePublisherConfirmTimeout(publisherConfirmTimeout.Value, nameof(publisherConfirmTimeout));
+        }
+
         _channelGroupDefinitions.Add(
-            new RabbitMqChannelGroupDefinition(RequireText(name, nameof(name)), maximumChannelCount)
+            new RabbitMqChannelGroupDefinition(
+                RequireText(name, nameof(name)),
+                maximumChannelCount,
+                publisherConfirmMode,
+                publisherConfirmTimeout
+            )
         );
         return this;
     }
@@ -150,8 +185,37 @@ public sealed class RabbitMqOutboundTopologyBuilder
             _bindingDefinitions.AsReadOnly(),
             _addressDefinitions.AsReadOnly(),
             _channelGroupDefinitions.AsReadOnly(),
-            _targets.AsReadOnly()
+            _targets.AsReadOnly(),
+            _defaultPublisherConfirmMode,
+            _defaultPublisherConfirmTimeout
         );
+    }
+
+    private static void ValidatePublisherConfirmMode(
+        RabbitMqPublisherConfirmMode publisherConfirmMode,
+        string parameterName
+    )
+    {
+        if (!Enum.IsDefined(typeof(RabbitMqPublisherConfirmMode), publisherConfirmMode))
+        {
+            throw new ArgumentOutOfRangeException(
+                parameterName,
+                publisherConfirmMode,
+                "Unsupported publisher confirm mode."
+            );
+        }
+    }
+
+    private static void ValidatePublisherConfirmTimeout(TimeSpan publisherConfirmTimeout, string parameterName)
+    {
+        if (!RabbitMqPublisherConfirmDefaults.IsValidTimeout(publisherConfirmTimeout))
+        {
+            throw new ArgumentOutOfRangeException(
+                parameterName,
+                publisherConfirmTimeout,
+                "The value must be finite and greater than zero."
+            );
+        }
     }
 
     private static string RequireText(string value, string parameterName)
