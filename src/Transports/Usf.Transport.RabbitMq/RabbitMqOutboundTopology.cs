@@ -99,29 +99,16 @@ public sealed class RabbitMqOutboundTopology : IAsyncDisposable, IDisposable
     }
 
     public async Task<IChannel> CreateChannelAsync(
-        RabbitMqPublisherConfirmMode publisherConfirmMode,
+        CreateChannelOptions? options,
         CancellationToken cancellationToken = default
     )
     {
-        if (!Enum.IsDefined(typeof(RabbitMqPublisherConfirmMode), publisherConfirmMode))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(publisherConfirmMode),
-                publisherConfirmMode,
-                "Unsupported publisher confirm mode."
-            );
-        }
-
-        if (publisherConfirmMode == RabbitMqPublisherConfirmMode.FireAndForget)
+        if (options is null)
         {
             return await CreateChannelAsync(cancellationToken).ConfigureAwait(false);
         }
 
         var connection = await GetConnectionAsync(cancellationToken).ConfigureAwait(false);
-        CreateChannelOptions options = new (
-            publisherConfirmationsEnabled: true,
-            publisherConfirmationTrackingEnabled: true
-        );
         return await connection.CreateChannelAsync(options, cancellationToken).ConfigureAwait(false);
     }
 

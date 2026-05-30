@@ -506,7 +506,7 @@ public sealed class RabbitMqChannelGroupTests
     }
 
     [Fact]
-    public async Task RabbitMqOutboundTopology_ConfiguresTrackedChannelsOnlyForConfirmsMode()
+    public async Task RabbitMqOutboundTopology_ForwardsConfiguredChannelOptions()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var trackedChannel = new TestRabbitMqChannel();
@@ -521,19 +521,15 @@ public sealed class RabbitMqChannelGroupTests
             "no channel groups"
         );
 
-        await using var first = await topology.CreateChannelAsync(
-            RabbitMqPublisherConfirmMode.Confirms,
-            cancellationToken
+        CreateChannelOptions options = new (
+            publisherConfirmationsEnabled: true,
+            publisherConfirmationTrackingEnabled: true
         );
-        await using var second = await topology.CreateChannelAsync(
-            RabbitMqPublisherConfirmMode.FireAndForget,
-            cancellationToken
-        );
+        await using var first = await topology.CreateChannelAsync(options, cancellationToken);
+        await using var second = await topology.CreateChannelAsync(options: null, cancellationToken);
 
         connection.CreateChannelOptions.Should().HaveCount(2);
-        connection.CreateChannelOptions[0].Should().NotBeNull();
-        connection.CreateChannelOptions[0]!.PublisherConfirmationsEnabled.Should().BeTrue();
-        connection.CreateChannelOptions[0]!.PublisherConfirmationTrackingEnabled.Should().BeTrue();
+        connection.CreateChannelOptions[0].Should().BeSameAs(options);
         connection.CreateChannelOptions[1].Should().BeNull();
     }
 

@@ -148,11 +148,28 @@ public static class RabbitMqOutboundTopologyCompiler
             definition.Name,
             definition.MaximumChannelCount,
             async cancellationToken => await getTopology()
-               .CreateChannelAsync(publisherConfirmMode, cancellationToken)
+               .CreateChannelAsync(CreateChannelOptions(publisherConfirmMode), cancellationToken)
                .ConfigureAwait(false),
             publisherConfirmMode,
             definition.PublisherConfirmTimeout ?? defaultPublisherConfirmTimeout
         );
+    }
+
+    private static CreateChannelOptions? CreateChannelOptions(RabbitMqPublisherConfirmMode publisherConfirmMode)
+    {
+        return publisherConfirmMode switch
+        {
+            RabbitMqPublisherConfirmMode.FireAndForget => null,
+            RabbitMqPublisherConfirmMode.Confirms => new CreateChannelOptions(
+                publisherConfirmationsEnabled: true,
+                publisherConfirmationTrackingEnabled: true
+            ),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(publisherConfirmMode),
+                publisherConfirmMode,
+                "Unsupported publisher confirm mode."
+            )
+        };
     }
 
     private static RabbitMqChannelGroup ResolveChannelGroup(
