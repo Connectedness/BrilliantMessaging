@@ -141,16 +141,15 @@ public sealed class RabbitMqPublishingIntegrationTests
             var targetRegistry = serviceProvider.GetRequiredService<IOutboundTargetRegistry>();
             Activity? directProducerActivity = null;
             var directParentTraceId = default(ActivityTraceId);
-            using var listener = new ActivityListener
+            using var listener = new ActivityListener();
+            listener.ShouldListenTo = source => source.Name == OutboundDiagnostics.ActivitySource.Name;
+            listener.Sample = static (ref _) => ActivitySamplingResult.AllData;
+            listener.ActivityStarted = activity =>
             {
-                ShouldListenTo = source => source.Name == OutboundDiagnostics.ActivitySource.Name,
-                Sample = static (ref _) => ActivitySamplingResult.AllData,
-                ActivityStarted = activity =>
+                // ReSharper disable once AccessToModifiedClosure -- OK in test scenario
+                if (activity.OperationName == "usf.outbound.publish" && activity.TraceId == directParentTraceId)
                 {
-                    if (activity.OperationName == "usf.outbound.publish" && activity.TraceId == directParentTraceId)
-                    {
-                        directProducerActivity = activity;
-                    }
+                    directProducerActivity = activity;
                 }
             };
             ActivitySource.AddActivityListener(listener);
@@ -573,6 +572,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                 var stopwatch = Stopwatch.StartNew();
                 var publishDuringOutage = async () => await publisher.PublishMessageAsync(
                     new RabbitMqPublishMessage(51, "during-outage"),
+                    // ReSharper disable once AccessToDisposedClosure -- delegate is called before disposal
                     cancellationToken: outageCancellationTokenSource.Token
                 );
 
