@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Usf.Abstractions;
@@ -6,12 +7,11 @@ namespace Usf.Core.Messaging;
 
 public readonly struct TopologyPublisher
 {
-    private readonly MessagePublisher _router;
     private readonly TopologyName _topologyName;
 
     public TopologyPublisher(MessagePublisher router, TopologyName topologyName)
     {
-        _router = router ?? throw new System.ArgumentNullException(nameof(router));
+        Router = router ?? throw new ArgumentNullException(nameof(router));
         _topologyName = topologyName;
     }
 
@@ -21,7 +21,7 @@ public readonly struct TopologyPublisher
         CancellationToken cancellationToken = default
     ) where T : ICloudEvent
     {
-        return _router.PublishMessageAsync(message, target, _topologyName, cancellationToken);
+        return Router.PublishMessageAsync(message, target, _topologyName, cancellationToken);
     }
 
     public Task PublishMessageAsync<T>(
@@ -31,7 +31,7 @@ public readonly struct TopologyPublisher
         CancellationToken cancellationToken = default
     )
     {
-        return _router.PublishMessageAsync(message, in metadata, target, _topologyName, cancellationToken);
+        return Router.PublishMessageAsync(message, in metadata, target, _topologyName, cancellationToken);
     }
 
     public Task PublishRawAsync(
@@ -40,6 +40,9 @@ public readonly struct TopologyPublisher
         CancellationToken cancellationToken = default
     )
     {
-        return _router.PublishRawAsync(message, target, _topologyName, cancellationToken);
+        return Router.PublishRawAsync(message, target, _topologyName, cancellationToken);
     }
+
+    private MessagePublisher Router =>
+        field ?? throw new InvalidOperationException("TopologyPublisher must not be the default instance");
 }

@@ -14,6 +14,9 @@ namespace Usf.Core.Tests.Messaging;
 
 public sealed class MessagePublisherTests
 {
+    private const string UninitializedTopologyPublisherMessage =
+        "TopologyPublisher must not be the default instance";
+
     [Fact]
     public async Task PublishMessageAsync_UsesTopologyResolvedTarget_WhenNoExplicitTargetIsProvided()
     {
@@ -121,6 +124,55 @@ public sealed class MessagePublisherTests
         exception.Message.Should().Be(
             "Outbound topology 'missing' is not registered. Registered outbound topologies: (none)."
         );
+    }
+
+    [Fact]
+    public async Task TopologyPublisher_PublishMessageAsync_ThrowsClearErrorWhenDefaultConstructed()
+    {
+        TopologyPublisher publisher = default;
+
+        var action = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"));
+
+        var exception = (await action.Should().ThrowAsync<InvalidOperationException>()).Which;
+        exception.Message.Should().Be(UninitializedTopologyPublisherMessage);
+    }
+
+    [Fact]
+    public async Task TopologyPublisher_PublishMessageWithMetadataAsync_ThrowsClearErrorWhenDefaultConstructed()
+    {
+        TopologyPublisher publisher = default;
+        CloudEventMetadata metadata = new (
+            Guid.Parse("e3fe171f-4684-40db-956b-ff03476f6e03"),
+            new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero)
+        );
+
+        var action = async () => await publisher.PublishMessageAsync(
+            new ThirdPartyMessage("hello"),
+            in metadata
+        );
+
+        var exception = (await action.Should().ThrowAsync<InvalidOperationException>()).Which;
+        exception.Message.Should().Be(UninitializedTopologyPublisherMessage);
+    }
+
+    [Fact]
+    public async Task TopologyPublisher_PublishRawAsync_ThrowsClearErrorWhenDefaultConstructed()
+    {
+        TopologyPublisher publisher = default;
+        SerializedMessage message = new (
+            "prepared"u8.ToArray(),
+            "application/custom",
+            "utf-8",
+            new Dictionary<string, string?>(StringComparer.Ordinal),
+            null,
+            null
+        );
+        var target = new RecordingTarget<SampleMessage>("raw", CloudEventsTestFactory.CreateSerializer());
+
+        var action = async () => await publisher.PublishRawAsync(message, target);
+
+        var exception = (await action.Should().ThrowAsync<InvalidOperationException>()).Which;
+        exception.Message.Should().Be(UninitializedTopologyPublisherMessage);
     }
 
     [Fact]
