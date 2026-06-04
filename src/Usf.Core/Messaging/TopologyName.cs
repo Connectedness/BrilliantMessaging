@@ -4,8 +4,6 @@ namespace Usf.Core.Messaging;
 
 public readonly record struct TopologyName
 {
-    private readonly string? _value;
-
     public TopologyName(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -13,13 +11,13 @@ public readonly record struct TopologyName
             throw new ArgumentException("The value cannot be null or whitespace.", nameof(value));
         }
 
-        _value = value;
+        Value = value;
     }
 
     public static TopologyName Default { get; } = new ("default");
 
     public string Value =>
-        _value ?? throw new InvalidOperationException("A topology name must be initialized with a non-empty value.");
+        field ?? throw new InvalidOperationException("Topology name must not be the default instance");
 
     public static implicit operator TopologyName(string value)
     {
