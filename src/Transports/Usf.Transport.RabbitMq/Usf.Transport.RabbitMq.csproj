@@ -4,15 +4,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Usf.Abstractions\Usf.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Usf.Core\Usf.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Generator.Equals" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Polyfill" PrivateAssets="all" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" />
-    <PackageReference Include="System.Text.Json" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="System.Threading.Channels" />
   </ItemGroup>
 </Project>
