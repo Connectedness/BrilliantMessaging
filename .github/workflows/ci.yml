@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  build-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('global.json', 'Directory.Packages.props', 'Directory.Build.props', 'src/Directory.Build.props', 'tests/Directory.Build.props', '**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Verify Docker
+        run: docker version
+
+      - name: Restore
+        run: dotnet restore USF.slnx /p:ContinuousIntegrationBuild=true
+
+      - name: Build
+        run: dotnet build USF.slnx --configuration Release --no-restore /p:ContinuousIntegrationBuild=true
+
+      - name: Install ReportGenerator
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.10
+
+      - name: Test
+        run: >
+          dotnet test USF.slnx
+          --configuration Release
+          --no-build
+          --no-restore
+          --results-directory artifacts/test-results
+          --coverage
+          --coverage-output-format cobertura
+          /p:ContinuousIntegrationBuild=true
+
+      - name: Merge coverage
+        if: always()
+        run: >
+          reportgenerator
+          "-reports:artifacts/test-results/**/*.cobertura.xml"
+          "-targetdir:artifacts/coverage"
+          "-reporttypes:Cobertura;MarkdownSummaryGithub"
+
+      - name: Create coverage summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: artifacts/coverage/Cobertura.xml
+          format: markdown
+          output: both
+          badge: true
+          thresholds: '60 85'
+
+      - name: Store coverage summary
+        run: mv code-coverage-results.md artifacts/coverage/code-coverage-results.md
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: artifacts/test-results
+          if-no-files-found: warn
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: artifacts/coverage
+          if-no-files-found: warn
+
+  coverage-comment:
+    name: Coverage comment
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: artifacts/coverage
+
+      - name: Update pull request comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: code-coverage
+          path: artifacts/coverage/code-coverage-results.md
