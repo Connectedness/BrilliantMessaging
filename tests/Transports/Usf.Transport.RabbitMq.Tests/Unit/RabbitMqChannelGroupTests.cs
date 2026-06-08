@@ -492,7 +492,7 @@ public sealed class RabbitMqChannelGroupTests
             true
         );
         var publisher = new MessagePublisher(
-            new Topology(
+            new TopologyDefinition(
                 TopologyName.Default,
                 new Dictionary<Type, OutboundTarget>(),
                 new Dictionary<string, OutboundTarget>(StringComparer.Ordinal),
@@ -734,7 +734,7 @@ public sealed class RabbitMqChannelGroupTests
             }
         );
         var publisher = new MessagePublisher(
-            new Topology(
+            new TopologyDefinition(
                 TopologyName.Default,
                 new Dictionary<Type, OutboundTarget>(),
                 new Dictionary<string, OutboundTarget>(StringComparer.Ordinal),
@@ -802,7 +802,7 @@ public sealed class RabbitMqChannelGroupTests
             false
         );
         var publisher = new MessagePublisher(
-            new Topology(
+            new TopologyDefinition(
                 TopologyName.Default,
                 new Dictionary<Type, OutboundTarget>(),
                 new Dictionary<string, OutboundTarget>(StringComparer.Ordinal),
@@ -1458,7 +1458,7 @@ public sealed class RabbitMqChannelGroupTests
         channelSource.SetChannelBudget(worstCaseChannelCount, description);
 
         return new RabbitMqTopology(
-            new Topology(
+            new TopologyDefinition(
                 TopologyName.Default,
                 new Dictionary<Type, OutboundTarget>(),
                 new Dictionary<string, OutboundTarget>(StringComparer.Ordinal),
