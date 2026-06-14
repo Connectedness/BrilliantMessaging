@@ -113,6 +113,103 @@ public sealed class MessagePublisherTests
     }
 
     [Fact]
+    public async Task PublishMessageAsync_ThrowsWhenRoutingKeyIsSuppliedForNonRoutableTarget()
+    {
+        var target = new NonRoutableRecordingTarget<SampleMessage>(
+            "non-routable",
+            CloudEventsTestFactory.CreateSerializer()
+        );
+        var publisher = new MessagePublisher(new EmptyOutboundTopology());
+
+        var action = async () => await publisher.PublishMessageAsync(
+            new SampleMessage("hello"),
+            target,
+            routingKey: "orders.created"
+        );
+
+        var exception = (await action.Should().ThrowAsync<OutboundTargetNotRoutableException>()).Which;
+        exception.TargetName.Should().Be("non-routable");
+        exception.MessageType.Should().Be<SampleMessage>();
+        target.Messages.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task PublishMessageAsync_PublishesNonRoutableTargetWhenRoutingKeyIsBlank(string routingKey)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var target = new NonRoutableRecordingTarget<SampleMessage>(
+            "non-routable",
+            CloudEventsTestFactory.CreateSerializer()
+        );
+        var publisher = new MessagePublisher(new EmptyOutboundTopology());
+        var message = new SampleMessage("hello");
+
+        await publisher.PublishMessageAsync(message, target, routingKey, cancellationToken);
+
+        target.Messages.Should().ContainSingle().Which.Should().Be(message);
+    }
+
+    [Fact]
+    public async Task PublishMessageAsync_FallsBackToRoutingKeyFreePathWhenRoutingKeyIsBlank()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var target = new RecordingTarget<SampleMessage>("default", CloudEventsTestFactory.CreateSerializer());
+        var publisher = new MessagePublisher(new EmptyOutboundTopology());
+
+        await publisher.PublishMessageAsync(
+            new SampleMessage("hello"),
+            target,
+            routingKey: "   ",
+            cancellationToken
+        );
+
+        target.RoutingKeys.Should().ContainSingle().Which.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TopologyPublisher_PublishMessageAsync_ThrowsWhenRoutingKeyIsSuppliedForNonRoutableTarget()
+    {
+        var target = new NonRoutableRecordingTarget<SampleMessage>(
+            "non-routable",
+            CloudEventsTestFactory.CreateSerializer(),
+            "legacy"
+        );
+        var publisher = new MessagePublisher(new EmptyOutboundTopology());
+
+        var action = async () => await publisher
+           .ForTopology("legacy")
+           .PublishMessageAsync(new SampleMessage("hello"), target, routingKey: "orders.created");
+
+        await action.Should().ThrowAsync<OutboundTargetNotRoutableException>();
+    }
+
+    [Fact]
+    public async Task TopologyPublisher_PublishMessageAsync_FallsBackToRoutingKeyFreePathWhenRoutingKeyIsBlank()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var target = new RecordingTarget<SampleMessage>(
+            "legacy",
+            CloudEventsTestFactory.CreateSerializer(),
+            CloudEventsTestFactory.CreateRegistry(),
+            "legacy"
+        );
+        var publisher = new MessagePublisher(new EmptyOutboundTopology());
+
+        await publisher
+           .ForTopology("legacy")
+           .PublishMessageAsync(
+                new SampleMessage("hello"),
+                target,
+                routingKey: "   ",
+                cancellationToken: cancellationToken
+            );
+
+        target.RoutingKeys.Should().ContainSingle().Which.Should().BeNull();
+    }
+
+    [Fact]
     public async Task PublishMessageAsync_UsesExplicitMetadata_ForMessagesThatCannotImplementICloudEvent()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

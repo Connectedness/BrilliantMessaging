@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -54,16 +55,16 @@ public sealed class AddRabbitMqOutboundTopologyTests
            .UseCloudEvents(options => options.Source = "/tests")
            .AddRabbitMqOutboundTopology(
                 builder =>
-            {
-                builder.UseConnectionFactory(static _ => new ConnectionFactory());
-                builder.Exchange("orders", ExchangeType.Fanout);
-                builder.Address("orders-address", "orders");
-                builder.Publish<ValidationMessageA>(
-                    target => target
-                       .ToFanoutAddress("orders-address")
-                       .WithSerializer<CloudEventMessageSerializer>()
-                );
-            }
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Exchange("orders", ExchangeType.Fanout);
+                    builder.Address("orders-address", "orders");
+                    builder.Publish<ValidationMessageA>(
+                        target => target
+                           .ToFanoutAddress("orders-address")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                }
             );
         using var serviceProvider = services.BuildServiceProvider();
 
@@ -85,15 +86,15 @@ public sealed class AddRabbitMqOutboundTopologyTests
            .UseCloudEvents(options => options.Source = "/tests")
            .AddRabbitMqOutboundTopology(
                 builder =>
-            {
-                builder.UseConnectionFactory(static _ => new ConnectionFactory());
-                builder.Exchange("orders", ExchangeType.Fanout);
-                builder.Publish<ValidationMessageA>(
-                    target => target
-                       .ToFanoutAddress("missing-address")
-                       .WithSerializer<CloudEventMessageSerializer>()
-                );
-            }
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Exchange("orders", ExchangeType.Fanout);
+                    builder.Publish<ValidationMessageA>(
+                        target => target
+                           .ToFanoutAddress("missing-address")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                }
             );
         using var serviceProvider = services.BuildServiceProvider();
 
@@ -199,43 +200,43 @@ public sealed class AddRabbitMqOutboundTopologyTests
         var services = new ServiceCollection();
         services.AddTestCloudEvents()
            .AddRabbitMqOutboundTopology(
-            builder =>
-            {
-                builder.UseConnectionFactory(static _ => new ConnectionFactory());
-                builder.Exchange("direct-exchange", ExchangeType.Direct);
-                builder.Exchange("topic-exchange", ExchangeType.Topic);
-                builder.Exchange("fanout-exchange", ExchangeType.Fanout);
-                builder.Exchange("headers-exchange", ExchangeType.Headers);
-                builder.Address("direct-address", "direct-exchange");
-                builder.Address("topic-address", "topic-exchange");
-                builder.Address("fanout-address", "fanout-exchange");
-                builder.Address("headers-address", "headers-exchange");
-                builder.Publish<ValidationMessageA>(
-                    target => target
-                       .ToDirectAddress("direct-address", "direct.route")
-                       .WithSerializer<CloudEventMessageSerializer>()
-                );
-                builder.PublishNamed<ValidationMessageA>(
-                    "topic-target",
-                    target => target
-                       .ToTopicAddress("topic-address", static message => $"topic.{message.Value}")
-                       .WithSerializer<CloudEventMessageSerializer>()
-                );
-                builder.PublishNamed<ValidationMessageA>(
-                    "fanout-target",
-                    target => target
-                       .ToFanoutAddress("fanout-address")
-                       .WithSerializer<CloudEventMessageSerializer>()
-                );
-                builder.PublishNamed<ValidationMessageA>(
-                    "headers-target",
-                    target => target
-                       .ToHeadersAddress("headers-address")
-                       .WithHeader("region", "eu")
-                       .WithSerializer<CloudEventMessageSerializer>()
-                );
-            }
-        );
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Exchange("direct-exchange", ExchangeType.Direct);
+                    builder.Exchange("topic-exchange", ExchangeType.Topic);
+                    builder.Exchange("fanout-exchange", ExchangeType.Fanout);
+                    builder.Exchange("headers-exchange", ExchangeType.Headers);
+                    builder.Address("direct-address", "direct-exchange");
+                    builder.Address("topic-address", "topic-exchange");
+                    builder.Address("fanout-address", "fanout-exchange");
+                    builder.Address("headers-address", "headers-exchange");
+                    builder.Publish<ValidationMessageA>(
+                        target => target
+                           .ToDirectAddress("direct-address", "direct.route")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                    builder.PublishNamed<ValidationMessageA>(
+                        "topic-target",
+                        target => target
+                           .ToTopicAddress("topic-address", static message => $"topic.{message.Value}")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                    builder.PublishNamed<ValidationMessageA>(
+                        "fanout-target",
+                        target => target
+                           .ToFanoutAddress("fanout-address")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                    builder.PublishNamed<ValidationMessageA>(
+                        "headers-target",
+                        target => target
+                           .ToHeadersAddress("headers-address")
+                           .WithHeader("region", "eu")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                }
+            );
         using var serviceProvider = services.BuildServiceProvider();
 
         var outboundTopology = serviceProvider.GetRequiredService<IOutboundTopology>();
@@ -253,6 +254,112 @@ public sealed class AddRabbitMqOutboundTopologyTests
         targetRegistry
            .GetRequiredTarget("headers-target").GetType()
            .Name.Should().Be("RabbitMqHeadersOutboundTarget`1");
+    }
+
+    [Fact]
+    public async Task PublishMessageAsync_ThrowsWhenRoutingKeyIsSuppliedForNonRoutableTarget()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqOutboundTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Exchange("fanout-exchange", ExchangeType.Fanout);
+                    builder.Exchange("headers-exchange", ExchangeType.Headers);
+                    builder.Address("fanout-address", "fanout-exchange");
+                    builder.Address("headers-address", "headers-exchange");
+                    builder.PublishNamed<ValidationMessageA>(
+                        "fanout-target",
+                        target => target
+                           .ToFanoutAddress("fanout-address")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                    builder.PublishNamed<ValidationMessageA>(
+                        "headers-target",
+                        target => target
+                           .ToHeadersAddress("headers-address")
+                           .WithHeader("region", "eu")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var targetRegistry = serviceProvider.GetRequiredService<IOutboundTargetRegistry>();
+
+        var fanoutPublish = async () => await publisher.PublishMessageAsync(
+            new ValidationMessageA("value"),
+            targetRegistry.GetRequiredTarget("fanout-target"),
+            routingKey: "explicit.route"
+        );
+        var headersPublish = async () => await publisher.PublishMessageAsync(
+            new ValidationMessageA("value"),
+            targetRegistry.GetRequiredTarget("headers-target"),
+            routingKey: "explicit.route"
+        );
+
+        (await fanoutPublish.Should().ThrowAsync<OutboundTargetNotRoutableException>())
+           .Which.MessageType.Should().Be<ValidationMessageA>();
+        await headersPublish.Should().ThrowAsync<OutboundTargetNotRoutableException>();
+    }
+
+    [Fact]
+    public void GetRequiredRoutingTarget_ThrowsForNonRoutableTarget()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqOutboundTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Exchange("fanout-exchange", ExchangeType.Fanout);
+                    builder.Address("fanout-address", "fanout-exchange");
+                    builder.Publish<ValidationMessageA>(
+                        target => target
+                           .ToFanoutAddress("fanout-address")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+        var outboundTopology = serviceProvider.GetRequiredService<IOutboundTopology>();
+
+        Action action = () => outboundTopology.GetRequiredRoutingTarget<ValidationMessageA>();
+
+        action.Should().Throw<OutboundTargetNotRoutableException>();
+    }
+
+    [Fact]
+    public void GetRequiredRoutingTarget_ReturnsRoutableTargetForDirectExchange()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqOutboundTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Exchange("direct-exchange", ExchangeType.Direct);
+                    builder.Address("direct-address", "direct-exchange");
+                    builder.Publish<ValidationMessageA>(
+                        target => target
+                           .ToDirectAddress("direct-address", "direct.route")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                    builder.PublishNamed<ValidationMessageA>(
+                        "direct-target",
+                        target => target
+                           .ToDirectAddress("direct-address", "direct.route")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+        var outboundTopology = serviceProvider.GetRequiredService<IOutboundTopology>();
+        var targetRegistry = serviceProvider.GetRequiredService<IOutboundTargetRegistry>();
+
+        outboundTopology.GetRequiredRoutingTarget<ValidationMessageA>().Should().NotBeNull();
+        targetRegistry.GetRequiredRoutingTarget<ValidationMessageA>("direct-target").Should().NotBeNull();
     }
 
     [Fact]
@@ -354,29 +461,29 @@ public sealed class AddRabbitMqOutboundTopologyTests
         var services = new ServiceCollection();
         services.AddTestCloudEvents()
            .AddRabbitMqOutboundTopology(
-            builder =>
-            {
-                builder.UseConnectionFactory(static _ => new ConnectionFactory());
-                builder.WithDefaultPublisherConfirmMode(RabbitMqPublisherConfirmMode.FireAndForget);
-                builder.Exchange("orders", ExchangeType.Fanout);
-                builder.Address("orders-address", "orders");
-                builder.ChannelGroup("best-effort", 1, RabbitMqPublisherConfirmMode.FireAndForget);
-                builder.Publish<ValidationMessageA>(
-                    target => target
-                       .ToFanoutAddress("orders-address")
-                       .Mandatory()
-                       .WithSerializer<CloudEventMessageSerializer>()
-                );
-                builder.PublishNamed<ValidationMessageA>(
-                    "shared-best-effort",
-                    target => target
-                       .ToFanoutAddress("orders-address")
-                       .UseChannelGroup("best-effort")
-                       .Mandatory()
-                       .WithSerializer<CloudEventMessageSerializer>()
-                );
-            }
-        );
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.WithDefaultPublisherConfirmMode(RabbitMqPublisherConfirmMode.FireAndForget);
+                    builder.Exchange("orders", ExchangeType.Fanout);
+                    builder.Address("orders-address", "orders");
+                    builder.ChannelGroup("best-effort", 1, RabbitMqPublisherConfirmMode.FireAndForget);
+                    builder.Publish<ValidationMessageA>(
+                        target => target
+                           .ToFanoutAddress("orders-address")
+                           .Mandatory()
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                    builder.PublishNamed<ValidationMessageA>(
+                        "shared-best-effort",
+                        target => target
+                           .ToFanoutAddress("orders-address")
+                           .UseChannelGroup("best-effort")
+                           .Mandatory()
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                }
+            );
         using var serviceProvider = services.BuildServiceProvider();
 
         // ReSharper disable once AccessToDisposedClosure -- act is called before disposal

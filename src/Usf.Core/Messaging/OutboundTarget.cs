@@ -108,7 +108,6 @@ public abstract class OutboundTarget<T> : OutboundTarget
 
     public Task PublishAsync(
         T message,
-        string? routingKey = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -121,17 +120,16 @@ public abstract class OutboundTarget<T> : OutboundTarget
         }
 
         var metadata = CloudEventMetadata.From(cloudEvent);
-        return PublishAsync(message, in metadata, routingKey, cancellationToken);
+        return PublishAsync(message, in metadata, cancellationToken);
     }
 
     public Task PublishAsync(
         T message,
         in CloudEventMetadata metadata,
-        string? routingKey = null,
         CancellationToken cancellationToken = default
     )
     {
-        return PublishCoreAsync(message, metadata, type: null, dataSchema: null, routingKey, cancellationToken);
+        return PublishCoreAsync(message, metadata, type: null, dataSchema: null, routingKey: null, cancellationToken);
     }
 
     public Task PublishAsync(
@@ -139,14 +137,13 @@ public abstract class OutboundTarget<T> : OutboundTarget
         in CloudEventMetadata metadata,
         string type,
         string? dataSchema,
-        string? routingKey = null,
         CancellationToken cancellationToken = default
     )
     {
-        return PublishCoreAsync(message, metadata, type, dataSchema, routingKey, cancellationToken);
+        return PublishCoreAsync(message, metadata, type, dataSchema, routingKey: null, cancellationToken);
     }
 
-    private async Task PublishCoreAsync(
+    protected async Task PublishCoreAsync(
         T message,
         CloudEventMetadata metadata,
         string? type,

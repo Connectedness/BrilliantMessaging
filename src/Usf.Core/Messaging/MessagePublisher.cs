@@ -157,19 +157,31 @@ public sealed class MessagePublisher : IMessagePublisher
         var runtimeType = message.GetType();
         var discriminator = typedTarget.GetRequiredDiscriminator(runtimeType);
         var dataSchema = typedTarget.GetDataSchema(runtimeType);
+
+        Func<Task> publishAsync;
+        if (string.IsNullOrWhiteSpace(routingKey))
+        {
+            publishAsync = async () => await typedTarget
+               .PublishAsync(message, in metadata, discriminator, dataSchema, cancellationToken)
+               .ConfigureAwait(false);
+        }
+        else if (typedTarget is IOutboundRoutableTarget<T> routableTarget)
+        {
+            var resolvedRoutingKey = routingKey!;
+            publishAsync = async () => await routableTarget
+               .PublishAsync(message, in metadata, discriminator, dataSchema, resolvedRoutingKey, cancellationToken)
+               .ConfigureAwait(false);
+        }
+        else
+        {
+            throw new OutboundTargetNotRoutableException(resolvedTarget.Name, typeof(T));
+        }
+
         await PublishWithDiagnosticsAsync(
             "usf.outbound.publish",
             discriminator,
             resolvedTarget,
-            async () => await typedTarget.PublishAsync(
-                    message,
-                    in metadata,
-                    discriminator,
-                    dataSchema,
-                    routingKey,
-                    cancellationToken
-                )
-               .ConfigureAwait(false)
+            publishAsync
         ).ConfigureAwait(false);
     }
 

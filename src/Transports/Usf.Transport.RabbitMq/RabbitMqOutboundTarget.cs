@@ -307,7 +307,8 @@ public sealed class RabbitMqFanoutOutboundTarget<TMessage> : RabbitMqOutboundTar
         : base(name, serializer, messageContractRegistry, topologyName, channelGroup, exchangeName, isMandatory) { }
 }
 
-public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage> : RabbitMqOutboundTarget<TMessage>
+public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage>
+    : RabbitMqOutboundTarget<TMessage>, IOutboundRoutableTarget<TMessage>
 {
     private readonly string? _constantRoutingKey;
     private readonly Func<TMessage, string>? _routingKeyFactory;
@@ -339,6 +340,50 @@ public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage> : RabbitMqOutbo
         _routingKeyFactory = routingKeyFactory;
     }
 
+    public Task PublishAsync(
+        TMessage message,
+        string routingKey,
+        CancellationToken cancellationToken = default
+    )
+    {
+        EnsureRoutingKey(routingKey);
+
+        if (message is not ICloudEvent cloudEvent)
+        {
+            throw new CloudEventMetadataException(
+                CloudEventAttributeNames.Id,
+                "Implement ICloudEvent or derive from BaseCloudEvent, or call PublishAsync with explicit CloudEventMetadata."
+            );
+        }
+
+        var metadata = CloudEventMetadata.From(cloudEvent);
+        return PublishCoreAsync(message, metadata, type: null, dataSchema: null, routingKey, cancellationToken);
+    }
+
+    public Task PublishAsync(
+        TMessage message,
+        in CloudEventMetadata metadata,
+        string routingKey,
+        CancellationToken cancellationToken = default
+    )
+    {
+        EnsureRoutingKey(routingKey);
+        return PublishCoreAsync(message, metadata, type: null, dataSchema: null, routingKey, cancellationToken);
+    }
+
+    public Task PublishAsync(
+        TMessage message,
+        in CloudEventMetadata metadata,
+        string type,
+        string? dataSchema,
+        string routingKey,
+        CancellationToken cancellationToken = default
+    )
+    {
+        EnsureRoutingKey(routingKey);
+        return PublishCoreAsync(message, metadata, type, dataSchema, routingKey, cancellationToken);
+    }
+
     protected override string GetRawRoutingKey()
     {
         return _constantRoutingKey ??
@@ -356,6 +401,14 @@ public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage> : RabbitMqOutbo
 
         return _routingKeyFactory!(message) ??
                throw new InvalidOperationException("The RabbitMQ routing key factory returned null.");
+    }
+
+    private static void EnsureRoutingKey(string routingKey)
+    {
+        if (string.IsNullOrWhiteSpace(routingKey))
+        {
+            throw new ArgumentException("The value cannot be null or whitespace.", nameof(routingKey));
+        }
     }
 }
 

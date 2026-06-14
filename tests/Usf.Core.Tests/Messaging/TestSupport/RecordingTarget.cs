@@ -1,11 +1,14 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Usf.Abstractions;
 using Usf.Core.Messaging;
+using Usf.Core.Messaging.Errors;
 
 namespace Usf.Core.Tests.Messaging.TestSupport;
 
-public sealed class RecordingTarget<TMessage> : OutboundTarget<TMessage>
+public sealed class RecordingTarget<TMessage> : OutboundTarget<TMessage>, IOutboundRoutableTarget<TMessage>
 {
     public RecordingTarget(string name, IMessageSerializer serializer)
         : this(name, serializer, CloudEventsTestFactory.CreateRegistry()) { }
@@ -25,6 +28,50 @@ public sealed class RecordingTarget<TMessage> : OutboundTarget<TMessage>
     public List<string?> RoutingKeys { get; } = [];
 
     public List<SerializedMessage> SerializedMessages { get; } = [];
+
+    public Task PublishAsync(
+        TMessage message,
+        string routingKey,
+        CancellationToken cancellationToken = default
+    )
+    {
+        EnsureRoutingKey(routingKey);
+
+        if (message is not ICloudEvent cloudEvent)
+        {
+            throw new CloudEventMetadataException(
+                CloudEventAttributeNames.Id,
+                "Implement ICloudEvent or derive from BaseCloudEvent, or call PublishAsync with explicit CloudEventMetadata."
+            );
+        }
+
+        var metadata = CloudEventMetadata.From(cloudEvent);
+        return PublishCoreAsync(message, metadata, type: null, dataSchema: null, routingKey, cancellationToken);
+    }
+
+    public Task PublishAsync(
+        TMessage message,
+        in CloudEventMetadata metadata,
+        string routingKey,
+        CancellationToken cancellationToken = default
+    )
+    {
+        EnsureRoutingKey(routingKey);
+        return PublishCoreAsync(message, metadata, type: null, dataSchema: null, routingKey, cancellationToken);
+    }
+
+    public Task PublishAsync(
+        TMessage message,
+        in CloudEventMetadata metadata,
+        string type,
+        string? dataSchema,
+        string routingKey,
+        CancellationToken cancellationToken = default
+    )
+    {
+        EnsureRoutingKey(routingKey);
+        return PublishCoreAsync(message, metadata, type, dataSchema, routingKey, cancellationToken);
+    }
 
     public override Task PublishSerializedAsync(
         SerializedMessage message,
@@ -46,5 +93,13 @@ public sealed class RecordingTarget<TMessage> : OutboundTarget<TMessage>
         CloudEventEnvelopes.Add(envelope);
         RoutingKeys.Add(routingKey);
         return Task.CompletedTask;
+    }
+
+    private static void EnsureRoutingKey(string routingKey)
+    {
+        if (string.IsNullOrWhiteSpace(routingKey))
+        {
+            throw new ArgumentException("The value cannot be null or whitespace.", nameof(routingKey));
+        }
     }
 }
