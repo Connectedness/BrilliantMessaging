@@ -13,7 +13,7 @@ public abstract class InboundEndpoint
         string topologyName,
         Type messageType,
         Type handlerType,
-        Type serializerType,
+        Type deserializerType,
         string discriminator,
         MessageDelegate handlerInvocation,
         MessageAckMode ackMode
@@ -24,15 +24,15 @@ public abstract class InboundEndpoint
         TopologyName = RequireText(topologyName, nameof(topologyName));
         MessageType = messageType ?? throw new ArgumentNullException(nameof(messageType));
         HandlerType = handlerType ?? throw new ArgumentNullException(nameof(handlerType));
-        SerializerType = serializerType ?? throw new ArgumentNullException(nameof(serializerType));
+        DeserializerType = deserializerType ?? throw new ArgumentNullException(nameof(deserializerType));
         Discriminator = RequireText(discriminator, nameof(discriminator));
         _handlerInvocation = handlerInvocation ?? throw new ArgumentNullException(nameof(handlerInvocation));
 
-        if (!typeof(IMessageSerializer).IsAssignableFrom(SerializerType))
+        if (!typeof(IMessageDeserializer).IsAssignableFrom(DeserializerType))
         {
             throw new ArgumentException(
-                $"Serializer type '{SerializerType}' must implement '{typeof(IMessageSerializer)}'.",
-                nameof(serializerType)
+                $"Deserializer type '{DeserializerType}' must implement '{typeof(IMessageDeserializer)}'.",
+                nameof(deserializerType)
             );
         }
 
@@ -54,7 +54,7 @@ public abstract class InboundEndpoint
 
     public Type HandlerType { get; }
 
-    public Type SerializerType { get; }
+    public Type DeserializerType { get; }
 
     public string Discriminator { get; }
 
@@ -93,7 +93,7 @@ public class InboundEndpoint<TMessage> : InboundEndpoint
         string transportName,
         string topologyName,
         Type handlerType,
-        Type serializerType,
+        Type deserializerType,
         string discriminator,
         MessageDelegate handlerInvocation,
         MessageAckMode ackMode = MessageAckMode.Auto
@@ -104,7 +104,7 @@ public class InboundEndpoint<TMessage> : InboundEndpoint
             topologyName,
             typeof(TMessage),
             handlerType,
-            serializerType,
+            deserializerType,
             discriminator,
             handlerInvocation,
             ackMode

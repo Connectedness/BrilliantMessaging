@@ -97,7 +97,7 @@ public sealed class TopologyTests
             "test",
             Topology.DefaultName,
             typeof(SampleMessageHandler),
-            typeof(CloudEventMessageSerializer),
+            typeof(PayloadCodecMessageDeserializer),
             "sample",
             MessageHandlerInvocation.Create<SampleMessage, SampleMessageHandler>()
         );

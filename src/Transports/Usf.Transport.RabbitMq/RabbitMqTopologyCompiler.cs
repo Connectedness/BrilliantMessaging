@@ -511,7 +511,7 @@ public sealed class RabbitMqTopologyCompiler
             endpointName,
             topologyName,
             handlerDefinition.HandlerType,
-            handlerDefinition.SerializerType,
+            handlerDefinition.DeserializerType,
             discriminator,
             handlerDefinition.HandlerInvocation,
             handlerDefinition.AckMode,
@@ -1164,10 +1164,16 @@ public sealed class RabbitMqTopologyCompiler
             );
         }
 
-        if (!_isServiceRegistered(handler.SerializerType))
+        if (!typeof(IMessageDeserializer).IsAssignableFrom(handler.DeserializerType))
         {
             validationErrors.Add(
-                $"Inbound serializer '{handler.SerializerType}' for message '{GetTypeName(handler.MessageType)}' is not registered."
+                $"Inbound deserializer '{handler.DeserializerType}' for message '{GetTypeName(handler.MessageType)}' does not implement '{typeof(IMessageDeserializer)}'."
+            );
+        }
+        else if (!_isServiceRegistered(handler.DeserializerType))
+        {
+            validationErrors.Add(
+                $"Inbound deserializer '{handler.DeserializerType}' for message '{GetTypeName(handler.MessageType)}' is not registered."
             );
         }
 

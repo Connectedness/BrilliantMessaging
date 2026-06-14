@@ -15,7 +15,7 @@ namespace Usf.Transport.RabbitMq.Tests.Unit;
 public sealed class AddRabbitMqPublishTopologyTests
 {
     [Fact]
-    public void AddUsf_WiresRegistryPayloadCodecAndSerializer()
+    public void AddUsf_WiresRegistryPayloadCodecSerializerAndDeserializer()
     {
         var services = new ServiceCollection();
         services
@@ -26,6 +26,8 @@ public sealed class AddRabbitMqPublishTopologyTests
 
         serviceProvider.GetRequiredService<IPayloadCodec>().Should().BeOfType<Utf8JsonPayloadCodec>();
         serviceProvider.GetRequiredService<IMessageSerializer>().Should().BeOfType<CloudEventMessageSerializer>();
+        var deserializer = serviceProvider.GetRequiredService<PayloadCodecMessageDeserializer>();
+        serviceProvider.GetRequiredService<IMessageDeserializer>().Should().BeSameAs(deserializer);
         serviceProvider
            .GetRequiredService<IMessageContractRegistry>()
            .GetDiscriminator(typeof(ValidationMessageA))

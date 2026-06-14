@@ -61,7 +61,7 @@ public sealed class MessageHandlerInvocationTests
             "test",
             Topology.DefaultName,
             typeof(RecordingHandler),
-            typeof(CloudEventMessageSerializer),
+            typeof(PayloadCodecMessageDeserializer),
             "tests.message",
             MessageHandlerInvocation.Create<TestMessage, RecordingHandler>()
         );
@@ -78,7 +78,8 @@ public sealed class MessageHandlerInvocationTests
             endpoint,
             services,
             new NoOpAcknowledgement(),
-            cancellationToken
+            cancellationToken,
+            typeof(TestMessage)
         );
     }
 

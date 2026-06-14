@@ -319,10 +319,11 @@ public sealed class AddRabbitMqConsumeTopologyTests
     }
 
     [Fact]
-    public void AddRabbitMqTopology_AppliesCustomInspectorAndChannelGroupKnobs()
+    public void AddRabbitMqTopology_AppliesCustomInspectorDeserializerAndChannelGroupKnobs()
     {
         var services = new ServiceCollection();
         services.AddSingleton<RawInspector>();
+        services.AddSingleton<RawDeserializer>();
         services.AddTestCloudEvents()
            .AddRabbitMqTopology(
                 builder =>
@@ -339,6 +340,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
                         "inbound",
                         endpoint => endpoint
                            .UseInspector<RawInspector>()
+                           .WithDeserializer<RawDeserializer>()
                            .UseChannelGroup("shared")
                            .Handle<ValidationMessageA, ValidationMessageAHandler>()
                     );
@@ -350,11 +352,40 @@ public sealed class AddRabbitMqConsumeTopologyTests
            .Endpoints.Should().ContainSingle().Which;
 
         endpoint.InspectorType.Should().Be(typeof(RawInspector));
+        endpoint.DeserializerType.Should().Be(typeof(RawDeserializer));
         endpoint.ChannelGroup.Name.Should().Be("shared");
         endpoint.ChannelGroup.MaximumChannelCount.Should().Be(3);
         endpoint.ChannelGroup.PrefetchCount.Should().Be(7);
         endpoint.ChannelGroup.ConsumerDispatchConcurrency.Should().Be(2);
         endpoint.CopyBody.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Compile_RejectsUnregisteredInboundDeserializer()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        endpoint => endpoint
+                           .WithDeserializer<RawDeserializer>()
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        Action action = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        var exception = action.Should().Throw<TopologyValidationException>().Which;
+        exception.ValidationErrors.Should().Contain(
+            $"Inbound deserializer '{typeof(RawDeserializer)}' for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' is not registered."
+        );
     }
 
     [Fact]
@@ -509,7 +540,8 @@ public sealed class AddRabbitMqConsumeTopologyTests
             endpoint,
             services,
             new NoOpAcknowledgement(),
-            TestContext.Current.CancellationToken
+            TestContext.Current.CancellationToken,
+            typeof(ValidationMessageA)
         )
         {
             Message = message
@@ -627,10 +659,19 @@ public sealed class AddRabbitMqConsumeTopologyTests
                     RabbitMqCloudEventsTestFactory.ValidationMessageADiscriminator,
                     typeof(ValidationMessageA)
                 )
-                {
-                    Message = new ValidationMessageA("raw")
-                }
             );
+        }
+    }
+
+    private sealed class RawDeserializer : IMessageDeserializer
+    {
+        public ValueTask<object?> DeserializeAsync(
+            IncomingMessageContext context,
+            Type messageType,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return new ValueTask<object?>(new ValidationMessageA("raw"));
         }
     }
 }

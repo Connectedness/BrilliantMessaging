@@ -263,16 +263,13 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
                 endpoint,
                 scope.ServiceProvider,
                 acknowledgement,
-                cancellationToken
+                cancellationToken,
+                inspectResult.MessageType,
+                inspectResult.Items
             )
             {
                 Message = inspectResult.Message
             };
-
-            if (inspectResult.Envelope is { } envelope)
-            {
-                context.SetItem(CloudEventsContextKeys.Envelope, envelope);
-            }
 
             await _topology.Pipeline(context).ConfigureAwait(false);
         }

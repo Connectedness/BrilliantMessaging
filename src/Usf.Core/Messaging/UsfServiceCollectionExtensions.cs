@@ -37,6 +37,10 @@ public static class UsfServiceCollectionExtensions
         services.TryAddSingleton<IMessageSerializer>(
             static serviceProvider => serviceProvider.GetRequiredService<CloudEventMessageSerializer>()
         );
+        services.TryAddSingleton<PayloadCodecMessageDeserializer>();
+        services.TryAddSingleton<IMessageDeserializer>(
+            static serviceProvider => serviceProvider.GetRequiredService<PayloadCodecMessageDeserializer>()
+        );
         services.TryAddSingleton<ITopologyRegistry, TopologyRegistry>();
         services.TryAddSingleton<CloudEventsInboundMessageInspector>();
         services.TryAddSingleton<FrameworkMessageAcknowledgementMiddleware>();

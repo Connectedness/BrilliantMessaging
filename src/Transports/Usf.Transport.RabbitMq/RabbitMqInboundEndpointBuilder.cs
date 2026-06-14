@@ -14,9 +14,9 @@ public sealed class RabbitMqInboundEndpointBuilder
     private string? _channelGroupName;
     private ushort _consumerDispatchConcurrency = 1;
     private bool _copyBody = true;
+    private Type _deserializerType = typeof(PayloadCodecMessageDeserializer);
     private Type _inspectorType = typeof(CloudEventsInboundMessageInspector);
     private ushort _prefetchCount = 1;
-    private Type _serializerType = typeof(CloudEventMessageSerializer);
 
     public RabbitMqInboundEndpointBuilder(string queueName)
     {
@@ -81,10 +81,10 @@ public sealed class RabbitMqInboundEndpointBuilder
         return this;
     }
 
-    public RabbitMqInboundEndpointBuilder WithSerializer<TSerializer>()
-        where TSerializer : class, IMessageSerializer
+    public RabbitMqInboundEndpointBuilder WithDeserializer<TDeserializer>()
+        where TDeserializer : class, IMessageDeserializer
     {
-        _serializerType = typeof(TSerializer);
+        _deserializerType = typeof(TDeserializer);
         return this;
     }
 
@@ -155,7 +155,7 @@ public sealed class RabbitMqInboundEndpointBuilder
                 typeof(TMessage),
                 typeof(THandler),
                 MessageHandlerInvocation.Create<TMessage, THandler>(),
-                _serializerType,
+                _deserializerType,
                 _inspectorType,
                 _channelGroupName,
                 _channelCount,

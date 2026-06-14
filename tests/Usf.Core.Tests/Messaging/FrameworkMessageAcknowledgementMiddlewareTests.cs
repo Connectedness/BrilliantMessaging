@@ -94,14 +94,15 @@ public sealed class FrameworkMessageAcknowledgementMiddlewareTests
                 "test",
                 Topology.DefaultName,
                 typeof(TestHandler),
-                typeof(CloudEventMessageSerializer),
+                typeof(PayloadCodecMessageDeserializer),
                 "tests.message",
                 MessageHandlerInvocation.Create<TestMessage, TestHandler>(),
                 ackMode
             ),
             EmptyServiceProvider.Instance,
             acknowledgement,
-            cancellationToken
+            cancellationToken,
+            typeof(TestMessage)
         );
     }
 

@@ -54,9 +54,14 @@ public sealed class CloudEventsInboundMessageInspector : IInboundMessageInspecto
             transportMessage.Body,
             GetExtensions(transportMessage)
         );
+        IncomingMessageContextItems items = new ();
+        items.SetItem(CloudEventsContextKeys.Envelope, envelope);
 
         return new ValueTask<InboundMessageInspectionResult>(
-            new InboundMessageInspectionResult(type, messageType, envelope)
+            new InboundMessageInspectionResult(type, messageType)
+            {
+                Items = items
+            }
         );
     }
 

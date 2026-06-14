@@ -20,11 +20,12 @@ public sealed class MessageDeserializationMiddleware : IMessageMiddleware
 
         if (context.Message is null)
         {
-            var serializer = (IMessageSerializer) context.Services.GetRequiredService(context.Endpoint.SerializerType);
-            var envelope = context.GetRequiredItem(CloudEventsContextKeys.Envelope);
-            context.Message = await serializer.DeserializeAsync(
-                    envelope,
-                    context.Endpoint.MessageType,
+            var deserializer = (IMessageDeserializer) context.Services.GetRequiredService(
+                context.Endpoint.DeserializerType
+            );
+            context.Message = await deserializer.DeserializeAsync(
+                    context,
+                    context.MessageType,
                     context.CancellationToken
                 )
                .ConfigureAwait(false);

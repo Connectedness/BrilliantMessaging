@@ -9,7 +9,7 @@ public sealed record RabbitMqInboundHandlerDefinition(
     Type MessageType,
     Type HandlerType,
     MessageDelegate HandlerInvocation,
-    Type SerializerType,
+    Type DeserializerType,
     Type InspectorType,
     string? ChannelGroupName,
     int ChannelCount,

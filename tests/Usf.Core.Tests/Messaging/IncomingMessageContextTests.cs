@@ -15,36 +15,83 @@ public sealed class IncomingMessageContextTests
     public void Items_AreStoredWithStronglyTypedKeys()
     {
         var key = new MessageContextKey<int>("count");
-        var context = CreateContext();
+        IncomingMessageContextItems items = new ();
 
-        context.TryGetItem(key, out var missing).Should().BeFalse();
+        items.TryGetItem(key, out var missing).Should().BeFalse();
         missing.Should().Be(0);
 
-        context.SetItem(key, 42);
+        items.SetItem(key, 42);
 
-        context.TryGetItem(key, out var value).Should().BeTrue();
+        items.TryGetItem(key, out var value).Should().BeTrue();
         value.Should().Be(42);
-        context.GetRequiredItem(key).Should().Be(42);
-        context.RemoveItem(key).Should().BeTrue();
-        context.TryGetItem(key, out _).Should().BeFalse();
+        items.GetRequiredItem(key).Should().Be(42);
+        items.RemoveItem(key).Should().BeTrue();
+        items.TryGetItem(key, out _).Should().BeFalse();
     }
 
-    private static IncomingMessageContext CreateContext()
+    [Fact]
+    public void Constructor_PopulatesIdentityAndAdoptsMutableItems()
     {
-        return new IncomingMessageContext(
-            new TestTransportMessage(),
-            new InboundEndpoint<TestMessage>(
-                "endpoint",
-                "test",
-                Topology.DefaultName,
-                typeof(TestHandler),
-                typeof(CloudEventMessageSerializer),
-                "tests.message",
-                MessageHandlerInvocation.Create<TestMessage, TestHandler>()
-            ),
-            EmptyServiceProvider.Instance,
-            new RecordingAcknowledgement(),
-            default
+        var key = new MessageContextKey<string>("seed");
+        IncomingMessageContextItems items = new ();
+        items.SetItem(key, "inspected");
+        var transport = new TestTransportMessage();
+        var endpoint = CreateEndpoint();
+        var services = EmptyServiceProvider.Instance;
+        var acknowledgement = new RecordingAcknowledgement();
+
+        var context = new IncomingMessageContext(
+            transport,
+            endpoint,
+            services,
+            acknowledgement,
+            TestContext.Current.CancellationToken,
+            typeof(TestMessage),
+            items
+        );
+
+        context.Transport.Should().BeSameAs(transport);
+        context.Endpoint.Should().BeSameAs(endpoint);
+        context.Services.Should().BeSameAs(services);
+        context.Acknowledgement.Should().BeSameAs(acknowledgement);
+        context.CancellationToken.Should().Be(TestContext.Current.CancellationToken);
+        context.MessageType.Should().Be(typeof(TestMessage));
+        context.Items.Should().BeSameAs(items);
+        context.Items.GetRequiredItem(key).Should().Be("inspected");
+
+        var message = new TestMessage();
+        context.Message = message;
+        context.Items.SetItem(key, "middleware");
+
+        context.Message.Should().BeSameAs(message);
+        items.GetRequiredItem(key).Should().Be("middleware");
+
+        typeof(IncomingMessageContext).GetProperty(nameof(IncomingMessageContext.Transport))!
+           .SetMethod.Should().BeNull();
+        typeof(IncomingMessageContext).GetProperty(nameof(IncomingMessageContext.Endpoint))!
+           .SetMethod.Should().BeNull();
+        typeof(IncomingMessageContext).GetProperty(nameof(IncomingMessageContext.Services))!
+           .SetMethod.Should().BeNull();
+        typeof(IncomingMessageContext).GetProperty(nameof(IncomingMessageContext.Acknowledgement))!
+           .SetMethod.Should().BeNull();
+        typeof(IncomingMessageContext).GetProperty(nameof(IncomingMessageContext.CancellationToken))!
+           .SetMethod.Should().BeNull();
+        typeof(IncomingMessageContext).GetProperty(nameof(IncomingMessageContext.MessageType))!
+           .SetMethod.Should().BeNull();
+        typeof(IncomingMessageContext).GetProperty(nameof(IncomingMessageContext.Message))!
+           .SetMethod.Should().NotBeNull();
+    }
+
+    private static InboundEndpoint<TestMessage> CreateEndpoint()
+    {
+        return new InboundEndpoint<TestMessage>(
+            "endpoint",
+            "test",
+            Topology.DefaultName,
+            typeof(TestHandler),
+            typeof(PayloadCodecMessageDeserializer),
+            "tests.message",
+            MessageHandlerInvocation.Create<TestMessage, TestHandler>()
         );
     }
 

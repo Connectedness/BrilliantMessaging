@@ -3,7 +3,7 @@ using System;
 namespace Usf.Core.Messaging.Serialization;
 
 /// <summary>
-/// Encodes and decodes the data section of a CloudEvent.
+/// Encodes and decodes message payloads.
 /// </summary>
 public interface IPayloadCodec
 {
