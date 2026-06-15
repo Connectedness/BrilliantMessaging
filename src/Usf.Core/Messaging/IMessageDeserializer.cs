@@ -9,9 +9,9 @@ namespace Usf.Core.Messaging;
 /// CloudEvents-agnostic — an implementation reads the neutral <see cref="IncomingMessageContext" />
 /// (its <see cref="IncomingMessageContext.Transport" />, <see cref="IncomingMessageContext.Services" />,
 /// and any <see cref="IncomingMessageContext.Items" /> contributed by the inspector) and never a
-/// CloudEvents type. Configure a custom implementation per endpoint via the inbound builder's
-/// <c>WithDeserializer&lt;T&gt;()</c>; the default decodes <see cref="TransportMessage.Body" /> through
-/// the configured payload codec.
+/// CloudEvents type. Configure a custom implementation per endpoint through the handler configuration passed to
+/// <c>Handle</c> or <c>HandleNamed</c>; the default decodes <see cref="TransportMessage.Body" /> through the configured
+/// payload codec.
 /// </summary>
 public interface IMessageDeserializer
 {

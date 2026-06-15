@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Usf.Core.Messaging;
-using Usf.Core.Messaging.Serialization;
 
 namespace Usf.Transport.RabbitMq;
 
@@ -9,12 +8,10 @@ public sealed class RabbitMqInboundConsumerBuilder
 {
     private readonly List<RabbitMqInboundHandlerDefinition> _handlers = [];
     private readonly string _queueName;
-    private MessageAckMode _ackMode = MessageAckMode.Auto;
     private int _channelCount = 1;
     private string? _channelGroupName;
     private ushort _consumerDispatchConcurrency = 1;
     private bool _copyBody = true;
-    private Type _deserializerType = typeof(PayloadCodecMessageDeserializer);
     private Type _inspectorType = typeof(CloudEventsInboundMessageInspector);
     private ushort _prefetchCount = 1;
 
@@ -81,29 +78,6 @@ public sealed class RabbitMqInboundConsumerBuilder
         return this;
     }
 
-    public RabbitMqInboundConsumerBuilder WithDeserializer<TDeserializer>()
-        where TDeserializer : class, IMessageDeserializer
-    {
-        _deserializerType = typeof(TDeserializer);
-        return this;
-    }
-
-    public RabbitMqInboundConsumerBuilder WithAckMode(MessageAckMode ackMode)
-    {
-        if (!Enum.IsDefined(typeof(MessageAckMode), ackMode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(ackMode), ackMode, "Unsupported acknowledgement mode.");
-        }
-
-        _ackMode = ackMode;
-        return this;
-    }
-
-    public RabbitMqInboundConsumerBuilder ManualAck()
-    {
-        return WithAckMode(MessageAckMode.Manual);
-    }
-
     /// <summary>
     /// Uses RabbitMQ.Client's pooled delivery buffer directly instead of copying the message body.
     /// </summary>
@@ -123,21 +97,31 @@ public sealed class RabbitMqInboundConsumerBuilder
     /// Adds a handler for <typeparamref name="TMessage" />. The concrete <typeparamref name="THandler" /> type is
     /// auto-registered as scoped and resolved from the per-delivery scope. Register the concrete handler type before
     /// calling <c>AddRabbitMq*Topology</c> to choose a different lifetime; auto-registration yields to an existing
-    /// registration.
+    /// registration. Use <paramref name="configure" /> to configure the deserializer and acknowledgement mode for
+    /// this handler.
     /// </summary>
-    public RabbitMqInboundConsumerBuilder Handle<TMessage, THandler>()
+    /// <param name="configure">An optional callback that configures this handler.</param>
+    public RabbitMqInboundConsumerBuilder Handle<TMessage, THandler>(
+        Action<RabbitMqInboundHandlerBuilder>? configure = null
+    )
         where THandler : class, IMessageHandler<TMessage>
     {
-        return HandleNamed<TMessage, THandler>(endpointName: null);
+        return HandleNamed<TMessage, THandler>(endpointName: null, configure);
     }
 
     /// <summary>
     /// Adds a named handler for <typeparamref name="TMessage" />. The concrete <typeparamref name="THandler" /> type
     /// is auto-registered as scoped and resolved from the per-delivery scope. Register the concrete handler type
     /// before calling <c>AddRabbitMq*Topology</c> to choose a different lifetime; auto-registration yields to an
-    /// existing registration.
+    /// existing registration. Use <paramref name="configure" /> to configure the deserializer and acknowledgement
+    /// mode for this handler.
     /// </summary>
-    public RabbitMqInboundConsumerBuilder HandleNamed<TMessage, THandler>(string? endpointName)
+    /// <param name="endpointName">The optional endpoint name.</param>
+    /// <param name="configure">An optional callback that configures this handler.</param>
+    public RabbitMqInboundConsumerBuilder HandleNamed<TMessage, THandler>(
+        string? endpointName,
+        Action<RabbitMqInboundHandlerBuilder>? configure = null
+    )
         where THandler : class, IMessageHandler<TMessage>
     {
         if (typeof(THandler).IsInterface || typeof(THandler).IsAbstract)
@@ -148,14 +132,18 @@ public sealed class RabbitMqInboundConsumerBuilder
             );
         }
 
+        var handlerBuilder = new RabbitMqInboundHandlerBuilder();
+        configure?.Invoke(handlerBuilder);
+        var (deserializerType, ackMode) = handlerBuilder.Build();
+
         _handlers.Add(
             new RabbitMqInboundHandlerDefinition(
                 endpointName,
                 typeof(TMessage),
                 typeof(THandler),
                 MessageHandlerInvocation.Create<TMessage, THandler>(),
-                _deserializerType,
-                _ackMode
+                deserializerType,
+                ackMode
             )
         );
         return this;

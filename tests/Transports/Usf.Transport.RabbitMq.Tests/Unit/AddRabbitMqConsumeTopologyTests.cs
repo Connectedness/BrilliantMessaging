@@ -344,9 +344,12 @@ public sealed class AddRabbitMqConsumeTopologyTests
                         "inbound",
                         endpoint => endpoint
                            .UseInspector<RawInspector>()
-                           .WithDeserializer<RawDeserializer>()
                            .UseChannelGroup("shared")
-                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>(
+                                handler => handler
+                                   .WithDeserializer<RawDeserializer>()
+                                   .ManualAck()
+                            )
                     );
                 }
             );
@@ -358,6 +361,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
         consumer.InspectorType.Should().Be(typeof(RawInspector));
         endpoint.DeserializerType.Should().Be(typeof(RawDeserializer));
+        endpoint.AckMode.Should().Be(MessageAckMode.Manual);
         consumer.ChannelGroup.Name.Should().Be("shared");
         consumer.ChannelGroup.MaximumChannelCount.Should().Be(3);
         consumer.ChannelGroup.PrefetchCount.Should().Be(7);
@@ -377,9 +381,9 @@ public sealed class AddRabbitMqConsumeTopologyTests
                     builder.Queue("inbound");
                     builder.Consume(
                         "inbound",
-                        endpoint => endpoint
-                           .WithDeserializer<RawDeserializer>()
-                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                        endpoint => endpoint.Handle<ValidationMessageA, ValidationMessageAHandler>(
+                            handler => handler.WithDeserializer<RawDeserializer>()
+                        )
                     );
                 }
             );
@@ -391,6 +395,73 @@ public sealed class AddRabbitMqConsumeTopologyTests
         exception.ValidationErrors.Should().Contain(
             $"Inbound deserializer '{typeof(RawDeserializer)}' for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' is not registered."
         );
+    }
+
+    [Fact]
+    public void Compile_ConfiguresHandlersOnOneQueueIndependently()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<RawDeserializer>();
+        services.AddSingleton<AlternateRawDeserializer>();
+        services.AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        endpoint => endpoint
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>(
+                                handler => handler
+                                   .WithDeserializer<RawDeserializer>()
+                                   .ManualAck()
+                            )
+                           .Handle<ValidationMessageB, ValidationMessageBHandler>(
+                                handler => handler
+                                   .WithDeserializer<AlternateRawDeserializer>()
+                                   .WithAckMode(MessageAckMode.Auto)
+                            )
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var consumer = serviceProvider.GetRequiredService<RabbitMqTopology>()
+           .Consumers.Should().ContainSingle().Which;
+        var firstEndpoint = consumer.Endpoints.Single(endpoint => endpoint.MessageType == typeof(ValidationMessageA));
+        var secondEndpoint = consumer.Endpoints.Single(endpoint => endpoint.MessageType == typeof(ValidationMessageB));
+
+        firstEndpoint.DeserializerType.Should().Be(typeof(RawDeserializer));
+        firstEndpoint.AckMode.Should().Be(MessageAckMode.Manual);
+        secondEndpoint.DeserializerType.Should().Be(typeof(AlternateRawDeserializer));
+        secondEndpoint.AckMode.Should().Be(MessageAckMode.Auto);
+    }
+
+    [Fact]
+    public void Compile_UsesDefaultHandlerDeserializerAndAckMode()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        endpoint => endpoint.Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var endpoint = serviceProvider.GetRequiredService<RabbitMqTopology>()
+           .Consumers.Should().ContainSingle().Which
+           .Endpoints.Should().ContainSingle().Which;
+
+        endpoint.DeserializerType.Should().Be(typeof(PayloadCodecMessageDeserializer));
+        endpoint.AckMode.Should().Be(MessageAckMode.Auto);
     }
 
     [Fact]
@@ -768,6 +839,17 @@ public sealed class AddRabbitMqConsumeTopologyTests
         )
         {
             return new ValueTask<object?>(new ValidationMessageA("raw"));
+        }
+    }
+
+    private sealed class AlternateRawDeserializer : IMessageDeserializer
+    {
+        public ValueTask<object?> DeserializeAsync(
+            IncomingMessageContext context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return new ValueTask<object?>(new ValidationMessageB("raw"));
         }
     }
 }

@@ -207,15 +207,17 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                             successQueue,
                             endpoint => endpoint
                                .UseInspector<RawInspector>()
-                               .WithDeserializer<RawMessageDeserializer>()
-                               .Handle<RawMessage, RawMessageHandler>()
+                               .Handle<RawMessage, RawMessageHandler>(
+                                    handler => handler.WithDeserializer<RawMessageDeserializer>()
+                                )
                         )
                        .Consume(
                             failureQueue,
                             endpoint => endpoint
                                .UseInspector<RawInspector>()
-                               .WithDeserializer<ThrowingRawMessageDeserializer>()
-                               .Handle<RejectedRawMessage, RejectedRawMessageHandler>()
+                               .Handle<RejectedRawMessage, RejectedRawMessageHandler>(
+                                    handler => handler.WithDeserializer<ThrowingRawMessageDeserializer>()
+                                )
                         )
                 );
 
