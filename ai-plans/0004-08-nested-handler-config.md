@@ -2,7 +2,7 @@
 
 ## Rationale
 
-[0004-7](0004-7-consumer-unit-restructuring.md) made the consumer unit `(channel group, queue)` and moved the queue-scoped knobs (`PrefetchCount`, `Concurrency`, `ChannelCount`, `UseChannelGroup`, `UseInspector`, `ZeroCopyBody`) onto single consumer-level fields applied at `Build()`. That closed the original review concern for those knobs: interleaving them between `Handle` calls can no longer diverge, and a queue can no longer be configured inconsistently.
+[0004-07](0004-07-consumer-unit-restructuring.md) made the consumer unit `(channel group, queue)` and moved the queue-scoped knobs (`PrefetchCount`, `Concurrency`, `ChannelCount`, `UseChannelGroup`, `UseInspector`, `ZeroCopyBody`) onto single consumer-level fields applied at `Build()`. That closed the original review concern for those knobs: interleaving them between `Handle` calls can no longer diverge, and a queue can no longer be configured inconsistently.
 
 Two knobs were left behind as **sticky per-handler defaults**: `WithDeserializer` and `WithAckMode`/`ManualAck`. They set builder fields (`_deserializerType`/`_ackMode` in `RabbitMqInboundConsumerBuilder.cs:16-17`) that are snapshotted into each `RabbitMqInboundHandlerDefinition` at `Handle` time (`RabbitMqInboundConsumerBuilder.cs:151-160`). This reintroduces, in narrowed form, exactly the order-sensitivity the original reviewer flagged:
 

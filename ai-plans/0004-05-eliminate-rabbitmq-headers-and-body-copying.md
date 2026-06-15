@@ -14,7 +14,7 @@ Design decisions already settled:
 - `TransportMessage.Body` becomes `ReadOnlyMemory<byte>` (breaking change; we are pre-release). This closes the existing mutability hole (`byte[]` lets handlers mutate the shared body) and is what makes zero-copy representable at all.
 - The base constructor stores both `body` and `headers` exactly as passed — no defensive copy of either. The caller owns the responsibility of passing values it does not mutate afterwards; call sites that downcast the dictionary or alias a buffer do so at their own risk. This is one uniform ownership contract, documented and not enforced. The copy decision for the body lives entirely in `RabbitMqTransportMessage` (the only party that knows whether its buffer is pooled), not in Core.
 
-Consume-path benchmarks stay deferred as decided in [0004-4](0004-4-eliminate-message-consumer-reflection.md); the win here is the removal of obvious allocations, verifiable by inspection and tests.
+Consume-path benchmarks stay deferred as decided in [0004-04](0004-04-eliminate-message-consumer-reflection.md); the win here is the removal of obvious allocations, verifiable by inspection and tests.
 
 ## Acceptance Criteria
 

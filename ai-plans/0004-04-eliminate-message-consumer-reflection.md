@@ -1,6 +1,6 @@
 ## Rationale
 
-Code review of the message-consumer slices ([0004-0](0004-0-message-consumers.md) through [0004-3](0004-3-rabbitmq-dedicated-inbound-outbound-topologies.md)) surfaced two related findings in the inbound dispatch path:
+Code review of the message-consumer slices ([0004-0](0004-0-message-consumers.md) through [0004-03](0004-03-rabbitmq-dedicated-inbound-outbound-topologies.md)) surfaced two related findings in the inbound dispatch path:
 
 1. **Per-delivery reflection in the hot path.** `MessageHandlerInvoker.InvokeAsync` runs `MakeGenericType` + `MakeGenericMethod` + `MethodInfo.Invoke` for every delivery, even though the message type is fixed per endpoint and known when the topology is configured. The 0004-0 plan claims "no per-message reflective construction"; this slice makes that claim true.
 2. **`Handle<TMessage, THandler>()`'s `THandler` is dead at runtime.** The invoker resolves `IMessageHandler<TMessage>` from the scope and never consults `InboundEndpoint.HandlerType`. Users must register the interface mapping themselves *and* repeat the handler type in the builder, and two endpoints for the same message type with different handlers silently both get whatever DI returns for the interface.

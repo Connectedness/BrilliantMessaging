@@ -49,7 +49,7 @@ public sealed record RabbitMqInboundHandlerDefinition(
 );
 ```
 
-The queue-scoped fields (`InspectorType`, `ChannelGroupName`, `ChannelCount`, `PrefetchCount`, `ConsumerDispatchConcurrency`, `CopyBody`, `QueueName`) move off the handler and onto the consumer; `DeserializerType` and `AckMode` stay per-handler (legitimately per message type, per [0004-6](0004-6-CloudEvents-agnostic-consumer-pipeline.md)). `RabbitMqTopologyConfiguration.Handlers` becomes `Consumers : IReadOnlyList<RabbitMqInboundConsumerDefinition>` (`RabbitMqTopologyConfiguration.cs:23`); `HasInboundEndpoints` becomes `Consumers.Count > 0`.
+The queue-scoped fields (`InspectorType`, `ChannelGroupName`, `ChannelCount`, `PrefetchCount`, `ConsumerDispatchConcurrency`, `CopyBody`, `QueueName`) move off the handler and onto the consumer; `DeserializerType` and `AckMode` stay per-handler (legitimately per message type, per [0004-06](0004-06-CloudEvents-agnostic-consumer-pipeline.md)). `RabbitMqTopologyConfiguration.Handlers` becomes `Consumers : IReadOnlyList<RabbitMqInboundConsumerDefinition>` (`RabbitMqTopologyConfiguration.cs:23`); `HasInboundEndpoints` becomes `Consumers.Count > 0`.
 
 ### Builder (Usf.Transport.RabbitMq)
 
@@ -94,7 +94,7 @@ Introduce a compiled `RabbitMqInboundConsumer` carrying `QueueName`, `InspectorT
 
 ### Heterogeneous message formats on one queue
 
-A queue may legitimately carry mixed formats — e.g. CloudEvents deliveries alongside non-CloudEvents payloads (S3 notifications, third-party webhooks). The single-inspector-per-queue rule does **not** restrict this, because the inspector is the *classification* stage and a delivery has exactly one classification: two inspectors racing to classify the same delivery is the very nondeterminism this plan removes. Mixed formats are served by **one inspector that branches** on a cheap discriminating signal (CloudEvents binding headers / content-type present → classify as CloudEvents; otherwise sniff body/headers), producing distinct discriminators that route to distinct endpoints. The genuinely per-format concern — *decoding* — is already per-endpoint via the [0004-6](0004-6-CloudEvents-agnostic-consumer-pipeline.md) `DeserializerType`, so the CloudEvents discriminator routes to an endpoint with the default deserializer and the custom-format discriminator to an endpoint with its own `IMessageDeserializer`. No part of this scenario needs a second inspector on the queue.
+A queue may legitimately carry mixed formats — e.g. CloudEvents deliveries alongside non-CloudEvents payloads (S3 notifications, third-party webhooks). The single-inspector-per-queue rule does **not** restrict this, because the inspector is the *classification* stage and a delivery has exactly one classification: two inspectors racing to classify the same delivery is the very nondeterminism this plan removes. Mixed formats are served by **one inspector that branches** on a cheap discriminating signal (CloudEvents binding headers / content-type present → classify as CloudEvents; otherwise sniff body/headers), producing distinct discriminators that route to distinct endpoints. The genuinely per-format concern — *decoding* — is already per-endpoint via the [0004-06](0004-06-CloudEvents-agnostic-consumer-pipeline.md) `DeserializerType`, so the CloudEvents discriminator routes to an endpoint with the default deserializer and the custom-format discriminator to an endpoint with its own `IMessageDeserializer`. No part of this scenario needs a second inspector on the queue.
 
 ### Considered and deferred
 

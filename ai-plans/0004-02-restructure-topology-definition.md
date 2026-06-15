@@ -1,6 +1,6 @@
 ## Rationale
 
-The previous slice ([0004-1](0004-1-core-topology-refactoring.md)) collapsed the Core topology model to a single `TopologyDefinition` aggregate, but kept it as a separate object that each transport topology *wraps*. `RabbitMqTopology` has-a `TopologyDefinition`. This composition seam buys nothing: every broker topology fully owns and re-exposes its definition, and callers pay for a `topology.Definition.GetRequiredTarget(...)` double-hop.
+The previous slice ([0004-01](0004-01-core-topology-refactoring.md)) collapsed the Core topology model to a single `TopologyDefinition` aggregate, but kept it as a separate object that each transport topology *wraps*. `RabbitMqTopology` has-a `TopologyDefinition`. This composition seam buys nothing: every broker topology fully owns and re-exposes its definition, and callers pay for a `topology.Definition.GetRequiredTarget(...)` double-hop.
 
 This refactor removes `TopologyDefinition` as a concept the user has to think about. There is simply a `Topology`, and each message broker USF addresses contributes a dedicated subtype (`RabbitMqTopology`). A RabbitMQ topology *is* a topology, so inheritance replaces composition. The result is fewer objects in memory and a smaller conceptual surface.
 
