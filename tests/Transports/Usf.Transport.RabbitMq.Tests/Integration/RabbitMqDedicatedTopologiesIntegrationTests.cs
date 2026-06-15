@@ -16,8 +16,16 @@ using Xunit;
 
 namespace Usf.Transport.RabbitMq.Tests.Integration;
 
+[Collection<RabbitMqCollection>]
 public sealed class RabbitMqDedicatedTopologiesIntegrationTests
 {
+    private readonly RabbitMqContainer _container;
+
+    public RabbitMqDedicatedTopologiesIntegrationTests(RabbitMqFixture fixture)
+    {
+        _container = fixture.Container;
+    }
+
     [Fact]
     public async Task QueueScopedConsumers_DispatchMixedTypesAndUseChannelCountForParallelism()
     {
@@ -25,10 +33,6 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
         const string mixedQueue = "queue-scoped-mixed";
         const string parallelQueue = "queue-scoped-parallel";
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder(DockerImages.RabbitMq).Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
             MixedMessageSink mixedSink = new ();
             ParallelHandlerProbe parallelProbe = new ();
@@ -43,7 +47,7 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                         builder.UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         );
                         builder.Exchange(exchangeName, ExchangeType.Direct);
@@ -127,7 +131,7 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
 
                 var connectionFactory = new ConnectionFactory
                 {
-                    Uri = new Uri(container.GetConnectionString())
+                    Uri = new Uri(_container.GetConnectionString())
                 };
                 await using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
                 await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
@@ -146,10 +150,6 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                 }
             }
         }
-        finally
-        {
-            await container.DisposeAsync();
-        }
     }
 
     [Fact]
@@ -159,10 +159,6 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
         const string failureQueue = "raw-failure-queue";
         const string deadLetterQueue = "raw-dead-letter-queue";
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder(DockerImages.RabbitMq).Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
             RawMessageSink sink = new ();
             RawInspector inspector = new ();
@@ -187,7 +183,7 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                        .UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         )
                        .Exchange("raw-exchange", ExchangeType.Direct)
@@ -233,7 +229,7 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
 
                 var connectionFactory = new ConnectionFactory
                 {
-                    Uri = new Uri(container.GetConnectionString())
+                    Uri = new Uri(_container.GetConnectionString())
                 };
                 await using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
                 await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
@@ -280,20 +276,12 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                 }
             }
         }
-        finally
-        {
-            await container.DisposeAsync();
-        }
     }
 
     [Fact]
     public async Task DedicatedOutboundAndInboundTopologies_PublishAndConsumeAcrossTwoConnections()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder(DockerImages.RabbitMq).Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
             ConsumedMessageSink sink = new ();
             var services = new ServiceCollection();
@@ -305,7 +293,7 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                        .UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         )
                        .Exchange("inbound-events", ExchangeType.Direct)
@@ -321,7 +309,7 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                        .UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         )
                        .Exchange("inbound-events", ExchangeType.Direct)
@@ -374,10 +362,6 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                     await hostedService.StopAsync(CancellationToken.None);
                 }
             }
-        }
-        finally
-        {
-            await container.DisposeAsync();
         }
     }
 
