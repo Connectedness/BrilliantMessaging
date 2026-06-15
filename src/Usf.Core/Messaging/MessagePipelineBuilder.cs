@@ -15,9 +15,7 @@ public sealed class MessagePipelineBuilder
         return this;
     }
 
-    public MessagePipelineBuilder Use(
-        Func<IncomingMessageContext, MessageDelegate, Task> middleware
-    )
+    public MessagePipelineBuilder Use(Func<IncomingMessageContext, MessageDelegate, Task> middleware)
     {
         if (middleware is null)
         {

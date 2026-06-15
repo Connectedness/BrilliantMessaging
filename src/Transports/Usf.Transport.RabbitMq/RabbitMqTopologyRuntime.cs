@@ -167,8 +167,7 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
 
         foreach (var delivery in _inFlightDeliveries.Values)
         {
-            await delivery.Acknowledgement.NackAsync(requeue: true, CancellationToken.None)
-               .ConfigureAwait(false);
+            await delivery.Acknowledgement.NackAsync(requeue: true, CancellationToken.None).ConfigureAwait(false);
         }
     }
 
