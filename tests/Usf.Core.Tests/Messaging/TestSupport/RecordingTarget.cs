@@ -73,9 +73,9 @@ public sealed class RecordingTarget<TMessage> : OutboundTarget<TMessage>, IOutbo
         return PublishCoreAsync(message, metadata, type, dataSchema, routingKey, cancellationToken);
     }
 
-    public override Task PublishSerializedAsync(
+    protected override Task PublishSerializedCoreAsync(
         SerializedMessage message,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
     {
         SerializedMessages.Add(message);

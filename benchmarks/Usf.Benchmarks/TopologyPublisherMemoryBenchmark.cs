@@ -58,9 +58,9 @@ public class TopologyPublisherMemoryBenchmark
         public BenchmarkTarget(IMessageContractRegistry messageContractRegistry, string topologyName)
             : base("benchmark", "benchmark", new BenchmarkSerializer(), messageContractRegistry, topologyName) { }
 
-        public override Task PublishSerializedAsync(
+        protected override Task PublishSerializedCoreAsync(
             SerializedMessage message,
-            CancellationToken cancellationToken = default
+            CancellationToken cancellationToken
         )
         {
             return Task.CompletedTask;

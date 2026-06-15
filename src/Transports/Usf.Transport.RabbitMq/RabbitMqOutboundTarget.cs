@@ -38,9 +38,9 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
         _isMandatory = isMandatory;
     }
 
-    public sealed override Task PublishSerializedAsync(
+    protected sealed override Task PublishSerializedCoreAsync(
         SerializedMessage message,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
     {
         return DispatchAsync(

@@ -6,13 +6,13 @@ Direct `OutboundTarget<T>` publishing is an explicitly supported path, but diagn
 
 ## Acceptance Criteria
 
-- [ ] Publish diagnostics move from `MessagePublisher` into `OutboundTarget`, covering typed publishes, routable (routing-key) publishes, and raw serialized publishes.
-- [ ] `PublishSerializedAsync` becomes a public non-virtual template method over an abstract core method so raw publishes are always instrumented by the base target layer.
-- [ ] Typed `OutboundTarget<T>.PublishAsync` paths are instrumented by the target layer across the full publish (serialization through transport dispatch), so serialization failures and cancellations are captured exactly as today.
-- [ ] `MessagePublisher` keeps target resolution and explicit-target topology validation, then delegates without wrapping publish calls in diagnostics.
-- [ ] Publisher-mediated publishes and direct target publishes produce one activity, one attempt count, and one duration measurement per publish attempt, plus exactly one failure count per non-cancellation failed publish attempt.
-- [ ] Existing success, cancellation, serialization failure, and delivery failure diagnostic tags remain consistent with current publisher-owned diagnostics.
-- [ ] Automated tests need to be written.
+- [x] Publish diagnostics move from `MessagePublisher` into `OutboundTarget`, covering typed publishes, routable (routing-key) publishes, and raw serialized publishes.
+- [x] `PublishSerializedAsync` becomes a public non-virtual template method over an abstract core method so raw publishes are always instrumented by the base target layer.
+- [x] Typed `OutboundTarget<T>.PublishAsync` paths are instrumented by the target layer across the full publish (serialization through transport dispatch), so serialization failures and cancellations are captured exactly as today.
+- [x] `MessagePublisher` keeps target resolution and explicit-target topology validation, then delegates without wrapping publish calls in diagnostics.
+- [x] Publisher-mediated publishes and direct target publishes produce one activity, one attempt count, and one duration measurement per publish attempt, plus exactly one failure count per non-cancellation failed publish attempt.
+- [x] Existing success, cancellation, serialization failure, and delivery failure diagnostic tags remain consistent with current publisher-owned diagnostics.
+- [x] Automated tests need to be written.
 
 ## Technical Details
 

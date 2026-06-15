@@ -24,9 +24,9 @@ public sealed class ThrowingTarget<TMessage> : OutboundTarget<TMessage>
         _exception = exception ?? throw new ArgumentNullException(nameof(exception));
     }
 
-    public override Task PublishSerializedAsync(
+    protected override Task PublishSerializedCoreAsync(
         SerializedMessage message,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
     {
         return Task.FromException(_exception);

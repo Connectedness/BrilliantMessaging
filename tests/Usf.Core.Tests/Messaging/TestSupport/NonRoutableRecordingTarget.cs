@@ -20,9 +20,9 @@ public sealed class NonRoutableRecordingTarget<TMessage> : OutboundTarget<TMessa
 
     public List<TMessage> Messages { get; } = [];
 
-    public override Task PublishSerializedAsync(
+    protected override Task PublishSerializedCoreAsync(
         SerializedMessage message,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
     {
         return Task.CompletedTask;

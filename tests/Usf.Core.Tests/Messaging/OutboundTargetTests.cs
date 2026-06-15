@@ -10,6 +10,9 @@ using Xunit;
 
 namespace Usf.Core.Tests.Messaging;
 
+// Direct target publishes now emit outbound publish metrics, so this class joins the serialized
+// Diagnostics collection to avoid contaminating listener-based diagnostics tests.
+[Collection("Diagnostics")]
 public sealed class OutboundTargetTests
 {
     [Fact]
