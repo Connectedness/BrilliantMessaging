@@ -14,7 +14,7 @@ public sealed class NonRoutableRecordingTarget<TMessage> : OutboundTarget<TMessa
     public NonRoutableRecordingTarget(
         string name,
         IMessageSerializer serializer,
-        TopologyName? topologyName = null
+        string? topologyName = null
     )
         : base(name, "test", serializer, CloudEventsTestFactory.CreateRegistry(), topologyName) { }
 

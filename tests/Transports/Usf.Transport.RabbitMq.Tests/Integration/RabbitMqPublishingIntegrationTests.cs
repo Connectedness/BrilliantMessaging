@@ -2,8 +2,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,19 +21,23 @@ using Xunit;
 
 namespace Usf.Transport.RabbitMq.Tests.Integration;
 
+[Collection<RabbitMqCollection>]
 public sealed class RabbitMqPublishingIntegrationTests
 {
+    private readonly RabbitMqContainer _container;
+
+    public RabbitMqPublishingIntegrationTests(RabbitMqFixture fixture)
+    {
+        _container = fixture.Container;
+    }
+
     [Fact]
     public async Task PublishMessageAsync_PublishesAcrossRabbitMqTopologiesEndToEnd()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder("public.ecr.aws/docker/library/rabbitmq:3.13-management").Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
             await DeclareExchangeAsync(
-                container.GetConnectionString(),
+                _container.GetConnectionString(),
                 "orders-fanout",
                 ExchangeType.Fanout,
                 cancellationToken
@@ -43,13 +45,13 @@ public sealed class RabbitMqPublishingIntegrationTests
 
             var services = new ServiceCollection();
             services.AddTestCloudEvents()
-               .AddRabbitMqOutboundTopology(
+               .AddRabbitMqTopology(
                     builder =>
                     {
                         builder.UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         );
 
@@ -138,7 +140,7 @@ public sealed class RabbitMqPublishingIntegrationTests
             }
 
             var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
-            var targetRegistry = serviceProvider.GetRequiredService<IOutboundTargetRegistry>();
+            var targetRegistry = serviceProvider.GetRequiredService<Topology>();
             Activity? directProducerActivity = null;
             var directParentTraceId = default(ActivityTraceId);
             using var listener = new ActivityListener();
@@ -194,7 +196,7 @@ public sealed class RabbitMqPublishingIntegrationTests
 
             var connectionFactory = new ConnectionFactory
             {
-                Uri = new Uri(container.GetConnectionString())
+                Uri = new Uri(_container.GetConnectionString())
             };
             await using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
             await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
@@ -248,11 +250,11 @@ public sealed class RabbitMqPublishingIntegrationTests
             ExtractHeaderValue(headersMessage.BasicProperties.Headers!, "region").Should().Be("us");
 
             serviceProvider
-               .GetRequiredService<IOutboundTopology>()
+               .GetRequiredService<Topology>()
                .GetRequiredTarget<RabbitMqPublishMessage>().Name
                .Should().Be(typeof(RabbitMqPublishMessage).FullName);
             serviceProvider
-               .GetRequiredService<IOutboundTopology>()
+               .GetRequiredService<Topology>()
                .GetRequiredTarget<RabbitMqAuditMessage>().Name
                .Should().Be(typeof(RabbitMqAuditMessage).FullName);
             targetRegistry.GetRequiredTarget("topic-target").Should().NotBeNull();
@@ -260,23 +262,15 @@ public sealed class RabbitMqPublishingIntegrationTests
             targetRegistry.GetRequiredTarget("headers-target").Should().NotBeNull();
             targetRegistry.GetRequiredTarget("exchange-binding-target").Should().NotBeNull();
         }
-        finally
-        {
-            await container.DisposeAsync();
-        }
     }
 
     [Fact]
     public async Task PublishMessageAsync_PublishesSameClrTypeWithPerTopologyContracts()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder("public.ecr.aws/docker/library/rabbitmq:3.13-management").Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
-            TopologyName legacy = new ("legacy");
-            TopologyName modern = new ("modern");
+            const string legacy = "legacy";
+            const string modern = "modern";
             var services = new ServiceCollection();
             services
                .AddUsf()
@@ -285,7 +279,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                     contracts => contracts.Map<RabbitMqPublishMessage>("tests.rabbitmq.publish.canonical")
                        .WithDataSchema("/schemas/canonical")
                 )
-               .AddRabbitMqOutboundTopology(
+               .AddRabbitMqTopology(
                     legacy,
                     builder =>
                     {
@@ -296,7 +290,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                         builder.UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         );
                         builder.Exchange("legacy-fanout", ExchangeType.Fanout);
@@ -310,7 +304,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                         );
                     }
                 )
-               .AddRabbitMqOutboundTopology(
+               .AddRabbitMqTopology(
                     modern,
                     builder =>
                     {
@@ -321,7 +315,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                         builder.UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         );
                         builder.Exchange("modern-fanout", ExchangeType.Fanout);
@@ -338,11 +332,13 @@ public sealed class RabbitMqPublishingIntegrationTests
 
             await using var serviceProvider = services.BuildServiceProvider();
 
-            var hostedService = serviceProvider.GetServices<IHostedService>().Should().ContainSingle().Which;
-            await hostedService.StartAsync(cancellationToken);
+            foreach (var hostedService in serviceProvider.GetServices<IHostedService>())
+            {
+                await hostedService.StartAsync(cancellationToken);
+            }
 
-            var legacyTopology = serviceProvider.GetRequiredKeyedService<RabbitMqOutboundTopology>(legacy);
-            var modernTopology = serviceProvider.GetRequiredKeyedService<RabbitMqOutboundTopology>(modern);
+            var legacyTopology = serviceProvider.GetRequiredKeyedService<RabbitMqTopology>(legacy);
+            var modernTopology = serviceProvider.GetRequiredKeyedService<RabbitMqTopology>(modern);
             var legacyConnection = await legacyTopology.GetConnectionAsync(cancellationToken);
             var modernConnection = await modernTopology.GetConnectionAsync(cancellationToken);
             legacyConnection.Should().NotBeSameAs(modernConnection);
@@ -357,7 +353,7 @@ public sealed class RabbitMqPublishingIntegrationTests
 
             var connectionFactory = new ConnectionFactory
             {
-                Uri = new Uri(container.GetConnectionString())
+                Uri = new Uri(_container.GetConnectionString())
             };
             await using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
             await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
@@ -376,20 +372,12 @@ public sealed class RabbitMqPublishingIntegrationTests
             ExtractHeaderValue(modernMessage.BasicProperties.Headers!, "cloudEvents:dataschema")
                .Should().Be("/schemas/modern");
         }
-        finally
-        {
-            await container.DisposeAsync();
-        }
     }
 
     [Fact]
     public async Task PublishMessageAsync_OverridesConstantDirectRoutingKeyWithCallerRoutingKey()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder("public.ecr.aws/docker/library/rabbitmq:3.13-management").Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
             var services = new ServiceCollection();
             services.AddTestCloudEvents()
@@ -399,7 +387,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                         builder.UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         );
 
@@ -439,7 +427,7 @@ public sealed class RabbitMqPublishingIntegrationTests
 
             var connectionFactory = new ConnectionFactory
             {
-                Uri = new Uri(container.GetConnectionString())
+                Uri = new Uri(_container.GetConnectionString())
             };
             await using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
             await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
@@ -458,20 +446,12 @@ public sealed class RabbitMqPublishingIntegrationTests
             Encoding.UTF8.GetString(overrideMessage.Body.ToArray()).Should().Be("{\"Id\":60,\"Name\":\"created\"}");
             Encoding.UTF8.GetString(defaultMessage.Body.ToArray()).Should().Be("{\"Id\":61,\"Name\":\"created\"}");
         }
-        finally
-        {
-            await container.DisposeAsync();
-        }
     }
 
     [Fact]
     public async Task PublishMessageAsync_OverridesTopicRoutingKeyFactoryWithCallerRoutingKey()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder("public.ecr.aws/docker/library/rabbitmq:3.13-management").Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
             var services = new ServiceCollection();
             services.AddTestCloudEvents()
@@ -481,7 +461,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                         builder.UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         );
 
@@ -521,7 +501,7 @@ public sealed class RabbitMqPublishingIntegrationTests
 
             var connectionFactory = new ConnectionFactory
             {
-                Uri = new Uri(container.GetConnectionString())
+                Uri = new Uri(_container.GetConnectionString())
             };
             await using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
             await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
@@ -540,30 +520,22 @@ public sealed class RabbitMqPublishingIntegrationTests
             Encoding.UTF8.GetString(overrideMessage.Body.ToArray()).Should().Be("{\"Id\":70,\"Name\":\"topic\"}");
             Encoding.UTF8.GetString(defaultMessage.Body.ToArray()).Should().Be("{\"Id\":71,\"Name\":\"topic\"}");
         }
-        finally
-        {
-            await container.DisposeAsync();
-        }
     }
 
     [Fact]
     public async Task PublishRawAsync_PublishesCallerOwnedEnvelopeWithoutUsfSerialization()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder("public.ecr.aws/docker/library/rabbitmq:3.13-management").Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
             var services = new ServiceCollection();
             services.AddTestCloudEvents()
-               .AddRabbitMqOutboundTopology(
+               .AddRabbitMqTopology(
                     builder =>
                     {
                         builder.UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         );
 
@@ -589,7 +561,7 @@ public sealed class RabbitMqPublishingIntegrationTests
 
             var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
             var target = serviceProvider
-               .GetRequiredService<IOutboundTopology>()
+               .GetRequiredService<Topology>()
                .GetRequiredTarget<RabbitMqPublishMessage>();
 
             // A payload that is deliberately not the JSON the serializer would produce proving USF
@@ -610,7 +582,7 @@ public sealed class RabbitMqPublishingIntegrationTests
 
             var connectionFactory = new ConnectionFactory
             {
-                Uri = new Uri(container.GetConnectionString())
+                Uri = new Uri(_container.GetConnectionString())
             };
             await using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
             await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
@@ -626,30 +598,22 @@ public sealed class RabbitMqPublishingIntegrationTests
             received.BasicProperties.Headers.Should().NotBeNull();
             ExtractHeaderValue(received.BasicProperties.Headers!, "tenant").Should().Be("tenant-7");
         }
-        finally
-        {
-            await container.DisposeAsync();
-        }
     }
 
     [Fact]
     public async Task PublishMessageAsync_ThrowsReturnedDeliveryFailureForUnroutableMandatoryMessage()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder("public.ecr.aws/docker/library/rabbitmq:3.13-management").Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
             var services = new ServiceCollection();
             services.AddTestCloudEvents()
-               .AddRabbitMqOutboundTopology(
+               .AddRabbitMqTopology(
                     builder =>
                     {
                         builder.UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         );
 
@@ -685,30 +649,22 @@ public sealed class RabbitMqPublishingIntegrationTests
             exception.Reason.Should().Be(MessageDeliveryFailureReason.Returned);
             exception.InnerException.Should().BeAssignableTo<PublishException>();
         }
-        finally
-        {
-            await container.DisposeAsync();
-        }
     }
 
     [Fact]
     public async Task PublishMessageAsync_ThrowsNackedDeliveryFailureWhenBrokerRejectsPublish()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        var container = new RabbitMqBuilder("public.ecr.aws/docker/library/rabbitmq:3.13-management").Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
             var services = new ServiceCollection();
             services.AddTestCloudEvents()
-               .AddRabbitMqOutboundTopology(
+               .AddRabbitMqTopology(
                     builder =>
                     {
                         builder.UseConnectionFactory(
                             _ => new ConnectionFactory
                             {
-                                Uri = new Uri(container.GetConnectionString())
+                                Uri = new Uri(_container.GetConnectionString())
                             }
                         );
 
@@ -760,29 +716,18 @@ public sealed class RabbitMqPublishingIntegrationTests
             exception.Reason.Should().Be(MessageDeliveryFailureReason.Nacked);
             exception.InnerException.Should().BeAssignableTo<PublishException>();
         }
-        finally
-        {
-            await container.DisposeAsync();
-        }
     }
 
     [Fact]
     public async Task PublishMessageAsync_RecoversAfterBrokerRestartWithoutExhaustingSingleChannelPool()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
-        var hostPort = GetAvailableTcpPort();
-        var container = new RabbitMqBuilder("public.ecr.aws/docker/library/rabbitmq:3.13-management")
-           .WithPortBinding(hostPort, 5672)
-           .Build();
-        await container.StartAsync(cancellationToken);
-
-        try
         {
-            var connectionString = container.GetConnectionString();
-            var mappedPort = container.GetMappedPublicPort(5672);
+            var connectionString = _container.GetConnectionString();
+            var mappedPort = _container.GetMappedPublicPort(5672);
             var services = new ServiceCollection();
             services.AddTestCloudEvents()
-               .AddRabbitMqOutboundTopology(
+               .AddRabbitMqTopology(
                     builder =>
                     {
                         builder.UseConnectionFactory(
@@ -820,7 +765,7 @@ public sealed class RabbitMqPublishingIntegrationTests
             }
 
             var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
-            var topology = serviceProvider.GetRequiredService<RabbitMqOutboundTopology>();
+            var topology = serviceProvider.GetRequiredService<RabbitMqTopology>();
             var connection = await topology.GetConnectionAsync(cancellationToken);
             var recovered = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
             var recoveryFailures = new ConcurrentQueue<Exception>();
@@ -836,6 +781,7 @@ public sealed class RabbitMqPublishingIntegrationTests
             };
             connection.ConnectionRecoveryErrorAsync += recoveryErrorHandler;
             connection.RecoverySucceededAsync += recoveryHandler;
+            var brokerStopped = false;
 
             try
             {
@@ -844,7 +790,8 @@ public sealed class RabbitMqPublishingIntegrationTests
                     cancellationToken: cancellationToken
                 );
 
-                await container.StopAsync(cancellationToken);
+                await _container.StopAsync(cancellationToken);
+                brokerStopped = true;
 
                 using var outageCancellationTokenSource =
                     CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -859,8 +806,9 @@ public sealed class RabbitMqPublishingIntegrationTests
                 await publishDuringOutage.Should().ThrowAsync<Exception>();
                 stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10));
 
-                await container.StartAsync(cancellationToken);
-                container.GetMappedPublicPort(5672).Should().Be(mappedPort);
+                await _container.StartAsync(cancellationToken);
+                brokerStopped = false;
+                _container.GetMappedPublicPort(5672).Should().Be(mappedPort);
 
                 try
                 {
@@ -886,11 +834,12 @@ public sealed class RabbitMqPublishingIntegrationTests
             {
                 connection.ConnectionRecoveryErrorAsync -= recoveryErrorHandler;
                 connection.RecoverySucceededAsync -= recoveryHandler;
+
+                if (brokerStopped)
+                {
+                    await _container.StartAsync(CancellationToken.None);
+                }
             }
-        }
-        finally
-        {
-            await container.DisposeAsync();
         }
     }
 
@@ -913,21 +862,6 @@ public sealed class RabbitMqPublishingIntegrationTests
         }
 
         throw new InvalidOperationException($"No RabbitMQ message was available in queue '{queueName}'.");
-    }
-
-    private static int GetAvailableTcpPort()
-    {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-
-        try
-        {
-            return ((IPEndPoint) listener.LocalEndpoint).Port;
-        }
-        finally
-        {
-            listener.Stop();
-        }
     }
 
     private static async Task DeclareExchangeAsync(

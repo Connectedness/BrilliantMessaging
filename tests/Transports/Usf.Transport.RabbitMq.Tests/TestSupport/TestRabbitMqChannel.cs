@@ -28,6 +28,12 @@ public sealed class TestRabbitMqChannel
 
     public int BasicPublishCallCount { get; private set; }
 
+    public int BasicConsumeCallCount { get; private set; }
+
+    public IList<string> ConsumedQueues { get; } = new List<string>();
+
+    public ushort? LastPrefetchCount { get; private set; }
+
     public ReadOnlyMemory<byte> LastPublishedBody { get; private set; }
 
     public BasicProperties? LastPublishedProperties { get; private set; }
@@ -111,6 +117,15 @@ public sealed class TestRabbitMqChannel
                 LastPublishedProperties = (BasicProperties) arguments![3]!;
                 LastPublishedBody = (ReadOnlyMemory<byte>) arguments[4]!;
                 return BasicPublishAsyncHandler?.Invoke((CancellationToken) arguments![^1]!) ?? default(ValueTask);
+            case "BasicQosAsync":
+                LastPrefetchCount = (ushort) arguments![1]!;
+                return Task.CompletedTask;
+            case "BasicConsumeAsync":
+                BasicConsumeCallCount++;
+                ConsumedQueues.Add((string) arguments![0]!);
+                return Task.FromResult($"consumer-{BasicConsumeCallCount}");
+            case "BasicCancelAsync":
+                return Task.CompletedTask;
             case "DisposeAsync":
                 DisposeAsyncCallCount++;
                 IsOpen = false;
