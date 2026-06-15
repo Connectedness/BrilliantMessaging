@@ -279,7 +279,7 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 exception,
                 "RabbitMQ inbound delivery failed for queue {QueueName} and delivery tag {DeliveryTag}",
                 consumer.QueueName,
