@@ -10,7 +10,7 @@ namespace Usf.Transport.RabbitMq;
 /// Configures a single RabbitMQ topology. The builder exposes the shared broker-resource surface
 /// (<see cref="UseConnectionFactory(ConnectionFactory)" />, <see cref="Exchange" />, <see cref="Queue" />,
 /// <see cref="QueueBinding" />, <see cref="ExchangeBinding" />, <see cref="MapMessageContracts" />), outbound
-/// publishing configuration (<see cref="Address" />, <see cref="Publish{TMessage}" />,
+/// publishing configuration (<see cref="Publish{TMessage}" />,
 /// <see cref="PublishNamed{TMessage}" />, the outbound <see cref="ChannelGroup(string,int,RabbitMqPublisherConfirmMode?,TimeSpan?)" />
 /// overload, and publisher-confirm defaults), and inbound consumer configuration
 /// (<see cref="Consume" />, the inbound <see cref="ChannelGroup(string,int,ushort,ushort)" /> overload,
@@ -24,7 +24,6 @@ namespace Usf.Transport.RabbitMq;
 /// </summary>
 public sealed class RabbitMqTopologyBuilder : IRabbitMqOutboundTopologyBuilder, IRabbitMqInboundTopologyBuilder
 {
-    private readonly List<RabbitMqAddressDefinition> _addressDefinitions = [];
     private readonly List<RabbitMqBindingDefinition> _bindingDefinitions = [];
     private readonly List<RabbitMqInboundConsumerDefinition> _consumers = [];
     private readonly List<RabbitMqExchangeDefinition> _exchangeDefinitions = [];
@@ -143,11 +142,6 @@ public sealed class RabbitMqTopologyBuilder : IRabbitMqOutboundTopologyBuilder, 
         Action<MessageContractRegistryBuilder> configure
     ) => MapMessageContracts(configure);
 
-    IRabbitMqOutboundTopologyBuilder IRabbitMqOutboundTopologyBuilder.Address(
-        string name,
-        string exchangeName
-    ) => Address(name, exchangeName);
-
     IRabbitMqOutboundTopologyBuilder IRabbitMqOutboundTopologyBuilder.Publish<TMessage>(
         Action<RabbitMqOutboundTargetBuilder<TMessage>> configure
     ) => Publish(configure);
@@ -255,18 +249,6 @@ public sealed class RabbitMqTopologyBuilder : IRabbitMqOutboundTopologyBuilder, 
 
         _messageContracts ??= new MessageContractRegistryBuilder();
         configure(_messageContracts);
-        return this;
-    }
-
-    /// <inheritdoc cref="IRabbitMqOutboundTopologyBuilder.Address" />
-    public RabbitMqTopologyBuilder Address(string name, string exchangeName)
-    {
-        _addressDefinitions.Add(
-            new RabbitMqAddressDefinition(
-                RequireText(name, nameof(name)),
-                RequireText(exchangeName, nameof(exchangeName))
-            )
-        );
         return this;
     }
 
@@ -475,7 +457,6 @@ public sealed class RabbitMqTopologyBuilder : IRabbitMqOutboundTopologyBuilder, 
             _exchangeDefinitions.AsReadOnly(),
             _queueDefinitions.AsReadOnly(),
             _bindingDefinitions.AsReadOnly(),
-            _addressDefinitions.AsReadOnly(),
             _outboundChannelGroupDefinitions.AsReadOnly(),
             _targets.AsReadOnly(),
             _inboundChannelGroupDefinitions.AsReadOnly(),

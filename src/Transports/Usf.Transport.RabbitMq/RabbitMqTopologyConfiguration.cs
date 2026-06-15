@@ -16,7 +16,6 @@ public sealed record RabbitMqTopologyConfiguration(
     IReadOnlyList<RabbitMqExchangeDefinition> Exchanges,
     IReadOnlyList<RabbitMqQueueDefinition> Queues,
     IReadOnlyList<RabbitMqBindingDefinition> Bindings,
-    IReadOnlyList<RabbitMqAddressDefinition> Addresses,
     IReadOnlyList<RabbitMqChannelGroupDefinition> OutboundChannelGroups,
     IReadOnlyList<RabbitMqOutboundTargetDefinition> Targets,
     IReadOnlyList<RabbitMqInboundChannelGroupDefinition> InboundChannelGroups,

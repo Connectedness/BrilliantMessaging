@@ -72,11 +72,10 @@ public sealed class RabbitMqChannelGroupTests
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.WithDefaultPublisherConfirmMode(RabbitMqPublisherConfirmMode.FireAndForget);
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.ChannelGroup("shared", 2);
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .UseChannelGroup("shared")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
@@ -1265,7 +1264,6 @@ public sealed class RabbitMqChannelGroupTests
                 [],
                 [],
                 [],
-                [],
                 [new RabbitMqChannelGroupDefinition("invalid", 0)],
                 [],
                 [],
@@ -1294,7 +1292,6 @@ public sealed class RabbitMqChannelGroupTests
         services.AddSingleton(
             new RabbitMqTopologyConfiguration(
                 static _ => new ConnectionFactory(),
-                [],
                 [],
                 [],
                 [],
@@ -1329,12 +1326,11 @@ public sealed class RabbitMqChannelGroupTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.ChannelGroup("referenced", 2);
                     builder.ChannelGroup("orphaned", 5);
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .UseChannelGroup("referenced")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
@@ -1362,11 +1358,10 @@ public sealed class RabbitMqChannelGroupTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.ChannelGroup("shared", 11);
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .UseChannelGroup("shared")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
@@ -1416,25 +1411,24 @@ public sealed class RabbitMqChannelGroupTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.ChannelGroup("shared", 2);
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .UseChannelGroup("shared")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "secondary",
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .UseChannelGroup("shared")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "tertiary",
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .UseChannelGroup("shared")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
@@ -1460,17 +1454,16 @@ public sealed class RabbitMqChannelGroupTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.Publish<ValidationMessageA>(
-                        target => target.ToFanoutAddress("orders-address").WithSerializer<CloudEventMessageSerializer>()
+                        target => target.ToFanoutExchange("orders").WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "secondary",
-                        target => target.ToFanoutAddress("orders-address").WithSerializer<CloudEventMessageSerializer>()
+                        target => target.ToFanoutExchange("orders").WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "tertiary",
-                        target => target.ToFanoutAddress("orders-address").WithSerializer<CloudEventMessageSerializer>()
+                        target => target.ToFanoutExchange("orders").WithSerializer<CloudEventMessageSerializer>()
                     );
                 }
             );
@@ -1533,7 +1526,6 @@ public sealed class RabbitMqChannelGroupTests
                 new Dictionary<string, InboundEndpoint>(StringComparer.Ordinal)
             ),
             RabbitMqCloudEventsTestFactory.CreateRegistry(),
-            [],
             [],
             [],
             [],

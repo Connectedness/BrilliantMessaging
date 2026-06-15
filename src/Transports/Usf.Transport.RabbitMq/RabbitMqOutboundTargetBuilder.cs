@@ -8,8 +8,8 @@ namespace Usf.Transport.RabbitMq;
 public sealed class RabbitMqOutboundTargetBuilder<TMessage>
 {
     private readonly Dictionary<string, object?> _headers = new (StringComparer.Ordinal);
-    private string? _addressName;
     private string? _channelGroupName;
+    private string? _exchangeName;
     private string? _routingKey;
     private Func<TMessage, string>? _routingKeyFactory;
     private RabbitMqOutboundRouteScenario _scenario;
@@ -17,9 +17,9 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
 
     public bool IsMandatory { get; private set; }
 
-    public RabbitMqOutboundTargetBuilder<TMessage> ToFanoutAddress(string addressName)
+    public RabbitMqOutboundTargetBuilder<TMessage> ToFanoutExchange(string exchangeName)
     {
-        _addressName = RequireText(addressName, nameof(addressName));
+        _exchangeName = RequireText(exchangeName, nameof(exchangeName));
         _scenario = RabbitMqOutboundRouteScenario.Fanout;
         _routingKey = null;
         _routingKeyFactory = null;
@@ -27,9 +27,9 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
         return this;
     }
 
-    public RabbitMqOutboundTargetBuilder<TMessage> ToDirectAddress(string addressName, string routingKey)
+    public RabbitMqOutboundTargetBuilder<TMessage> ToDirectExchange(string exchangeName, string routingKey)
     {
-        _addressName = RequireText(addressName, nameof(addressName));
+        _exchangeName = RequireText(exchangeName, nameof(exchangeName));
         _scenario = RabbitMqOutboundRouteScenario.Direct;
         _routingKey = routingKey ?? string.Empty;
         _routingKeyFactory = null;
@@ -37,12 +37,12 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
         return this;
     }
 
-    public RabbitMqOutboundTargetBuilder<TMessage> ToDirectAddress(
-        string addressName,
+    public RabbitMqOutboundTargetBuilder<TMessage> ToDirectExchange(
+        string exchangeName,
         Func<TMessage, string> routingKeyFactory
     )
     {
-        _addressName = RequireText(addressName, nameof(addressName));
+        _exchangeName = RequireText(exchangeName, nameof(exchangeName));
         _scenario = RabbitMqOutboundRouteScenario.Direct;
         _routingKey = null;
         _routingKeyFactory = routingKeyFactory ?? throw new ArgumentNullException(nameof(routingKeyFactory));
@@ -50,9 +50,9 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
         return this;
     }
 
-    public RabbitMqOutboundTargetBuilder<TMessage> ToTopicAddress(string addressName, string routingKey)
+    public RabbitMqOutboundTargetBuilder<TMessage> ToTopicExchange(string exchangeName, string routingKey)
     {
-        _addressName = RequireText(addressName, nameof(addressName));
+        _exchangeName = RequireText(exchangeName, nameof(exchangeName));
         _scenario = RabbitMqOutboundRouteScenario.Topic;
         _routingKey = routingKey ?? string.Empty;
         _routingKeyFactory = null;
@@ -60,12 +60,12 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
         return this;
     }
 
-    public RabbitMqOutboundTargetBuilder<TMessage> ToTopicAddress(
-        string addressName,
+    public RabbitMqOutboundTargetBuilder<TMessage> ToTopicExchange(
+        string exchangeName,
         Func<TMessage, string> routingKeyFactory
     )
     {
-        _addressName = RequireText(addressName, nameof(addressName));
+        _exchangeName = RequireText(exchangeName, nameof(exchangeName));
         _scenario = RabbitMqOutboundRouteScenario.Topic;
         _routingKey = null;
         _routingKeyFactory = routingKeyFactory ?? throw new ArgumentNullException(nameof(routingKeyFactory));
@@ -73,9 +73,9 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
         return this;
     }
 
-    public RabbitMqOutboundTargetBuilder<TMessage> ToHeadersAddress(string addressName)
+    public RabbitMqOutboundTargetBuilder<TMessage> ToHeadersExchange(string exchangeName)
     {
-        _addressName = RequireText(addressName, nameof(addressName));
+        _exchangeName = RequireText(exchangeName, nameof(exchangeName));
         _scenario = RabbitMqOutboundRouteScenario.Headers;
         _routingKey = null;
         _routingKeyFactory = null;
@@ -123,16 +123,16 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
 
     internal RabbitMqOutboundTargetDefinition Build(string? targetName)
     {
-        if (_addressName is null)
+        if (_exchangeName is null)
         {
-            throw new InvalidOperationException("A RabbitMQ outbound target must select an address.");
+            throw new InvalidOperationException("A RabbitMQ outbound target must select an exchange.");
         }
 
         return _scenario switch
         {
             RabbitMqOutboundRouteScenario.Fanout => new RabbitMqFanoutOutboundTargetDefinition(
                 typeof(TMessage),
-                _addressName,
+                _exchangeName,
                 _channelGroupName,
                 targetName,
                 _serializerType,
@@ -140,7 +140,7 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
             ),
             RabbitMqOutboundRouteScenario.Direct => new RabbitMqDirectOutboundTargetDefinition(
                 typeof(TMessage),
-                _addressName,
+                _exchangeName,
                 _channelGroupName,
                 targetName,
                 _serializerType,
@@ -150,7 +150,7 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
             ),
             RabbitMqOutboundRouteScenario.Topic => new RabbitMqTopicOutboundTargetDefinition(
                 typeof(TMessage),
-                _addressName,
+                _exchangeName,
                 _channelGroupName,
                 targetName,
                 _serializerType,
@@ -160,7 +160,7 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage>
             ),
             RabbitMqOutboundRouteScenario.Headers => new RabbitMqHeadersOutboundTargetDefinition(
                 typeof(TMessage),
-                _addressName,
+                _exchangeName,
                 _channelGroupName,
                 targetName,
                 _serializerType,

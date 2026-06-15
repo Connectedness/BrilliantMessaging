@@ -60,10 +60,9 @@ public sealed class AddRabbitMqPublishTopologyTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                 }
@@ -93,7 +92,7 @@ public sealed class AddRabbitMqPublishTopologyTests
                     builder.Exchange("orders", ExchangeType.Fanout);
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("missing-address")
+                           .ToFanoutExchange("missing-exchange")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                 }
@@ -105,7 +104,7 @@ public sealed class AddRabbitMqPublishTopologyTests
 
         var exception = action.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Contain(
-            "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' references unknown address 'missing-address'."
+            "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' references unknown exchange 'missing-exchange'."
         );
         exception.ValidationErrors.Should().Contain(
             "Outbound target 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...)."
@@ -123,9 +122,6 @@ public sealed class AddRabbitMqPublishTopologyTests
                 builder.Exchange("exchange-a", ExchangeType.Direct);
                 builder.Exchange("internal-a", "internal");
                 builder.Queue("queue-a");
-                builder.Address("address-a", "exchange-a");
-                builder.Address("address-a", "exchange-a");
-                builder.Address("missing-address-exchange", "missing-address-exchange");
                 builder.ChannelGroup("shared", 2);
                 builder.ChannelGroup("shared", 2);
                 builder.QueueBinding(
@@ -135,15 +131,15 @@ public sealed class AddRabbitMqPublishTopologyTests
                     binding => binding.WithBindingMode((RabbitMqBindingMode) 99)
                 );
                 builder.ExchangeBinding("exchange-a", "missing-destination", "route-b");
-                builder.Publish<ValidationMessageA>(target => target.ToDirectAddress("missing-address", "route-a"));
-                builder.Publish<ValidationMessageA>(target => target.ToFanoutAddress("address-a"));
+                builder.Publish<ValidationMessageA>(target => target.ToDirectExchange("missing-exchange", "route-a"));
+                builder.Publish<ValidationMessageA>(target => target.ToFanoutExchange("exchange-a"));
                 builder.PublishNamed<ValidationMessageA>(
                     "duplicate-target",
-                    target => target.ToHeadersAddress("address-a").UseChannelGroup("missing-group")
+                    target => target.ToHeadersExchange("exchange-a").UseChannelGroup("missing-group")
                 );
                 builder.PublishNamed<ValidationMessageB>(
                     "duplicate-target",
-                    target => target.ToTopicAddress("address-a", static message => message.Value)
+                    target => target.ToTopicExchange("exchange-a", static message => message.Value)
                 );
             }
         );
@@ -155,9 +151,7 @@ public sealed class AddRabbitMqPublishTopologyTests
         var exception = action.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Equal(
             "A RabbitMQ connection factory must be configured.",
-            "Address 'missing-address-exchange' references unknown exchange 'missing-address-exchange'.",
             "Channel group 'shared' is configured but no outbound target references it.",
-            "Duplicate address 'address-a' is configured.",
             "Duplicate channel group 'shared' is configured.",
             "Duplicate exchange 'exchange-a' is configured.",
             "Duplicate target 'duplicate-target' is configured.",
@@ -173,7 +167,7 @@ public sealed class AddRabbitMqPublishTopologyTests
             "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'duplicate-target' targets exchange 'exchange-a' of type 'direct', but requires 'headers'.",
             "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' must configure a serializer.",
             "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' must configure a serializer.",
-            "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' references unknown address 'missing-address'.",
+            "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' references unknown exchange 'missing-exchange'.",
             "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' targets exchange 'exchange-a' of type 'direct', but requires 'fanout'.",
             "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB' and target 'duplicate-target' must configure a serializer.",
             "Outbound target for message 'Usf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB' and target 'duplicate-target' targets exchange 'exchange-a' of type 'direct', but requires 'topic'.",
@@ -209,31 +203,27 @@ public sealed class AddRabbitMqPublishTopologyTests
                     builder.Exchange("topic-exchange", ExchangeType.Topic);
                     builder.Exchange("fanout-exchange", ExchangeType.Fanout);
                     builder.Exchange("headers-exchange", ExchangeType.Headers);
-                    builder.Address("direct-address", "direct-exchange");
-                    builder.Address("topic-address", "topic-exchange");
-                    builder.Address("fanout-address", "fanout-exchange");
-                    builder.Address("headers-address", "headers-exchange");
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToDirectAddress("direct-address", "direct.route")
+                           .ToDirectExchange("direct-exchange", "direct.route")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "topic-target",
                         target => target
-                           .ToTopicAddress("topic-address", static message => $"topic.{message.Value}")
+                           .ToTopicExchange("topic-exchange", static message => $"topic.{message.Value}")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "fanout-target",
                         target => target
-                           .ToFanoutAddress("fanout-address")
+                           .ToFanoutExchange("fanout-exchange")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "headers-target",
                         target => target
-                           .ToHeadersAddress("headers-address")
+                           .ToHeadersExchange("headers-exchange")
                            .WithHeader("region", "eu")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
@@ -270,18 +260,16 @@ public sealed class AddRabbitMqPublishTopologyTests
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("fanout-exchange", ExchangeType.Fanout);
                     builder.Exchange("headers-exchange", ExchangeType.Headers);
-                    builder.Address("fanout-address", "fanout-exchange");
-                    builder.Address("headers-address", "headers-exchange");
                     builder.PublishNamed<ValidationMessageA>(
                         "fanout-target",
                         target => target
-                           .ToFanoutAddress("fanout-address")
+                           .ToFanoutExchange("fanout-exchange")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "headers-target",
                         target => target
-                           .ToHeadersAddress("headers-address")
+                           .ToHeadersExchange("headers-exchange")
                            .WithHeader("region", "eu")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
@@ -319,10 +307,9 @@ public sealed class AddRabbitMqPublishTopologyTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("fanout-exchange", ExchangeType.Fanout);
-                    builder.Address("fanout-address", "fanout-exchange");
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("fanout-address")
+                           .ToFanoutExchange("fanout-exchange")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                 }
@@ -348,16 +335,15 @@ public sealed class AddRabbitMqPublishTopologyTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("direct-exchange", ExchangeType.Direct);
-                    builder.Address("direct-address", "direct-exchange");
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToDirectAddress("direct-address", "direct.route")
+                           .ToDirectExchange("direct-exchange", "direct.route")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "direct-target",
                         target => target
-                           .ToDirectAddress("direct-address", "direct.route")
+                           .ToDirectExchange("direct-exchange", "direct.route")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                 }
@@ -383,10 +369,9 @@ public sealed class AddRabbitMqPublishTopologyTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                 }
@@ -413,10 +398,9 @@ public sealed class AddRabbitMqPublishTopologyTests
                     );
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                 }
@@ -447,10 +431,9 @@ public sealed class AddRabbitMqPublishTopologyTests
                     );
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.Publish<ValidationMessageB>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                 }
@@ -475,18 +458,17 @@ public sealed class AddRabbitMqPublishTopologyTests
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.WithDefaultPublisherConfirmMode(RabbitMqPublisherConfirmMode.FireAndForget);
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.ChannelGroup("best-effort", 1, RabbitMqPublisherConfirmMode.FireAndForget);
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .Mandatory()
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.PublishNamed<ValidationMessageA>(
                         "shared-best-effort",
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .UseChannelGroup("best-effort")
                            .Mandatory()
                            .WithSerializer<CloudEventMessageSerializer>()

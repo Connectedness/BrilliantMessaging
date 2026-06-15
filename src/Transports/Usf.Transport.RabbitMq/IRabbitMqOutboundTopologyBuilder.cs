@@ -6,20 +6,14 @@ namespace Usf.Transport.RabbitMq;
 
 /// <summary>
 /// Configures a publish-only RabbitMQ topology. In addition to the shared surface of
-/// <see cref="IRabbitMqTopologyBuilder{TSelf}" />, this builder exposes addresses, outbound targets,
+/// <see cref="IRabbitMqTopologyBuilder{TSelf}" />, this builder exposes outbound targets,
 /// publisher channel groups, and publisher-confirm defaults — but no consumer configuration, so a topology
 /// configured through this interface cannot accidentally share its connection with consumers. Used by
-/// <see cref="RabbitMqTransportModule.AddRabbitMqOutboundTopology(UsfBuilder, Action{IRabbitMqOutboundTopologyBuilder})" />
+/// <see cref="RabbitMqTransportModule.AddRabbitMqOutboundTopology(UsfBuilder, System.Action{Usf.Transport.RabbitMq.IRabbitMqOutboundTopologyBuilder}(Usf.Transport.RabbitMq.IRabbitMqOutboundTopologyBuilder))" />
 /// .
 /// </summary>
 public interface IRabbitMqOutboundTopologyBuilder : IRabbitMqTopologyBuilder<IRabbitMqOutboundTopologyBuilder>
 {
-    /// <summary>
-    /// Registers a named address that maps to an exchange, allowing outbound targets to reference the
-    /// exchange indirectly.
-    /// </summary>
-    IRabbitMqOutboundTopologyBuilder Address(string name, string exchangeName);
-
     /// <summary>
     /// Configures the default outbound target for <typeparamref name="TMessage" />.
     /// </summary>

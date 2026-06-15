@@ -6,16 +6,16 @@ The goal of this plan is to remove the address concept entirely and have outboun
 
 ## Acceptance Criteria
 
-- [ ] `RabbitMqAddressDefinition` and the `Address(string name, string exchangeName)` builder method (and its `IRabbitMqOutboundTopologyBuilder` interface member) are removed.
-- [ ] Outbound targets reference an exchange by name directly: `RabbitMqOutboundTargetDefinition.AddressName` becomes `ExchangeName`, and the `RabbitMqOutboundTargetBuilder<TMessage>` route verbs are renamed to `ToFanoutExchange`/`ToDirectExchange`/`ToTopicExchange`/`ToHeadersExchange` (the `Exchange` suffix keeps the destination kind explicit at the call site).
-- [ ] `RabbitMqTopologyConfiguration.Addresses` and `RabbitMqTopology.Addresses` are removed, along with the corresponding builder backing field and constructor arguments.
-- [ ] The compiler resolves a target's exchange in a single lookup (`exchangesByName[target.ExchangeName]`) instead of the two-hop address→exchange lookup.
-- [ ] Address-specific validation is removed: the duplicate-address pass and `ValidateAddressDefinitions` are deleted, and `ValidateTarget` checks the referenced exchange directly. The scenario↔exchange-type validation (`ValidateTargetAgainstExchange`) is preserved unchanged.
-- [ ] User-facing validation and error wording that referenced "address" (e.g. the "references unknown address" error and `GetTargetDescription`) is updated to refer to the exchange.
-- [ ] All XML-doc `<see cref>` and prose references to the removed `Address` member and address concept are updated, so Release builds emit no CS1574 (dangling cref) or other warnings under `<TreatWarningsAsErrors>`.
-- [ ] Explicit usings are retained; no global or implicit usings are introduced.
-- [ ] Existing unit and integration tests are updated for the renamed API, and any address-specific tests are removed or repurposed to exchange-reference tests.
-- [ ] Plan documents under `ai-plans/` that describe the now-removed address concept are left as historical record; only the live code and tests change.
+- [x] `RabbitMqAddressDefinition` and the `Address(string name, string exchangeName)` builder method (and its `IRabbitMqOutboundTopologyBuilder` interface member) are removed.
+- [x] Outbound targets reference an exchange by name directly: `RabbitMqOutboundTargetDefinition.AddressName` becomes `ExchangeName`, and the `RabbitMqOutboundTargetBuilder<TMessage>` route verbs are renamed to `ToFanoutExchange`/`ToDirectExchange`/`ToTopicExchange`/`ToHeadersExchange` (the `Exchange` suffix keeps the destination kind explicit at the call site).
+- [x] `RabbitMqTopologyConfiguration.Addresses` and `RabbitMqTopology.Addresses` are removed, along with the corresponding builder backing field and constructor arguments.
+- [x] The compiler resolves a target's exchange in a single lookup (`exchangesByName[target.ExchangeName]`) instead of the two-hop address→exchange lookup.
+- [x] Address-specific validation is removed: the duplicate-address pass and `ValidateAddressDefinitions` are deleted, and `ValidateTarget` checks the referenced exchange directly. The scenario↔exchange-type validation (`ValidateTargetAgainstExchange`) is preserved unchanged.
+- [x] User-facing validation and error wording that referenced "address" (e.g. the "references unknown address" error and `GetTargetDescription`) is updated to refer to the exchange.
+- [x] All XML-doc `<see cref>` and prose references to the removed `Address` member and address concept are updated, so Release builds emit no CS1574 (dangling cref) or other warnings under `<TreatWarningsAsErrors>`.
+- [x] Explicit usings are retained; no global or implicit usings are introduced.
+- [x] Existing unit and integration tests are updated for the renamed API, and any address-specific tests are removed or repurposed to exchange-reference tests.
+- [x] Plan documents under `ai-plans/` that describe the now-removed address concept are left as historical record; only the live code and tests change.
 
 ## Technical Details
 

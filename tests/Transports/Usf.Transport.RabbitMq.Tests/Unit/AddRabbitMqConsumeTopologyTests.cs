@@ -28,10 +28,9 @@ public sealed class AddRabbitMqConsumeTopologyTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("outbound", ExchangeType.Fanout);
-                    builder.Address("outbound-address", "outbound");
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("outbound-address")
+                           .ToFanoutExchange("outbound")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                     builder.Queue("inbound");
@@ -644,10 +643,9 @@ public sealed class AddRabbitMqConsumeTopologyTests
                 {
                     builder.UseConnectionFactory(static _ => new ConnectionFactory());
                     builder.Exchange("orders", ExchangeType.Fanout);
-                    builder.Address("orders-address", "orders");
                     builder.Publish<ValidationMessageA>(
                         target => target
-                           .ToFanoutAddress("orders-address")
+                           .ToFanoutExchange("orders")
                            .WithSerializer<CloudEventMessageSerializer>()
                     );
                 }

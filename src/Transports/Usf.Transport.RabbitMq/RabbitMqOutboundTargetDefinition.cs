@@ -5,7 +5,7 @@ namespace Usf.Transport.RabbitMq;
 
 public abstract record RabbitMqOutboundTargetDefinition(
     Type MessageType,
-    string AddressName,
+    string ExchangeName,
     string? ChannelGroupName,
     string? TargetName,
     Type? SerializerType,
@@ -14,14 +14,14 @@ public abstract record RabbitMqOutboundTargetDefinition(
 
 public sealed record RabbitMqFanoutOutboundTargetDefinition(
     Type MessageType,
-    string AddressName,
+    string ExchangeName,
     string? ChannelGroupName,
     string? TargetName,
     Type? SerializerType,
     bool IsMandatory
 ) : RabbitMqOutboundTargetDefinition(
     MessageType,
-    AddressName,
+    ExchangeName,
     ChannelGroupName,
     TargetName,
     SerializerType,
@@ -30,7 +30,7 @@ public sealed record RabbitMqFanoutOutboundTargetDefinition(
 
 public abstract record RabbitMqRoutingKeyOutboundTargetDefinition(
     Type MessageType,
-    string AddressName,
+    string ExchangeName,
     string? ChannelGroupName,
     string? TargetName,
     Type? SerializerType,
@@ -39,7 +39,7 @@ public abstract record RabbitMqRoutingKeyOutboundTargetDefinition(
     Delegate? RoutingKeyFactory
 ) : RabbitMqOutboundTargetDefinition(
     MessageType,
-    AddressName,
+    ExchangeName,
     ChannelGroupName,
     TargetName,
     SerializerType,
@@ -48,7 +48,7 @@ public abstract record RabbitMqRoutingKeyOutboundTargetDefinition(
 
 public sealed record RabbitMqDirectOutboundTargetDefinition(
     Type MessageType,
-    string AddressName,
+    string ExchangeName,
     string? ChannelGroupName,
     string? TargetName,
     Type? SerializerType,
@@ -57,7 +57,7 @@ public sealed record RabbitMqDirectOutboundTargetDefinition(
     Delegate? RoutingKeyFactory
 ) : RabbitMqRoutingKeyOutboundTargetDefinition(
     MessageType,
-    AddressName,
+    ExchangeName,
     ChannelGroupName,
     TargetName,
     SerializerType,
@@ -68,7 +68,7 @@ public sealed record RabbitMqDirectOutboundTargetDefinition(
 
 public sealed record RabbitMqTopicOutboundTargetDefinition(
     Type MessageType,
-    string AddressName,
+    string ExchangeName,
     string? ChannelGroupName,
     string? TargetName,
     Type? SerializerType,
@@ -77,7 +77,7 @@ public sealed record RabbitMqTopicOutboundTargetDefinition(
     Delegate? RoutingKeyFactory
 ) : RabbitMqRoutingKeyOutboundTargetDefinition(
     MessageType,
-    AddressName,
+    ExchangeName,
     ChannelGroupName,
     TargetName,
     SerializerType,
@@ -88,7 +88,7 @@ public sealed record RabbitMqTopicOutboundTargetDefinition(
 
 public sealed record RabbitMqHeadersOutboundTargetDefinition(
     Type MessageType,
-    string AddressName,
+    string ExchangeName,
     string? ChannelGroupName,
     string? TargetName,
     Type? SerializerType,
@@ -96,7 +96,7 @@ public sealed record RabbitMqHeadersOutboundTargetDefinition(
     IReadOnlyDictionary<string, object?> Headers
 ) : RabbitMqOutboundTargetDefinition(
     MessageType,
-    AddressName,
+    ExchangeName,
     ChannelGroupName,
     TargetName,
     SerializerType,

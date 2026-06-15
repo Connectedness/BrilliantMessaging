@@ -65,11 +65,6 @@ public sealed class RabbitMqPublishingIntegrationTests
                         builder.Exchange("orders-headers", ExchangeType.Headers);
                         builder.Exchange("orders-upstream", ExchangeType.Direct);
                         builder.Exchange("orders-downstream", ExchangeType.Direct);
-                        builder.Address("orders-direct-address", "orders-direct");
-                        builder.Address("orders-topic-address", "orders-topic");
-                        builder.Address("orders-fanout-address", "orders-fanout");
-                        builder.Address("orders-headers-address", "orders-headers");
-                        builder.Address("orders-upstream-address", "orders-upstream");
 
                         builder.Queue("orders-direct-queue");
                         builder.Queue("orders-audit-queue");
@@ -95,30 +90,30 @@ public sealed class RabbitMqPublishingIntegrationTests
 
                         builder.Publish<RabbitMqPublishMessage>(
                             route => route
-                               .ToDirectAddress("orders-direct-address", "orders.created")
+                               .ToDirectExchange("orders-direct", "orders.created")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                         builder.Publish<RabbitMqAuditMessage>(
                             route => route
-                               .ToDirectAddress("orders-direct-address", "orders.audit")
+                               .ToDirectExchange("orders-direct", "orders.audit")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                         builder.PublishNamed<RabbitMqPublishMessage>(
                             "topic-target",
                             route => route
-                               .ToTopicAddress("orders-topic-address", static message => $"orders.{message.Name}")
+                               .ToTopicExchange("orders-topic", static message => $"orders.{message.Name}")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                         builder.PublishNamed<RabbitMqPublishMessage>(
                             "fanout-target",
                             route => route
-                               .ToFanoutAddress("orders-fanout-address")
+                               .ToFanoutExchange("orders-fanout")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                         builder.PublishNamed<RabbitMqPublishMessage>(
                             "headers-target",
                             route => route
-                               .ToHeadersAddress("orders-headers-address")
+                               .ToHeadersExchange("orders-headers")
                                .WithHeader("tenant", "tenant-headers")
                                .WithHeader("region", "us")
                                .WithSerializer<CloudEventMessageSerializer>()
@@ -126,7 +121,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                         builder.PublishNamed<RabbitMqPublishMessage>(
                             "exchange-binding-target",
                             route => route
-                               .ToDirectAddress("orders-upstream-address", "orders.exchange")
+                               .ToDirectExchange("orders-upstream", "orders.exchange")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                     }
@@ -294,12 +289,11 @@ public sealed class RabbitMqPublishingIntegrationTests
                             }
                         );
                         builder.Exchange("legacy-fanout", ExchangeType.Fanout);
-                        builder.Address("legacy-address", "legacy-fanout");
                         builder.Queue("legacy-queue");
                         builder.QueueBinding("legacy-fanout", "legacy-queue");
                         builder.Publish<RabbitMqPublishMessage>(
                             target => target
-                               .ToFanoutAddress("legacy-address")
+                               .ToFanoutExchange("legacy-fanout")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                     }
@@ -319,12 +313,11 @@ public sealed class RabbitMqPublishingIntegrationTests
                             }
                         );
                         builder.Exchange("modern-fanout", ExchangeType.Fanout);
-                        builder.Address("modern-address", "modern-fanout");
                         builder.Queue("modern-queue");
                         builder.QueueBinding("modern-fanout", "modern-queue");
                         builder.Publish<RabbitMqPublishMessage>(
                             target => target
-                               .ToFanoutAddress("modern-address")
+                               .ToFanoutExchange("modern-fanout")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                     }
@@ -392,7 +385,6 @@ public sealed class RabbitMqPublishingIntegrationTests
                         );
 
                         builder.Exchange("routing-direct", ExchangeType.Direct);
-                        builder.Address("routing-direct-address", "routing-direct");
                         builder.Queue("routing-direct-default-queue");
                         builder.Queue("routing-direct-override-queue");
                         builder.QueueBinding("routing-direct", "routing-direct-default-queue", "orders.created");
@@ -400,7 +392,7 @@ public sealed class RabbitMqPublishingIntegrationTests
 
                         builder.Publish<RabbitMqPublishMessage>(
                             route => route
-                               .ToDirectAddress("routing-direct-address", "orders.created")
+                               .ToDirectExchange("routing-direct", "orders.created")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                     }
@@ -466,7 +458,6 @@ public sealed class RabbitMqPublishingIntegrationTests
                         );
 
                         builder.Exchange("routing-topic", ExchangeType.Topic);
-                        builder.Address("routing-topic-address", "routing-topic");
                         builder.Queue("routing-topic-default-queue");
                         builder.Queue("routing-topic-override-queue");
                         builder.QueueBinding("routing-topic", "routing-topic-default-queue", "orders.topic");
@@ -474,7 +465,7 @@ public sealed class RabbitMqPublishingIntegrationTests
 
                         builder.Publish<RabbitMqPublishMessage>(
                             route => route
-                               .ToTopicAddress("routing-topic-address", static message => $"orders.{message.Name}")
+                               .ToTopicExchange("routing-topic", static message => $"orders.{message.Name}")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                     }
@@ -540,13 +531,12 @@ public sealed class RabbitMqPublishingIntegrationTests
                         );
 
                         builder.Exchange("raw-fanout", ExchangeType.Fanout);
-                        builder.Address("raw-address", "raw-fanout");
                         builder.Queue("raw-queue");
                         builder.QueueBinding("raw-fanout", "raw-queue");
 
                         builder.Publish<RabbitMqPublishMessage>(
                             route => route
-                               .ToFanoutAddress("raw-address")
+                               .ToFanoutExchange("raw-fanout")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                     }
@@ -618,10 +608,9 @@ public sealed class RabbitMqPublishingIntegrationTests
                         );
 
                         builder.Exchange("unroutable-fanout", ExchangeType.Fanout);
-                        builder.Address("unroutable-address", "unroutable-fanout");
                         builder.Publish<RabbitMqPublishMessage>(
                             route => route
-                               .ToFanoutAddress("unroutable-address")
+                               .ToFanoutExchange("unroutable-fanout")
                                .Mandatory()
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
@@ -669,7 +658,6 @@ public sealed class RabbitMqPublishingIntegrationTests
                         );
 
                         builder.Exchange("rejecting-fanout", ExchangeType.Fanout);
-                        builder.Address("rejecting-address", "rejecting-fanout");
 
                         // A length-bounded queue with reject-publish overflow makes the broker NACK any publish
                         // once the queue is full. With confirms on (the default), the first awaited publish fills
@@ -684,7 +672,7 @@ public sealed class RabbitMqPublishingIntegrationTests
 
                         builder.Publish<RabbitMqPublishMessage>(
                             route => route
-                               .ToFanoutAddress("rejecting-address")
+                               .ToFanoutExchange("rejecting-fanout")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                     }
@@ -739,7 +727,6 @@ public sealed class RabbitMqPublishingIntegrationTests
                         );
 
                         builder.Exchange("recovering-fanout", ExchangeType.Fanout);
-                        builder.Address("recovering-address", "recovering-fanout");
                         builder.Queue("recovering-queue");
                         builder.QueueBinding("recovering-fanout", "recovering-queue");
                         builder.ChannelGroup(
@@ -750,7 +737,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                         );
                         builder.Publish<RabbitMqPublishMessage>(
                             route => route
-                               .ToFanoutAddress("recovering-address")
+                               .ToFanoutExchange("recovering-fanout")
                                .UseChannelGroup("recovering-group")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );

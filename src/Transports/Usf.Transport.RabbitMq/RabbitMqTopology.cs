@@ -12,13 +12,13 @@ namespace Usf.Transport.RabbitMq;
 
 /// <summary>
 /// The compiled RabbitMQ topology. It extends the Core <see cref="Topology" /> with RabbitMQ-specific runtime
-/// state: exchanges, queues, bindings, addresses, outbound channel groups, inbound
+/// state: exchanges, queues, bindings, outbound channel groups, inbound
 /// channel groups, outbound targets, inbound endpoints, the inbound pipeline, the shutdown timeout, the
 /// connection provider, and the channel source. A topology owns exactly one
 /// <see cref="RabbitMqConnectionProvider" />; register separate topology instances when separate publisher and
 /// consumer connections are wanted, preferably via
 /// <see cref="RabbitMqTransportModule.AddRabbitMqOutboundTopology(UsfBuilder, System.Action{Usf.Transport.RabbitMq.IRabbitMqOutboundTopologyBuilder})" />
-/// and <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(UsfBuilder, Action{IRabbitMqInboundTopologyBuilder})" />.
+/// and <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(UsfBuilder, System.Action{Usf.Transport.RabbitMq.IRabbitMqInboundTopologyBuilder}(Usf.Transport.RabbitMq.IRabbitMqInboundTopologyBuilder))" />.
 /// </summary>
 public sealed class RabbitMqTopology : Topology, IAsyncDisposable, IDisposable
 {
@@ -44,7 +44,6 @@ public sealed class RabbitMqTopology : Topology, IAsyncDisposable, IDisposable
         IReadOnlyList<RabbitMqExchangeDefinition> exchanges,
         IReadOnlyList<RabbitMqQueueDefinition> queues,
         IReadOnlyList<RabbitMqBindingDefinition> bindings,
-        IReadOnlyList<RabbitMqAddressDefinition> addresses,
         IReadOnlyList<RabbitMqChannelGroup> outboundChannelGroups,
         IReadOnlyList<OutboundTarget> targets,
         IReadOnlyList<RabbitMqInboundChannelGroup> inboundChannelGroups,
@@ -62,7 +61,6 @@ public sealed class RabbitMqTopology : Topology, IAsyncDisposable, IDisposable
         Exchanges = exchanges ?? throw new ArgumentNullException(nameof(exchanges));
         Queues = queues ?? throw new ArgumentNullException(nameof(queues));
         Bindings = bindings ?? throw new ArgumentNullException(nameof(bindings));
-        Addresses = addresses ?? throw new ArgumentNullException(nameof(addresses));
         OutboundChannelGroups = outboundChannelGroups ?? throw new ArgumentNullException(nameof(outboundChannelGroups));
         Targets = targets ?? throw new ArgumentNullException(nameof(targets));
         InboundChannelGroups = inboundChannelGroups ?? throw new ArgumentNullException(nameof(inboundChannelGroups));
@@ -82,8 +80,6 @@ public sealed class RabbitMqTopology : Topology, IAsyncDisposable, IDisposable
     public IReadOnlyList<RabbitMqQueueDefinition> Queues { get; }
 
     public IReadOnlyList<RabbitMqBindingDefinition> Bindings { get; }
-
-    public IReadOnlyList<RabbitMqAddressDefinition> Addresses { get; }
 
     public IReadOnlyList<RabbitMqChannelGroup> OutboundChannelGroups { get; }
 

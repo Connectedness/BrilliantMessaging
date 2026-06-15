@@ -56,23 +56,22 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                         builder.QueueBinding(exchangeName, mixedQueue, "validation-a");
                         builder.QueueBinding(exchangeName, mixedQueue, "validation-b");
                         builder.QueueBinding(exchangeName, parallelQueue, "parallel");
-                        builder.Address("events", exchangeName);
                         builder.PublishNamed<ValidationMessageA>(
                             "validation-a",
                             target => target
-                               .ToDirectAddress("events", "validation-a")
+                               .ToDirectExchange(exchangeName, "validation-a")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                         builder.PublishNamed<ValidationMessageB>(
                             "validation-b",
                             target => target
-                               .ToDirectAddress("events", "validation-b")
+                               .ToDirectExchange(exchangeName, "validation-b")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                         builder.PublishNamed<ValidationMessageA>(
                             "parallel",
                             target => target
-                               .ToDirectAddress("events", "parallel")
+                               .ToDirectExchange(exchangeName, "parallel")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
                         builder.Consume(
@@ -297,10 +296,9 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                             }
                         )
                        .Exchange("inbound-events", ExchangeType.Direct)
-                       .Address("inbound-events-address", "inbound-events")
                        .Publish<RabbitMqPublishMessage>(
                             target => target
-                               .ToDirectAddress("inbound-events-address", "published")
+                               .ToDirectExchange("inbound-events", "published")
                                .WithSerializer<CloudEventMessageSerializer>()
                         )
                 )

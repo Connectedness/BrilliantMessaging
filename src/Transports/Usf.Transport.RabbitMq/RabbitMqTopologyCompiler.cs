@@ -99,7 +99,6 @@ public sealed class RabbitMqTopologyCompiler
             configuration.Exchanges,
             configuration.Queues,
             configuration.Bindings,
-            configuration.Addresses,
             outboundChannelGroups.AsReadOnly(),
             targets.AsReadOnly(),
             inboundChannelGroups.AsReadOnly(),
@@ -152,7 +151,6 @@ public sealed class RabbitMqTopologyCompiler
         }
 
         var exchangesByName = ToDictionary(configuration.Exchanges, static exchange => exchange.Name);
-        var addressesByName = ToDictionary(configuration.Addresses, static address => address.Name);
         Dictionary<Type, OutboundTarget> defaultTargetsByMessageType = new ();
         Dictionary<string, OutboundTarget> targetsByName = new (StringComparer.Ordinal);
         List<OutboundTarget> targets = [];
@@ -169,8 +167,7 @@ public sealed class RabbitMqTopologyCompiler
                 configuration.DefaultPublisherConfirmTimeout,
                 channelSource
             );
-            var address = addressesByName[targetDefinition.AddressName];
-            var exchangeName = exchangesByName[address.ExchangeName].Name;
+            var exchangeName = exchangesByName[targetDefinition.ExchangeName].Name;
             var target = CreateTarget(
                 targetDefinition,
                 topologyName,
@@ -602,9 +599,6 @@ public sealed class RabbitMqTopologyCompiler
             FindDuplicateNames(configuration.Queues.Select(static queue => queue.Name), "queue")
         );
         validationErrors.AddRange(
-            FindDuplicateNames(configuration.Addresses.Select(static address => address.Name), "address")
-        );
-        validationErrors.AddRange(
             FindDuplicateNames(configuration.OutboundChannelGroups.Select(static group => group.Name), "channel group")
         );
         validationErrors.AddRange(
@@ -617,7 +611,6 @@ public sealed class RabbitMqTopologyCompiler
 
         var exchangesByName = ToDictionary(configuration.Exchanges, static exchange => exchange.Name);
         var queuesByName = ToDictionary(configuration.Queues, static queue => queue.Name);
-        var addressesByName = ToDictionary(configuration.Addresses, static address => address.Name);
         var outboundChannelGroupsByName = ToDictionary(
             configuration.OutboundChannelGroups,
             static group => group.Name
@@ -632,13 +625,11 @@ public sealed class RabbitMqTopologyCompiler
         ValidateBindings(configuration.Bindings, exchangesByName, queuesByName, validationErrors);
 
         // Outbound validation.
-        ValidateAddressDefinitions(configuration.Addresses, exchangesByName, validationErrors);
         ValidateDefaultPublisherConfirmConfiguration(configuration, validationErrors);
         ValidateOutboundChannelGroupDefinitions(configuration.OutboundChannelGroups, validationErrors);
         ValidateOutboundChannelGroupUsage(configuration.OutboundChannelGroups, configuration.Targets, validationErrors);
         ValidateTargets(
             configuration.Targets,
-            addressesByName,
             exchangesByName,
             outboundChannelGroupsByName,
             configuration.DefaultPublisherConfirmMode,
@@ -693,23 +684,6 @@ public sealed class RabbitMqTopologyCompiler
             if (!Enum.IsDefined(typeof(RabbitMqDeclareMode), queue.DeclareMode))
             {
                 validationErrors.Add($"Queue '{queue.Name}' uses unsupported declare mode '{queue.DeclareMode}'.");
-            }
-        }
-    }
-
-    private static void ValidateAddressDefinitions(
-        IReadOnlyList<RabbitMqAddressDefinition> addresses,
-        IReadOnlyDictionary<string, RabbitMqExchangeDefinition> exchangesByName,
-        ICollection<string> validationErrors
-    )
-    {
-        foreach (var address in addresses.OrderBy(static address => address.Name, StringComparer.Ordinal))
-        {
-            if (!exchangesByName.ContainsKey(address.ExchangeName))
-            {
-                validationErrors.Add(
-                    $"Address '{address.Name}' references unknown exchange '{address.ExchangeName}'."
-                );
             }
         }
     }
@@ -806,7 +780,6 @@ public sealed class RabbitMqTopologyCompiler
 
     private void ValidateTargets(
         IReadOnlyList<RabbitMqOutboundTargetDefinition> targets,
-        IReadOnlyDictionary<string, RabbitMqAddressDefinition> addressesByName,
         IReadOnlyDictionary<string, RabbitMqExchangeDefinition> exchangesByName,
         IReadOnlyDictionary<string, RabbitMqChannelGroupDefinition> channelGroupsByName,
         RabbitMqPublisherConfirmMode defaultPublisherConfirmMode,
@@ -835,7 +808,6 @@ public sealed class RabbitMqTopologyCompiler
             {
                 ValidateTarget(
                     target,
-                    addressesByName,
                     exchangesByName,
                     channelGroupsByName,
                     defaultPublisherConfirmMode,
@@ -847,7 +819,6 @@ public sealed class RabbitMqTopologyCompiler
 
     private void ValidateTarget(
         RabbitMqOutboundTargetDefinition target,
-        IReadOnlyDictionary<string, RabbitMqAddressDefinition> addressesByName,
         IReadOnlyDictionary<string, RabbitMqExchangeDefinition> exchangesByName,
         IReadOnlyDictionary<string, RabbitMqChannelGroupDefinition> channelGroupsByName,
         RabbitMqPublisherConfirmMode defaultPublisherConfirmMode,
@@ -856,11 +827,11 @@ public sealed class RabbitMqTopologyCompiler
     {
         var targetDescription = GetTargetDescription(target);
 
-        if (!addressesByName.TryGetValue(target.AddressName, out var address))
+        if (!exchangesByName.TryGetValue(target.ExchangeName, out var exchange))
         {
-            validationErrors.Add($"{targetDescription} references unknown address '{target.AddressName}'.");
+            validationErrors.Add($"{targetDescription} references unknown exchange '{target.ExchangeName}'.");
         }
-        else if (exchangesByName.TryGetValue(address.ExchangeName, out var exchange))
+        else
         {
             ValidateTargetAgainstExchange(target, exchange, targetDescription, validationErrors);
         }
