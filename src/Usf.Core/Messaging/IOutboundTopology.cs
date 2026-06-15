@@ -11,5 +11,7 @@ public interface IOutboundTopology : IOutboundTargetRegistry
 
     OutboundTarget<T> GetRequiredTarget<T>();
 
+    IOutboundRoutableTarget<T> GetRequiredRoutingTarget<T>();
+
     bool TryGetTarget(Type messageType, out OutboundTarget? target);
 }

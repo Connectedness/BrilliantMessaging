@@ -1,0 +1,29 @@
+# Capability-Typed Routing Keys
+
+## Rationale
+
+Follow up on routing key support from #5 and PR #27 before the public API hardens. Routing keys should be available only on targets where they are meaningful, and misuse through `IMessagePublisher` should fail loudly instead of being silently ignored.
+
+## Acceptance Criteria
+
+- [x] `Usf.Core` exposes a transport-agnostic, contravariant `IOutboundRoutableTarget<in T>` with three `PublishAsync` overloads mirroring the metadata shapes of `OutboundTarget<T>` — default `ICloudEvent` metadata, explicit `CloudEventMetadata`, and explicit `type`/`dataSchema` — each taking a required non-blank `string routingKey` followed by a trailing `CancellationToken`.
+- [x] RabbitMQ direct and topic outbound targets expose the routable capability by inheriting it through `RabbitMqRoutingKeyOutboundTarget<TMessage>`; fanout and headers targets remain plain `RabbitMqOutboundTarget<TMessage>` subclasses and therefore expose no routing-key publish API.
+- [x] `OutboundTarget<T>` no longer exposes a public routing-key publish overload; routing-key publishing is reachable only through `IOutboundRoutableTarget<T>` (its internal publish pipeline still carries `string? routingKey`).
+- [x] `IMessagePublisher.PublishMessageAsync` keeps its optional `routingKey` parameter; a blank or whitespace routing key publishes through the routing-key-free path, while a non-blank routing key resolved to a non-routable target throws `OutboundTargetNotRoutableException` instead of being silently ignored.
+- [x] `IOutboundTargetRegistry` provides `GetRequiredRoutingTarget<T>(string name)` and `IOutboundTopology`/`OutboundTopology` provide `GetRequiredRoutingTarget<T>()`, each returning `IOutboundRoutableTarget<T>` and throwing `OutboundTargetNotRoutableException` when the resolved target is not routable.
+- [x] Existing publishing behavior without an explicit routing key continues to work for all outbound target types.
+- [x] Automated tests need to be written, including topology-scoped publishing through `TopologyPublisher`.
+
+## Technical Details
+
+Add a contravariant `IOutboundRoutableTarget<in T>` in `Usf.Core.Messaging` whose three `PublishAsync` overloads mirror the metadata shapes already on `OutboundTarget<T>` (default `ICloudEvent` metadata, explicit `CloudEventMetadata`, and explicit `type`/`dataSchema`), but take a required `string routingKey` and a trailing `CancellationToken`. Direct calls through `IOutboundRoutableTarget<T>` should reject null, empty, or whitespace-only routing keys with `ArgumentException`; callers who want the target's default routing behavior should call the routing-key-free `OutboundTarget<T>.PublishAsync` surface instead. Remove the optional `string? routingKey` parameter from the public `OutboundTarget<T>.PublishAsync` overloads (added in #5/PR #27) so the base exposes only routing-key-free publishing, while its publish pipeline (`PublishCoreAsync`) and the protected `PublishTypedCloudEventAsync` keep `string? routingKey` so the non-routable path can pass `null` without transport-specific
+branching in `Usf.Core`. Make `OutboundTarget<T>.PublishCoreAsync` `protected` and implement the three required-`routingKey` overloads directly on `RabbitMqRoutingKeyOutboundTarget<TMessage>` (which keeps `: RabbitMqOutboundTarget<TMessage>`, declaring
+`, IOutboundRoutableTarget<TMessage>`), funneling them into `PublishCoreAsync` so `RabbitMqDirectOutboundTarget<TMessage>` and `RabbitMqTopicOutboundTarget<TMessage>` inherit the capability; leave `RabbitMqFanoutOutboundTarget<TMessage>` and `RabbitMqHeadersOutboundTarget<TMessage>` as plain `RabbitMqOutboundTarget<TMessage>` subclasses.
+
+In `MessagePublisher`, keep accepting `string? routingKey` for convenience. After resolving and type-checking the target to `OutboundTarget<T>`, branch on the routing key: when it is null or whitespace, publish through the routing-key-free overload (unchanged behavior); when it is non-blank, require the target to be `IOutboundRoutableTarget<T>` and publish through that, otherwise throw `OutboundTargetNotRoutableException`. Add `OutboundTargetNotRoutableException(string targetName, Type messageType)` to `Usf.Core.Messaging.Errors`, following the existing sealed, `Exception`-derived error family there, and reuse it everywhere a non-routable target is asked to route.
+
+Add routing-capable lookup helpers that reuse the existing target resolution and type-mismatch behavior, then fail with `OutboundTargetNotRoutableException` when the resolved target is not `IOutboundRoutableTarget<T>`: `GetRequiredRoutingTarget<T>(string name)` on `IOutboundTargetRegistry` and `GetRequiredRoutingTarget<T>()` on `IOutboundTopology`, implemented on `OutboundTopology` and the test-support registries, both returning `IOutboundRoutableTarget<T>`. Update tests in `Usf.Core.Tests` and the RabbitMQ unit/integration tests to cover capability exposure, publisher rejection for fanout/headers targets with non-blank routing keys, successful direct/topic routing, whitespace fallback behavior, and unchanged publishing when no explicit routing key is supplied. Include the same routing-key behavior through topology-scoped `TopologyPublisher` forwarding, especially non-routable rejection, direct/topic routing, and whitespace fallback. Migrate the existing base-level routing-key tests (
+e.g. `OutboundTargetTests.PublishAsync_ForwardsRoutingKeyToTypedDispatch` and the `RecordingTarget` double) onto the routable capability, since `OutboundTarget<T>` no longer
+accepts a routing key.
+
+Scope: only RabbitMQ has routing-capable targets today, so other transports are unaffected; capability enforcement lives at `IMessagePublisher` and the `GetRequiredRoutingTarget<T>` helpers. Publish-diagnostics changes are out of scope here and are tracked by #33.

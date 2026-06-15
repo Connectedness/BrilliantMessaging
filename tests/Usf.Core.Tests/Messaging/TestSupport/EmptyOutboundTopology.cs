@@ -19,6 +19,11 @@ public sealed class EmptyOutboundTopology : IOutboundTopology
         throw new OutboundTargetNotFoundException(typeof(T));
     }
 
+    public IOutboundRoutableTarget<T> GetRequiredRoutingTarget<T>()
+    {
+        throw new OutboundTargetNotFoundException(typeof(T));
+    }
+
     public bool TryGetTarget(Type messageType, out OutboundTarget? target)
     {
         target = null;
@@ -31,6 +36,11 @@ public sealed class EmptyOutboundTopology : IOutboundTopology
     }
 
     public OutboundTarget<T> GetRequiredTarget<T>(string name)
+    {
+        throw new OutboundTargetNotFoundException(name);
+    }
+
+    public IOutboundRoutableTarget<T> GetRequiredRoutingTarget<T>(string name)
     {
         throw new OutboundTargetNotFoundException(name);
     }

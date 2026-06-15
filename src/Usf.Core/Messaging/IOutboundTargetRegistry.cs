@@ -6,5 +6,7 @@ public interface IOutboundTargetRegistry
 
     OutboundTarget<T> GetRequiredTarget<T>(string name);
 
+    IOutboundRoutableTarget<T> GetRequiredRoutingTarget<T>(string name);
+
     bool TryGetTarget(string name, out OutboundTarget? target);
 }

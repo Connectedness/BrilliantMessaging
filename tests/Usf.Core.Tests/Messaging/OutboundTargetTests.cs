@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Usf.Abstractions;
+using Usf.Core.Messaging;
 using Usf.Core.Messaging.Errors;
 using Usf.Core.Tests.Messaging.TestSupport;
 using Xunit;
@@ -27,6 +28,27 @@ public sealed class OutboundTargetTests
         );
 
         target.RoutingKeys.Should().ContainSingle().Which.Should().Be("target.route");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task RoutablePublishAsync_RejectsBlankRoutingKey(string? routingKey)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        IOutboundRoutableTarget<SampleMessage> target = new RecordingTarget<SampleMessage>(
+            "default",
+            CloudEventsTestFactory.CreateSerializer()
+        );
+
+        var action = async () => await target.PublishAsync(
+            new SampleMessage("hello"),
+            routingKey!,
+            cancellationToken
+        );
+
+        await action.Should().ThrowAsync<ArgumentException>().WithParameterName("routingKey");
     }
 
     [Fact]
