@@ -31,7 +31,8 @@ public sealed class OutboundTargetDiagnosticsTests
         var activity = recorder.StartedActivities.Should().ContainSingle().Which;
         activity.OperationName.Should().Be(PublishActivityName);
         activity.Kind.Should().Be(ActivityKind.Producer);
-        activity.GetTagItem(OutboundDiagnostics.MessageTypeTagName)
+        activity
+           .GetTagItem(OutboundDiagnostics.MessageTypeTagName)
            .Should().Be(CloudEventsTestFactory.SampleDiscriminator);
         activity.GetTagItem(OutboundDiagnostics.TargetNameTagName).Should().Be("default");
         activity.GetTagItem(OutboundDiagnostics.TransportNameTagName).Should().Be("test");
@@ -60,7 +61,8 @@ public sealed class OutboundTargetDiagnosticsTests
         var activity = recorder.StartedActivities.Should().ContainSingle().Which;
         activity.OperationName.Should().Be(PublishActivityName);
         // The raw path derives the message-type tag from the target rather than the typed discriminator.
-        activity.GetTagItem(OutboundDiagnostics.MessageTypeTagName)
+        activity
+           .GetTagItem(OutboundDiagnostics.MessageTypeTagName)
            .Should().Be(CloudEventsTestFactory.SampleDiscriminator);
         activity.GetTagItem(OutboundDiagnostics.TargetNameTagName).Should().Be("raw");
         activity.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
@@ -81,7 +83,8 @@ public sealed class OutboundTargetDiagnosticsTests
 
         await publisher.PublishMessageAsync(new SampleMessage("hello"), target, cancellationToken: cancellationToken);
 
-        recorder.StartedActivities.Should().ContainSingle()
+        recorder
+           .StartedActivities.Should().ContainSingle()
            .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
         recorder.Attempts.Should().ContainSingle();
         recorder.Durations.Should().ContainSingle();
@@ -98,11 +101,58 @@ public sealed class OutboundTargetDiagnosticsTests
 
         await publisher.PublishRawAsync(CreateSerializedMessage(), target, cancellationToken);
 
-        recorder.StartedActivities.Should().ContainSingle()
+        recorder
+           .StartedActivities.Should().ContainSingle()
            .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
         recorder.Attempts.Should().ContainSingle();
         recorder.Durations.Should().ContainSingle();
         recorder.Failures.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DirectRoutingKeyPublish_RecordsSingleInstrumentedPublish()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var recorder = new OutboundDiagnosticsRecorder();
+        var target = new RecordingTarget<SampleMessage>("default", CloudEventsTestFactory.CreateSerializer());
+
+        await target.PublishAsync(new SampleMessage("hello"), "orders.created", cancellationToken);
+
+        var activity = recorder.StartedActivities.Should().ContainSingle().Which;
+        activity.OperationName.Should().Be(PublishActivityName);
+        activity
+           .GetTagItem(OutboundDiagnostics.MessageTypeTagName)
+           .Should().Be(CloudEventsTestFactory.SampleDiscriminator);
+        activity.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
+
+        recorder.Attempts.Should().ContainSingle();
+        recorder.Durations.Should().ContainSingle();
+        recorder.Failures.Should().BeEmpty();
+        target.RoutingKeys.Should().ContainSingle().Which.Should().Be("orders.created");
+    }
+
+    [Fact]
+    public async Task PublisherMediatedRoutingKeyPublish_RecordsSinglePublishWithoutNestingOrDoubleCounting()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var recorder = new OutboundDiagnosticsRecorder();
+        var target = new RecordingTarget<SampleMessage>("default", CloudEventsTestFactory.CreateSerializer());
+        var publisher = new MessagePublisher(EmptyTopology.Create());
+
+        await publisher.PublishMessageAsync(
+            new SampleMessage("hello"),
+            target,
+            "orders.created",
+            cancellationToken
+        );
+
+        recorder
+           .StartedActivities.Should().ContainSingle()
+           .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
+        recorder.Attempts.Should().ContainSingle();
+        recorder.Durations.Should().ContainSingle();
+        recorder.Failures.Should().BeEmpty();
+        target.RoutingKeys.Should().ContainSingle().Which.Should().Be("orders.created");
     }
 
     [Fact]
@@ -122,7 +172,8 @@ public sealed class OutboundTargetDiagnosticsTests
         recorder.Durations.Should().ContainSingle().Which.Should().Contain(
             new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "cancelled")
         );
-        recorder.StartedActivities.Should().ContainSingle()
+        recorder
+           .StartedActivities.Should().ContainSingle()
            .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("cancelled");
     }
 
@@ -143,7 +194,8 @@ public sealed class OutboundTargetDiagnosticsTests
             new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "failure")
         );
         failure.Should().NotContain(tag => tag.Key == OutboundDiagnostics.DeliveryFailureReasonTagName);
-        recorder.StartedActivities.Should().ContainSingle()
+        recorder
+           .StartedActivities.Should().ContainSingle()
            .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("failure");
     }
 
@@ -172,7 +224,8 @@ public sealed class OutboundTargetDiagnosticsTests
         failure.Should().Contain(
             new KeyValuePair<string, object?>(OutboundDiagnostics.DeliveryFailureReasonTagName, "nacked")
         );
-        recorder.StartedActivities.Should().ContainSingle()
+        recorder
+           .StartedActivities.Should().ContainSingle()
            .Which.GetTagItem(OutboundDiagnostics.DeliveryFailureReasonTagName).Should().Be("nacked");
     }
 
