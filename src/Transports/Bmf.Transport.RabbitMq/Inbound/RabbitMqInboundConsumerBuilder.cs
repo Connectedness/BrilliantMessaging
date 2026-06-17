@@ -5,6 +5,10 @@ using Bmf.Core.Messaging.Inbound;
 
 namespace Bmf.Transport.RabbitMq.Inbound;
 
+/// <summary>
+/// Fluent builder for a RabbitMQ consumer on a single queue. It configures the prefetch, concurrency, channel
+/// count, channel group, message inspector, and body-copy behaviour, and registers one or more typed handlers.
+/// </summary>
 public sealed class RabbitMqInboundConsumerBuilder
 {
     private readonly List<RabbitMqInboundHandlerDefinition> _handlers = [];
@@ -16,11 +20,22 @@ public sealed class RabbitMqInboundConsumerBuilder
     private Type _inspectorType = typeof(CloudEventsInboundMessageInspector);
     private ushort _prefetchCount = 1;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RabbitMqInboundConsumerBuilder" /> class for the given queue.
+    /// </summary>
+    /// <param name="queueName">The name of the queue to consume.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="queueName" /> is null or whitespace.</exception>
     public RabbitMqInboundConsumerBuilder(string queueName)
     {
         _queueName = RequireText(queueName, nameof(queueName));
     }
 
+    /// <summary>
+    /// Sets the per-consumer prefetch (QoS) count.
+    /// </summary>
+    /// <param name="prefetchCount">The prefetch count; must be greater than zero.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="prefetchCount" /> is zero.</exception>
     public RabbitMqInboundConsumerBuilder PrefetchCount(ushort prefetchCount)
     {
         if (prefetchCount == 0)
@@ -36,6 +51,12 @@ public sealed class RabbitMqInboundConsumerBuilder
         return this;
     }
 
+    /// <summary>
+    /// Sets the consumer dispatch concurrency (the number of deliveries dispatched in parallel per channel).
+    /// </summary>
+    /// <param name="consumerDispatchConcurrency">The dispatch concurrency; must be greater than zero.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="consumerDispatchConcurrency" /> is zero.</exception>
     public RabbitMqInboundConsumerBuilder Concurrency(ushort consumerDispatchConcurrency)
     {
         if (consumerDispatchConcurrency == 0)
@@ -51,6 +72,12 @@ public sealed class RabbitMqInboundConsumerBuilder
         return this;
     }
 
+    /// <summary>
+    /// Sets the number of channels the consumer spreads its deliveries across.
+    /// </summary>
+    /// <param name="channelCount">The channel count; must be greater than zero.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="channelCount" /> is less than one.</exception>
     public RabbitMqInboundConsumerBuilder ChannelCount(int channelCount)
     {
         if (channelCount < 1)
@@ -66,12 +93,24 @@ public sealed class RabbitMqInboundConsumerBuilder
         return this;
     }
 
+    /// <summary>
+    /// Consumes through the named inbound channel group instead of an implicit per-consumer group.
+    /// </summary>
+    /// <param name="channelGroupName">The name of the channel group to use.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="channelGroupName" /> is null or whitespace.</exception>
     public RabbitMqInboundConsumerBuilder UseChannelGroup(string channelGroupName)
     {
         _channelGroupName = RequireText(channelGroupName, nameof(channelGroupName));
         return this;
     }
 
+    /// <summary>
+    /// Overrides the inbound message inspector with <typeparamref name="TInspector" /> instead of the default
+    /// CloudEvents inspector.
+    /// </summary>
+    /// <typeparam name="TInspector">The inspector type to use.</typeparam>
+    /// <returns>The same builder for chaining.</returns>
     public RabbitMqInboundConsumerBuilder UseInspector<TInspector>()
         where TInspector : class, IInboundMessageInspector
     {

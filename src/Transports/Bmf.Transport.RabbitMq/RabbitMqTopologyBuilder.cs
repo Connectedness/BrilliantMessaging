@@ -453,6 +453,11 @@ public sealed class RabbitMqTopologyBuilder : IRabbitMqOutboundTopologyBuilder, 
         return this;
     }
 
+    /// <summary>
+    /// Builds the immutable <see cref="RabbitMqTopologyConfiguration" /> from the configured exchanges, queues,
+    /// bindings, channel groups, targets, and consumers.
+    /// </summary>
+    /// <returns>The compiled topology configuration.</returns>
     public RabbitMqTopologyConfiguration Build()
     {
         return new RabbitMqTopologyConfiguration(

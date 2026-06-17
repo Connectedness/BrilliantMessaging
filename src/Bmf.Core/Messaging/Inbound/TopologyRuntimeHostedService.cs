@@ -18,6 +18,11 @@ public sealed class TopologyRuntimeHostedService : IHostedService
 {
     private readonly IReadOnlyList<ITopologyRuntime> _runtimes;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TopologyRuntimeHostedService" /> class.
+    /// </summary>
+    /// <param name="runtimes">The registered topology runtimes to drive.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="runtimes" /> is <see langword="null" />.</exception>
     public TopologyRuntimeHostedService(IEnumerable<ITopologyRuntime> runtimes)
     {
         if (runtimes is null)
@@ -28,6 +33,11 @@ public sealed class TopologyRuntimeHostedService : IHostedService
         _runtimes = runtimes.ToArray();
     }
 
+    /// <summary>
+    /// Starts each registered topology runtime in registration order.
+    /// </summary>
+    /// <param name="cancellationToken">A token to observe while starting.</param>
+    /// <returns>A task that completes when all runtimes have started.</returns>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         foreach (var runtime in _runtimes)
@@ -36,6 +46,12 @@ public sealed class TopologyRuntimeHostedService : IHostedService
         }
     }
 
+    /// <summary>
+    /// Stops each registered topology runtime in reverse start order, making a best-effort attempt to stop every
+    /// runtime and aggregating any failures.
+    /// </summary>
+    /// <param name="cancellationToken">A token to observe while stopping.</param>
+    /// <returns>A task that completes when all runtimes have been stopped.</returns>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         // Stop runtimes sequentially in reverse start order so each transport can drain in dependency order. A

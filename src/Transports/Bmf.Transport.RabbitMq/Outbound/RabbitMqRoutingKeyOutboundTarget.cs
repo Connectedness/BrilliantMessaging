@@ -7,12 +7,32 @@ using Bmf.Core.Messaging.Outbound;
 
 namespace Bmf.Transport.RabbitMq.Outbound;
 
+/// <summary>
+/// The base for routing-key-based RabbitMQ outbound targets (direct and topic exchanges). It implements
+/// <see cref="IOutboundRoutableTarget{TMessage}" />, exposing per-publish routing-key overloads, and resolves the
+/// routing key from either a fixed key or a per-message factory supplied at construction.
+/// </summary>
+/// <typeparam name="TMessage">The message type the target publishes.</typeparam>
 public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage>
     : RabbitMqOutboundTarget<TMessage>, IOutboundRoutableTarget<TMessage>
 {
     private readonly string? _constantRoutingKey;
     private readonly Func<TMessage, string>? _routingKeyFactory;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RabbitMqRoutingKeyOutboundTarget{TMessage}" /> class. Exactly
+    /// one of <paramref name="constantRoutingKey" /> or <paramref name="routingKeyFactory" /> must be supplied.
+    /// </summary>
+    /// <param name="name">The logical name of the target.</param>
+    /// <param name="serializer">The serializer used to turn messages into CloudEvents envelopes.</param>
+    /// <param name="messageContractRegistry">The registry used to resolve discriminators and data schemas.</param>
+    /// <param name="topologyName">The name of the topology the target belongs to.</param>
+    /// <param name="channelGroup">The channel group that supplies publish channels.</param>
+    /// <param name="exchangeName">The name of the exchange messages are published to.</param>
+    /// <param name="isMandatory">Whether published messages are sent with the AMQP mandatory flag.</param>
+    /// <param name="constantRoutingKey">A fixed routing key, or <see langword="null" /> when a factory is used.</param>
+    /// <param name="routingKeyFactory">A per-message routing-key factory, or <see langword="null" /> when a fixed key is used.</param>
+    /// <exception cref="ArgumentException">Thrown when neither or both of the routing-key sources are supplied.</exception>
     protected RabbitMqRoutingKeyOutboundTarget(
         string name,
         IMessageSerializer serializer,
@@ -40,6 +60,9 @@ public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage>
         _routingKeyFactory = routingKeyFactory;
     }
 
+    /// <inheritdoc />
+    /// <exception cref="ArgumentException">Thrown when <paramref name="routingKey" /> is null or whitespace.</exception>
+    /// <exception cref="CloudEventMetadataException">Thrown when <paramref name="message" /> does not implement <see cref="ICloudEvent" />.</exception>
     public Task PublishAsync(
         TMessage message,
         string routingKey,
@@ -60,6 +83,8 @@ public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage>
         return PublishCoreAsync(message, metadata, type: null, dataSchema: null, routingKey, cancellationToken);
     }
 
+    /// <inheritdoc />
+    /// <exception cref="ArgumentException">Thrown when <paramref name="routingKey" /> is null or whitespace.</exception>
     public Task PublishAsync(
         TMessage message,
         in CloudEventMetadata metadata,
@@ -71,6 +96,8 @@ public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage>
         return PublishCoreAsync(message, metadata, type: null, dataSchema: null, routingKey, cancellationToken);
     }
 
+    /// <inheritdoc />
+    /// <exception cref="ArgumentException">Thrown when <paramref name="routingKey" /> is null or whitespace.</exception>
     public Task PublishAsync(
         TMessage message,
         in CloudEventMetadata metadata,
@@ -84,6 +111,7 @@ public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage>
         return PublishCoreAsync(message, metadata, type, dataSchema, routingKey, cancellationToken);
     }
 
+    /// <inheritdoc />
     protected override string GetRawRoutingKey()
     {
         return _constantRoutingKey ??
@@ -92,6 +120,7 @@ public abstract class RabbitMqRoutingKeyOutboundTarget<TMessage>
                );
     }
 
+    /// <inheritdoc />
     protected override string GetRoutingKey(TMessage message)
     {
         if (_constantRoutingKey is not null)

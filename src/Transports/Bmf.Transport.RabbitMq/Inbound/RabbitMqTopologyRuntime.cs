@@ -33,6 +33,13 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
     private int _started;
     private CancellationTokenSource? _stoppingCancellationTokenSource;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RabbitMqTopologyRuntime" /> class.
+    /// </summary>
+    /// <param name="topology">The topology whose consumers this runtime drives.</param>
+    /// <param name="serviceScopeFactory">The factory used to create a DI scope per delivery.</param>
+    /// <param name="logger">An optional logger; defaults to a no-op logger.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="topology" /> or <paramref name="serviceScopeFactory" /> is <see langword="null" />.</exception>
     public RabbitMqTopologyRuntime(
         RabbitMqTopology topology,
         IServiceScopeFactory serviceScopeFactory,
@@ -44,8 +51,15 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
         _logger = logger ?? NullLogger<RabbitMqTopologyRuntime>.Instance;
     }
 
+    /// <inheritdoc />
     public string TopologyName => _topology.Name;
 
+    /// <summary>
+    /// Opens the consumer channels, applies QoS, and starts consuming each queue. Subsequent calls are no-ops
+    /// while the runtime is already started.
+    /// </summary>
+    /// <param name="cancellationToken">A token to observe while starting.</param>
+    /// <returns>A task that completes once all consumers have started.</returns>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.Exchange(ref _started, 1) != 0)
@@ -97,6 +111,12 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
         }
     }
 
+    /// <summary>
+    /// Cancels the consumers, drains in-flight deliveries within the topology's shutdown timeout (requeuing any
+    /// that do not finish in time), and disposes the consumer channels. The topology itself is not disposed.
+    /// </summary>
+    /// <param name="cancellationToken">A token to observe while stopping.</param>
+    /// <returns>A task that completes once the runtime has stopped.</returns>
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.Exchange(ref _started, 0) == 0)

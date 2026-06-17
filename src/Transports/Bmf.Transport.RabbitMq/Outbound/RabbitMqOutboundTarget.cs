@@ -10,6 +10,21 @@ using Bmf.Core.Messaging.Outbound;
 
 namespace Bmf.Transport.RabbitMq.Outbound;
 
+/// <summary>
+/// The RabbitMQ base for a typed outbound target. It extends the Core <see cref="OutboundTarget{TMessage}" />
+/// with the RabbitMQ dispatch: it acquires a channel from the channel group, applies the CloudEvents v1.0 AMQP
+/// binary content-mode binding, publishes to the configured exchange, and — when the channel group uses
+/// publisher confirms — translates nacks, unroutable returns, and confirm timeouts into a
+/// <see cref="MessageDeliveryException" />.
+/// </summary>
+/// <remarks>
+/// Subclasses supply only the routing strategy by overriding the routing-key and route-header hooks; the base
+/// class owns serialization (inherited from the Core target), the AMQP header binding, channel acquisition, and
+/// confirm handling. <see cref="GetRawRoutingKey" /> and <see cref="GetRawRouteHeaders" /> serve the raw publish
+/// path, while <see cref="ResolveRoutingKey" />/<see cref="GetRoutingKey" /> and <see cref="GetRouteHeaders" />
+/// serve the typed path.
+/// </remarks>
+/// <typeparam name="TMessage">The message type the target publishes.</typeparam>
 public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage>
 {
     /// <summary>
@@ -21,6 +36,17 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
     private readonly string _exchangeName;
     private readonly bool _isMandatory;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RabbitMqOutboundTarget{TMessage}" /> class.
+    /// </summary>
+    /// <param name="name">The logical name of the target.</param>
+    /// <param name="serializer">The serializer used to turn messages into CloudEvents envelopes.</param>
+    /// <param name="messageContractRegistry">The registry used to resolve discriminators and data schemas.</param>
+    /// <param name="topologyName">The name of the topology the target belongs to.</param>
+    /// <param name="channelGroup">The channel group that supplies publish channels.</param>
+    /// <param name="exchangeName">The name of the exchange messages are published to.</param>
+    /// <param name="isMandatory">Whether published messages are sent with the AMQP mandatory flag.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="channelGroup" /> or <paramref name="exchangeName" /> is <see langword="null" />.</exception>
     protected RabbitMqOutboundTarget(
         string name,
         IMessageSerializer serializer,
@@ -37,6 +63,7 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
         _isMandatory = isMandatory;
     }
 
+    /// <inheritdoc />
     protected sealed override Task PublishSerializedCoreAsync(
         SerializedMessage message,
         CancellationToken cancellationToken
@@ -50,6 +77,7 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
         );
     }
 
+    /// <inheritdoc />
     protected sealed override Task PublishTypedCloudEventAsync(
         TMessage message,
         CloudEventEnvelope envelope,
@@ -65,26 +93,55 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
         );
     }
 
+    /// <summary>
+    /// Returns the routing key for the raw (already-serialized) publish path. The base returns an empty key;
+    /// routing-key targets override it.
+    /// </summary>
+    /// <returns>The routing key to publish with.</returns>
     protected virtual string GetRawRoutingKey()
     {
         return string.Empty;
     }
 
+    /// <summary>
+    /// Returns the route headers for the raw publish path. The base returns no headers; headers-exchange targets
+    /// override it.
+    /// </summary>
+    /// <returns>The headers to attach for routing.</returns>
     protected virtual IReadOnlyDictionary<string, object?> GetRawRouteHeaders()
     {
         return EmptyHeaders.Instance;
     }
 
+    /// <summary>
+    /// Returns the routing key derived from a message for the typed publish path. The base returns an empty key;
+    /// routing-key targets override it.
+    /// </summary>
+    /// <param name="message">The message being published.</param>
+    /// <returns>The routing key to publish with.</returns>
     protected virtual string GetRoutingKey(TMessage message)
     {
         return string.Empty;
     }
 
+    /// <summary>
+    /// Resolves the effective routing key for the typed publish path, preferring an explicit per-publish key over
+    /// the message-derived <see cref="GetRoutingKey" />.
+    /// </summary>
+    /// <param name="message">The message being published.</param>
+    /// <param name="routingKey">The explicit per-publish routing key, or <see langword="null" />.</param>
+    /// <returns>The routing key to publish with.</returns>
     protected virtual string ResolveRoutingKey(TMessage message, string? routingKey)
     {
         return string.IsNullOrWhiteSpace(routingKey) ? GetRoutingKey(message) : routingKey!;
     }
 
+    /// <summary>
+    /// Returns the route headers derived from a message for the typed publish path. The base returns no headers;
+    /// headers-exchange targets override it.
+    /// </summary>
+    /// <param name="message">The message being published.</param>
+    /// <returns>The headers to attach for routing.</returns>
     protected virtual IReadOnlyDictionary<string, object?> GetRouteHeaders(TMessage message)
     {
         return EmptyHeaders.Instance;

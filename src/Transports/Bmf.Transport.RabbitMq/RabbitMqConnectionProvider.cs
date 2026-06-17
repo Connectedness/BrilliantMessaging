@@ -8,6 +8,10 @@ using RabbitMQ.Client.Events;
 
 namespace Bmf.Transport.RabbitMq;
 
+/// <summary>
+/// Lazily opens and caches a single RabbitMQ connection, subscribing to its lifecycle events for logging. A
+/// failed open attempt is not cached, so the next acquisition retries.
+/// </summary>
 public sealed class RabbitMqConnectionProvider : IAsyncDisposable, IDisposable
 {
     private readonly Func<CancellationToken, Task<IConnection>> _createConnectionAsync;
@@ -24,6 +28,12 @@ public sealed class RabbitMqConnectionProvider : IAsyncDisposable, IDisposable
     private Task<IConnection>? _connectionTask;
     private bool _disposed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RabbitMqConnectionProvider" /> class.
+    /// </summary>
+    /// <param name="createConnectionAsync">A factory that opens a new connection.</param>
+    /// <param name="logger">An optional logger for connection lifecycle events; defaults to a no-op logger.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="createConnectionAsync" /> is <see langword="null" />.</exception>
     public RabbitMqConnectionProvider(
         Func<CancellationToken, Task<IConnection>> createConnectionAsync,
         ILogger? logger = null
@@ -34,6 +44,10 @@ public sealed class RabbitMqConnectionProvider : IAsyncDisposable, IDisposable
         _logger = logger ?? NullLogger.Instance;
     }
 
+    /// <summary>
+    /// Asynchronously disposes the provider, disposing the cached connection if one was opened.
+    /// </summary>
+    /// <returns>A task that completes once the connection is disposed.</returns>
     public async ValueTask DisposeAsync()
     {
         await _semaphore.WaitAsync(CancellationToken.None).ConfigureAwait(false);
@@ -68,6 +82,9 @@ public sealed class RabbitMqConnectionProvider : IAsyncDisposable, IDisposable
         }
     }
 
+    /// <summary>
+    /// Disposes the provider, disposing the cached connection if one was opened.
+    /// </summary>
     public void Dispose()
     {
         _semaphore.Wait();
@@ -94,6 +111,12 @@ public sealed class RabbitMqConnectionProvider : IAsyncDisposable, IDisposable
         }
     }
 
+    /// <summary>
+    /// Gets the cached connection, opening it on first call. A failed open is not cached, so a later call retries.
+    /// </summary>
+    /// <param name="cancellationToken">A token to observe while opening the connection.</param>
+    /// <returns>The connection.</returns>
+    /// <exception cref="ObjectDisposedException">Thrown when the provider has been disposed.</exception>
     public async Task<IConnection> GetConnectionAsync(CancellationToken cancellationToken)
     {
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);

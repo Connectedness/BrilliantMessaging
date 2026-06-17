@@ -2,8 +2,24 @@ using System;
 
 namespace Bmf.Core.Messaging.Outbound;
 
+/// <summary>
+/// Thrown when a transport accepts a publish but the broker subsequently fails to deliver it — for example a
+/// negative acknowledgement (nack), an unroutable return, or a confirm timeout. The specific cause is given by
+/// <see cref="Reason" />.
+/// </summary>
 public sealed class MessageDeliveryException : Exception
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MessageDeliveryException" /> class.
+    /// </summary>
+    /// <param name="targetName">The name of the target the delivery failed for.</param>
+    /// <param name="reason">The reason delivery failed.</param>
+    /// <param name="innerException">
+    /// The underlying exception. Required for every reason except
+    /// <see cref="MessageDeliveryFailureReason.Timeout" />, which must not provide one.
+    /// </param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="targetName" /> is null or whitespace, or when <paramref name="innerException" /> is inconsistent with <paramref name="reason" />.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="reason" /> is not a defined value.</exception>
     public MessageDeliveryException(
         string targetName,
         MessageDeliveryFailureReason reason,
@@ -15,8 +31,14 @@ public sealed class MessageDeliveryException : Exception
         Reason = reason;
     }
 
+    /// <summary>
+    /// Gets the name of the target the delivery failed for.
+    /// </summary>
     public string TargetName { get; }
 
+    /// <summary>
+    /// Gets the reason the delivery failed.
+    /// </summary>
     public MessageDeliveryFailureReason Reason { get; }
 
     private static string CreateMessage(

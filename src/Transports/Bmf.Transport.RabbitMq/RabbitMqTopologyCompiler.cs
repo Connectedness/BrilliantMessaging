@@ -33,6 +33,14 @@ public sealed class RabbitMqTopologyCompiler
     private readonly ILoggerFactory _loggerFactory;
     private readonly Func<Type, IMessageSerializer?> _resolveSerializer;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RabbitMqTopologyCompiler" /> class.
+    /// </summary>
+    /// <param name="canonicalMessageContracts">The canonical message-contract registry the topology dialect layers over.</param>
+    /// <param name="loggerFactory">The factory used to create loggers for compiled components.</param>
+    /// <param name="resolveSerializer">A function that resolves a serializer instance for a serializer type, or <see langword="null" /> for the default.</param>
+    /// <param name="isServiceRegistered">A predicate that reports whether a handler/inspector/deserializer type is already registered.</param>
+    /// <exception cref="ArgumentNullException">Thrown when any argument is <see langword="null" />.</exception>
     public RabbitMqTopologyCompiler(
         IMessageContractRegistry canonicalMessageContracts,
         ILoggerFactory loggerFactory,
@@ -47,6 +55,15 @@ public sealed class RabbitMqTopologyCompiler
         _isServiceRegistered = isServiceRegistered ?? throw new ArgumentNullException(nameof(isServiceRegistered));
     }
 
+    /// <summary>
+    /// Validates and compiles a topology configuration into a runnable <see cref="RabbitMqTopology" />.
+    /// </summary>
+    /// <param name="topologyName">The name of the topology being compiled.</param>
+    /// <param name="configuration">The topology configuration to compile.</param>
+    /// <param name="connectionProvider">The connection provider the compiled topology will use.</param>
+    /// <returns>The compiled topology.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configuration" /> or <paramref name="connectionProvider" /> is <see langword="null" />.</exception>
+    /// <exception cref="TopologyValidationException">Thrown when the configuration fails validation.</exception>
     public RabbitMqTopology Compile(
         string topologyName,
         RabbitMqTopologyConfiguration configuration,

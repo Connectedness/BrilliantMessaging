@@ -18,11 +18,17 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
 {
     private readonly RabbitMqTopology _topology;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RabbitMqTopologyProvisioner" /> class.
+    /// </summary>
+    /// <param name="topology">The topology whose broker resources are provisioned.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="topology" /> is <see langword="null" />.</exception>
     public RabbitMqTopologyProvisioner(RabbitMqTopology topology)
     {
         _topology = topology ?? throw new ArgumentNullException(nameof(topology));
     }
 
+    /// <inheritdoc />
     public async Task ProvisionAsync(CancellationToken cancellationToken = default)
     {
         var outcome = "success";

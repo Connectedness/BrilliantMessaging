@@ -5,12 +5,24 @@ using System.Linq;
 
 namespace Bmf.Core.Messaging;
 
+/// <summary>
+/// The default immutable <see cref="IMessageContractRegistry" />, built from the type-to-discriminator,
+/// discriminator-to-type, and type-to-data-schema mappings produced by <see cref="MessageContractRegistryBuilder" />.
+/// </summary>
 public sealed class MessageContractRegistry : IMessageContractRegistry
 {
     private readonly IReadOnlyDictionary<Type, string> _dataSchemasByMessageType;
     private readonly IReadOnlyDictionary<Type, string> _discriminatorsByMessageType;
     private readonly IReadOnlyDictionary<string, Type> _messageTypesByDiscriminator;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MessageContractRegistry" /> class. The supplied dictionaries
+    /// are copied, so later mutation of the originals does not affect the registry.
+    /// </summary>
+    /// <param name="discriminatorsByMessageType">The canonical outbound discriminator for each message type.</param>
+    /// <param name="messageTypesByDiscriminator">The message type each inbound discriminator (canonical or alias) maps to.</param>
+    /// <param name="dataSchemasByMessageType">The data schema for each message type that declares one.</param>
+    /// <exception cref="ArgumentNullException">Thrown when any argument is <see langword="null" />.</exception>
     public MessageContractRegistry(
         IDictionary<Type, string> discriminatorsByMessageType,
         IDictionary<string, Type> messageTypesByDiscriminator,
@@ -47,8 +59,12 @@ public sealed class MessageContractRegistry : IMessageContractRegistry
         ).ToArray();
     }
 
+    /// <summary>
+    /// Gets the registered message types, ordered by full type name.
+    /// </summary>
     public IReadOnlyCollection<Type> RegisteredMessageTypes { get; }
 
+    /// <inheritdoc />
     public string GetDiscriminator(Type messageType)
     {
         if (messageType is null)
@@ -64,6 +80,7 @@ public sealed class MessageContractRegistry : IMessageContractRegistry
         return discriminator;
     }
 
+    /// <inheritdoc />
     public bool TryGetDiscriminator(Type messageType, out string? discriminator)
     {
         if (messageType is null)
@@ -74,6 +91,7 @@ public sealed class MessageContractRegistry : IMessageContractRegistry
         return _discriminatorsByMessageType.TryGetValue(messageType, out discriminator);
     }
 
+    /// <inheritdoc />
     public string? GetDataSchema(Type messageType)
     {
         if (messageType is null)
@@ -84,6 +102,7 @@ public sealed class MessageContractRegistry : IMessageContractRegistry
         return _dataSchemasByMessageType.TryGetValue(messageType, out var dataSchema) ? dataSchema : null;
     }
 
+    /// <inheritdoc />
     public IReadOnlyCollection<string> GetInboundDiscriminators(Type messageType)
     {
         if (messageType is null)
@@ -98,6 +117,7 @@ public sealed class MessageContractRegistry : IMessageContractRegistry
            .ToArray();
     }
 
+    /// <inheritdoc />
     public bool TryResolveType(string discriminator, out Type? messageType)
     {
         if (string.IsNullOrWhiteSpace(discriminator))
@@ -108,6 +128,13 @@ public sealed class MessageContractRegistry : IMessageContractRegistry
         return _messageTypesByDiscriminator.TryGetValue(discriminator, out messageType);
     }
 
+    /// <summary>
+    /// Attempts to get the data schema registered for the given message type.
+    /// </summary>
+    /// <param name="messageType">The message type to resolve.</param>
+    /// <param name="dataSchema">When this method returns, the registered data schema, or <see langword="null" /> when none was registered.</param>
+    /// <returns><see langword="true" /> when a data schema is registered; otherwise <see langword="false" />.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="messageType" /> is <see langword="null" />.</exception>
     public bool TryGetDataSchema(Type messageType, out string? dataSchema)
     {
         if (messageType is null)

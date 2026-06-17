@@ -7,18 +7,33 @@ using Bmf.Abstractions;
 
 namespace Bmf.Core.Messaging.Inbound;
 
+/// <summary>
+/// The default <see cref="IInboundMessageInspector" />. It reads the CloudEvents binary-content-mode header set
+/// (the <c>cloudEvents:</c>-prefixed headers), resolves the message type from the <c>type</c> attribute via the
+/// contract registry, reconstructs the <see cref="CloudEventEnvelope" />, and exposes it through the context
+/// items.
+/// </summary>
 public sealed class CloudEventsInboundMessageInspector : IInboundMessageInspector
 {
+    /// <summary>
+    /// The header-name prefix the CloudEvents binary-content-mode attributes are carried under.
+    /// </summary>
     public const string CloudEventsHeaderPrefix = "cloudEvents:";
 
     private readonly IMessageContractRegistry _messageContractRegistry;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CloudEventsInboundMessageInspector" /> class.
+    /// </summary>
+    /// <param name="messageContractRegistry">The registry used to resolve the message type from the CloudEvents discriminator.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="messageContractRegistry" /> is <see langword="null" />.</exception>
     public CloudEventsInboundMessageInspector(IMessageContractRegistry messageContractRegistry)
     {
         _messageContractRegistry = messageContractRegistry ??
                                    throw new ArgumentNullException(nameof(messageContractRegistry));
     }
 
+    /// <inheritdoc />
     public ValueTask<InboundMessageInspectionResult> InspectAsync(
         TransportMessage transportMessage,
         CancellationToken cancellationToken = default

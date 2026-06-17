@@ -12,12 +12,27 @@ namespace Bmf.Core.Messaging.Outbound;
 /// </summary>
 public interface IOutboundRoutableTarget<in T>
 {
+    /// <summary>
+    /// Publishes a message with an explicit routing key, deriving the CloudEvents metadata from the message.
+    /// </summary>
+    /// <param name="message">The message to publish.</param>
+    /// <param name="routingKey">The transport routing key; must be non-blank.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the publish to complete.</param>
+    /// <returns>A task that completes when the transport has accepted the message.</returns>
     Task PublishAsync(
         T message,
         string routingKey,
         CancellationToken cancellationToken = default
     );
 
+    /// <summary>
+    /// Publishes a message with an explicit routing key and explicit CloudEvents metadata.
+    /// </summary>
+    /// <param name="message">The message to publish.</param>
+    /// <param name="metadata">The CloudEvents metadata to attach.</param>
+    /// <param name="routingKey">The transport routing key; must be non-blank.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the publish to complete.</param>
+    /// <returns>A task that completes when the transport has accepted the message.</returns>
     Task PublishAsync(
         T message,
         in CloudEventMetadata metadata,
@@ -25,6 +40,17 @@ public interface IOutboundRoutableTarget<in T>
         CancellationToken cancellationToken = default
     );
 
+    /// <summary>
+    /// Publishes a message with an explicit routing key, CloudEvents metadata, and explicit <c>type</c>/
+    /// <c>dataschema</c> attributes.
+    /// </summary>
+    /// <param name="message">The message to publish.</param>
+    /// <param name="metadata">The CloudEvents metadata to attach.</param>
+    /// <param name="type">The CloudEvents <c>type</c> attribute to use.</param>
+    /// <param name="dataSchema">The CloudEvents <c>dataschema</c> attribute to use, or <see langword="null" /> for none.</param>
+    /// <param name="routingKey">The transport routing key; must be non-blank.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the publish to complete.</param>
+    /// <returns>A task that completes when the transport has accepted the message.</returns>
     Task PublishAsync(
         T message,
         in CloudEventMetadata metadata,

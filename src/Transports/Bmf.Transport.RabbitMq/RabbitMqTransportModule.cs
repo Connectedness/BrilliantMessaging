@@ -16,6 +16,10 @@ using Bmf.Transport.RabbitMq.Outbound;
 
 namespace Bmf.Transport.RabbitMq;
 
+/// <summary>
+/// Provides the <c>AddRabbitMq*Topology</c> extension methods that register RabbitMQ topologies (unified,
+/// publish-only, or consume-only) onto a <see cref="BmfBuilder" />.
+/// </summary>
 public static class RabbitMqTransportModule
 {
     /// <summary>

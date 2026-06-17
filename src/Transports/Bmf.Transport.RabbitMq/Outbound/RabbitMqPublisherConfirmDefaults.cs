@@ -2,6 +2,9 @@ using System;
 
 namespace Bmf.Transport.RabbitMq.Outbound;
 
+/// <summary>
+/// The default publisher-confirm settings applied when neither a channel group nor the topology overrides them.
+/// </summary>
 public static class RabbitMqPublisherConfirmDefaults
 {
     /// <summary>

@@ -5,6 +5,16 @@ using System.Text;
 
 namespace Bmf.Core.Messaging.Inbound;
 
+/// <summary>
+/// The transport-neutral view of a received message: its body, headers, and the common AMQP-style delivery
+/// properties. Transport authors derive a concrete message from this base to surface their broker's delivery in
+/// a uniform shape the inbound pipeline can consume.
+/// </summary>
+/// <remarks>
+/// The body and headers are stored without defensive copies, so a transport may expose pooled, transport-owned
+/// memory through <see cref="Body" /> that is valid only for the duration of the handler. Subclasses are
+/// responsible for honouring that contract.
+/// </remarks>
 public abstract class TransportMessage
 {
     /// <summary>
@@ -70,8 +80,14 @@ public abstract class TransportMessage
         AppId = appId;
     }
 
+    /// <summary>
+    /// Gets the name of the transport that delivered the message.
+    /// </summary>
     public string TransportName { get; }
 
+    /// <summary>
+    /// Gets the transport-specific source the message was received from (for example a queue name).
+    /// </summary>
     public string Source { get; }
 
     /// <summary>
@@ -84,32 +100,79 @@ public abstract class TransportMessage
     /// </remarks>
     public ReadOnlyMemory<byte> Body { get; }
 
+    /// <summary>
+    /// Gets the content type of the body, or <see langword="null" /> when the transport did not provide one.
+    /// </summary>
     public string? ContentType { get; }
 
+    /// <summary>
+    /// Gets the content encoding of the body, or <see langword="null" /> when the transport did not provide one.
+    /// </summary>
     public string? ContentEncoding { get; }
 
+    /// <summary>
+    /// Gets the transport message identifier, or <see langword="null" /> when none was provided.
+    /// </summary>
     public string? MessageId { get; }
 
+    /// <summary>
+    /// Gets the correlation identifier, or <see langword="null" /> when none was provided.
+    /// </summary>
     public string? CorrelationId { get; }
 
+    /// <summary>
+    /// Gets the reply destination, or <see langword="null" /> when none was provided.
+    /// </summary>
     public string? ReplyTo { get; }
 
+    /// <summary>
+    /// Gets the message timestamp, or <see langword="null" /> when none was provided.
+    /// </summary>
     public DateTimeOffset? Timestamp { get; }
 
+    /// <summary>
+    /// Gets the message priority, or <see langword="null" /> when none was provided.
+    /// </summary>
     public byte? Priority { get; }
 
+    /// <summary>
+    /// Gets the message time to live, or <see langword="null" /> when none was provided.
+    /// </summary>
     public TimeSpan? TimeToLive { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether the transport reports this message as a redelivery.
+    /// </summary>
     public bool Redelivered { get; }
 
+    /// <summary>
+    /// Gets the one-based delivery attempt count.
+    /// </summary>
     public uint DeliveryAttempt { get; }
 
+    /// <summary>
+    /// Gets the producer user identifier, or <see langword="null" /> when none was provided.
+    /// </summary>
     public string? UserId { get; }
 
+    /// <summary>
+    /// Gets the producer application identifier, or <see langword="null" /> when none was provided.
+    /// </summary>
     public string? AppId { get; }
 
+    /// <summary>
+    /// Gets the message headers.
+    /// </summary>
     public IReadOnlyDictionary<string, object?> Headers { get; }
 
+    /// <summary>
+    /// Attempts to read a header as a string, decoding common transport header representations (string, byte
+    /// array, or memory) to text.
+    /// </summary>
+    /// <param name="name">The header name.</param>
+    /// <param name="value">When this method returns, the header value as a string, or <see langword="null" /> when the header is absent or null.</param>
+    /// <returns><see langword="true" /> when the header is present and non-null; otherwise <see langword="false" />.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="name" /> is null or whitespace.</exception>
     public bool TryGetHeaderString(string name, out string? value)
     {
         if (string.IsNullOrWhiteSpace(name))

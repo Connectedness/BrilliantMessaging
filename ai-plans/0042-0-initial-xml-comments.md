@@ -31,20 +31,20 @@ externally visible, do not trigger CS1591, and are out of scope for the visibili
 
 ## Acceptance criteria
 
-- [ ] Every externally visible member (`public`, `protected`, `protected internal`) in
+- [x] Every externally visible member (`public`, `protected`, `protected internal`) in
       `Bmf.Abstractions`, `Bmf.Core`, and `Bmf.Transport.RabbitMq` has an XML `<summary>`, with
       `<param>`/`<typeparam>`/`<returns>` on members that take parameters or return values.
-- [ ] Tier-1 members (entry points, fluent builders, extension-point base classes, concept types
+- [x] Tier-1 members (entry points, fluent builders, extension-point base classes, concept types
       with invariants) carry explanatory `<remarks>` and, where a throw is a documented part of the
       contract, `<exception>` tags. See the technical details for the list.
-- [ ] The `protected` extension-point surface of the abstract base classes is documented from the
+- [x] The `protected` extension-point surface of the abstract base classes is documented from the
       *subclasser's* perspective — what an overrider must implement, what the base guarantees, and
       what the template method calls in which order.
-- [ ] Cross-references use `<see cref=...>` / `<paramref=...>` consistently with the existing docs.
-- [ ] `<NoWarn>$(NoWarn);CS1591</NoWarn>` is removed from `src/Directory.Build.props`.
-- [ ] `dotnet build BMF.slnx --configuration Release` succeeds with no warnings
+- [x] Cross-references use `<see cref=...>` / `<paramref=...>` consistently with the existing docs.
+- [x] `<NoWarn>$(NoWarn);CS1591</NoWarn>` is removed from `src/Directory.Build.props`.
+- [x] `dotnet build BMF.slnx --configuration Release` succeeds with no warnings
       (Release treats warnings as errors, so CS1591 becomes the acceptance gate).
-- [ ] No new automated tests are required (documentation-only change); the existing suite plus the
+- [x] No new automated tests are required (documentation-only change); the existing suite plus the
       Release build are the regression guard.
 
 ## Technical details

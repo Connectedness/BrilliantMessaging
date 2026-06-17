@@ -9,8 +9,28 @@ using Bmf.Core.Messaging.Outbound;
 
 namespace Bmf.Core.Messaging;
 
+/// <summary>
+/// Provides the <see cref="AddBmf" /> extension method that registers the BMF core services into a dependency
+/// injection container.
+/// </summary>
 public static class BmfServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers the BMF core services and returns a <see cref="BmfBuilder" /> for further configuration.
+    /// </summary>
+    /// <param name="services">The service collection to add BMF to.</param>
+    /// <returns>A <see cref="BmfBuilder" /> over the shared message-contract registry and topology catalog.</returns>
+    /// <remarks>
+    /// Registers — idempotently, via <c>TryAdd</c> and shared get-or-add builders so repeated calls accumulate
+    /// rather than duplicate — the serialization stack (<see cref="IPayloadCodec" />, <see cref="IMessageSerializer" />,
+    /// <see cref="IMessageDeserializer" />), the message-contract registry, the topology registry, the default
+    /// <see cref="Topology" />, the inbound inspection and acknowledgement middleware, and the
+    /// <see cref="IMessagePublisher" />. The <see cref="CloudEventsOptions" /> are registered with a
+    /// <c>ValidateOnStart</c> guard that fails fast when <see cref="CloudEventsOptions.Source" /> is not a valid
+    /// URI-reference. Two hosted services are also added: one that provisions topologies and one that drives the
+    /// inbound runtime.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="services" /> is <see langword="null" />.</exception>
     public static BmfBuilder AddBmf(this IServiceCollection services)
     {
         if (services is null)

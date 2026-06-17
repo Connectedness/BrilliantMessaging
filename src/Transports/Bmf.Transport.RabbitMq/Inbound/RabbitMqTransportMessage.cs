@@ -8,6 +8,11 @@ using Bmf.Core.Messaging.Inbound;
 
 namespace Bmf.Transport.RabbitMq.Inbound;
 
+/// <summary>
+/// The RabbitMQ <see cref="TransportMessage" />. It projects an AMQP delivery (its basic properties, headers,
+/// and delivery metadata) onto the transport-neutral message shape, and surfaces the RabbitMQ-specific delivery
+/// tag, exchange, routing key, consumer tag, and delivery mode.
+/// </summary>
 public sealed class RabbitMqTransportMessage : TransportMessage
 {
     private static readonly IReadOnlyDictionary<string, object?> EmptyHeaders =
@@ -97,16 +102,34 @@ public sealed class RabbitMqTransportMessage : TransportMessage
         DeliveryMode = basicProperties.DeliveryMode;
     }
 
+    /// <summary>
+    /// Gets the RabbitMQ delivery tag identifying the message on its channel.
+    /// </summary>
     public ulong DeliveryTag { get; }
 
+    /// <summary>
+    /// Gets the exchange the message was published to.
+    /// </summary>
     public string Exchange { get; }
 
+    /// <summary>
+    /// Gets the routing key the message was delivered with.
+    /// </summary>
     public string RoutingKey { get; }
 
+    /// <summary>
+    /// Gets the consumer tag of the consumer that received the message.
+    /// </summary>
     public string ConsumerTag { get; }
 
+    /// <summary>
+    /// Gets the delivery mode (persistent or transient) of the message.
+    /// </summary>
     public DeliveryModes DeliveryMode { get; }
 
+    /// <summary>
+    /// Gets the raw RabbitMQ basic properties of the delivery.
+    /// </summary>
     public IReadOnlyBasicProperties BasicProperties { get; }
 
     private static string? GetPropertyValue(

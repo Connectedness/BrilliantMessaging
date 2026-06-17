@@ -4,8 +4,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Bmf.Core.Messaging.Inbound;
 
+/// <summary>
+/// Inbound middleware that decodes the transport body into the resolved message type (using the endpoint's
+/// deserializer) and stores it on the context before invoking the next stage. It is a no-op when the message has
+/// already been materialized by an inspector.
+/// </summary>
 public sealed class MessageDeserializationMiddleware : IMessageMiddleware
 {
+    /// <inheritdoc />
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="context" /> or <paramref name="next" /> is <see langword="null" />.</exception>
     public async Task InvokeAsync(IncomingMessageContext context, MessageDelegate next)
     {
         if (context is null)

@@ -12,7 +12,18 @@ namespace Bmf.Core.Messaging.Outbound;
 /// </remarks>
 public enum MessageDeliveryFailureReason
 {
+    /// <summary>
+    /// The broker rejected the publish with a negative acknowledgement (nack).
+    /// </summary>
     Nacked = 0,
+
+    /// <summary>
+    /// The broker accepted the publish but could not route it to any queue and returned it.
+    /// </summary>
     Returned = 1,
+
+    /// <summary>
+    /// The publish was not confirmed by the broker within the bounded wait.
+    /// </summary>
     Timeout = 2
 }

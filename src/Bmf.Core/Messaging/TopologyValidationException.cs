@@ -12,6 +12,12 @@ namespace Bmf.Core.Messaging;
 /// </summary>
 public sealed class TopologyValidationException : Exception
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TopologyValidationException" /> class.
+    /// </summary>
+    /// <param name="validationErrors">The non-empty set of validation error messages.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="validationErrors" /> is <see langword="null" />.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="validationErrors" /> is empty.</exception>
     public TopologyValidationException(IReadOnlyList<string> validationErrors)
         : base("Topology validation failed.")
     {
@@ -30,5 +36,8 @@ public sealed class TopologyValidationException : Exception
         );
     }
 
+    /// <summary>
+    /// Gets the validation error messages, ordered for stable reporting.
+    /// </summary>
     public IReadOnlyList<string> ValidationErrors { get; }
 }

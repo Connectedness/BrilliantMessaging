@@ -4,14 +4,29 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace Bmf.Core.Messaging;
 
+/// <summary>
+/// The default <see cref="IPayloadCodec" />, encoding and decoding message payloads as UTF-8 JSON with
+/// <see cref="JsonSerializer" />. It mirrors ASP.NET Core's declared-versus-runtime type selection so that
+/// polymorphic payloads serialize as the framework expects.
+/// </summary>
 public sealed class Utf8JsonPayloadCodec : IPayloadCodec
 {
     private static readonly JsonSerializerOptions DefaultSerializerOptions = CreateDefaultSerializerOptions();
 
     private readonly JsonSerializerOptions _serializerOptions;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Utf8JsonPayloadCodec" /> class using the default serializer
+    /// options.
+    /// </summary>
     public Utf8JsonPayloadCodec() : this(DefaultSerializerOptions) { }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Utf8JsonPayloadCodec" /> class using the given serializer
+    /// options. The options are copied, so later mutation of the original does not affect the codec.
+    /// </summary>
+    /// <param name="serializerOptions">The JSON serializer options to use.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="serializerOptions" /> is <see langword="null" />.</exception>
     public Utf8JsonPayloadCodec(JsonSerializerOptions serializerOptions)
     {
         _serializerOptions = serializerOptions is null ?
@@ -19,6 +34,7 @@ public sealed class Utf8JsonPayloadCodec : IPayloadCodec
             new JsonSerializerOptions(serializerOptions);
     }
 
+    /// <inheritdoc />
     public EncodedPayload Encode<T>(T message)
     {
         if (message is null)
@@ -36,6 +52,7 @@ public sealed class Utf8JsonPayloadCodec : IPayloadCodec
         return new EncodedPayload(utf8Bytes, "application/json");
     }
 
+    /// <inheritdoc />
     public object? Decode(ReadOnlyMemory<byte> data, Type messageType)
     {
         if (messageType is null)

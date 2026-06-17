@@ -7,6 +7,10 @@ using RabbitMQ.Client.Events;
 
 namespace Bmf.Transport.RabbitMq;
 
+/// <summary>
+/// The default <see cref="IRabbitMqChannelPool" />. It lazily opens channels up to a bounded maximum, returns
+/// healthy channels to a bounded queue for reuse, and discards channels that the broker has shut down.
+/// </summary>
 public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
 {
     private readonly TaskCompletionSource<object?> _allChannelsDisposed = new (
@@ -19,6 +23,13 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
     private int _disposed;
     private int _liveChannelCount;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DefaultRabbitMqChannelPool" /> class.
+    /// </summary>
+    /// <param name="maximumChannelCount">The maximum number of live channels the pool may open; must be greater than zero.</param>
+    /// <param name="channelFactory">A factory that opens a new channel.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maximumChannelCount" /> is less than one.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="channelFactory" /> is <see langword="null" />.</exception>
     public DefaultRabbitMqChannelPool(int maximumChannelCount, Func<CancellationToken, Task<IChannel>> channelFactory)
     {
         if (maximumChannelCount < 1)
@@ -42,6 +53,8 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
         );
     }
 
+    /// <inheritdoc />
+    /// <exception cref="ObjectDisposedException">Thrown when the pool has been disposed.</exception>
     public async ValueTask<RabbitMqChannelLease> AcquireAsync(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
@@ -106,6 +119,7 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
         }
     }
 
+    /// <inheritdoc />
     public ValueTask ReleaseAsync(in RabbitMqChannelLease lease)
     {
         if (lease.State is not PooledChannel pooledChannel)
@@ -128,6 +142,11 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
         return default;
     }
 
+    /// <summary>
+    /// Asynchronously disposes the pool, discarding all pooled channels and waiting for in-flight channels to be
+    /// returned and disposed.
+    /// </summary>
+    /// <returns>A task that completes once every channel has been disposed.</returns>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
@@ -148,6 +167,9 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
         await _allChannelsDisposed.Task.ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Disposes the pool synchronously by blocking on <see cref="DisposeAsync" />.
+    /// </summary>
     public void Dispose()
     {
         Task.Run(async () => await DisposeAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
@@ -207,6 +229,10 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
         }
     }
 
+    /// <summary>
+    /// A channel held by the pool, tracking its lease identity and broker shutdown/recovery so the pool can tell
+    /// whether the channel is still healthy enough to hand out.
+    /// </summary>
     public sealed class PooledChannel : IAsyncDisposable
     {
         private readonly IRecoverable? _recoverableChannel;
@@ -214,6 +240,12 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
         private long _nextLeaseId;
         private int _observedShutdown;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PooledChannel" /> class, subscribing to the channel's
+        /// shutdown and recovery events.
+        /// </summary>
+        /// <param name="channel">The underlying channel to wrap.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="channel" /> is <see langword="null" />.</exception>
         public PooledChannel(IChannel channel)
         {
             Channel = channel ?? throw new ArgumentNullException(nameof(channel));
@@ -226,10 +258,20 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
             }
         }
 
+        /// <summary>
+        /// Gets the underlying channel.
+        /// </summary>
         public IChannel Channel { get; }
 
+        /// <summary>
+        /// Gets a value indicating whether the channel is open and has not observed a broker shutdown.
+        /// </summary>
         public bool IsHealthy => Volatile.Read(ref _observedShutdown) == 0 && Channel.IsOpen;
 
+        /// <summary>
+        /// Unsubscribes from the channel's events and disposes the underlying channel.
+        /// </summary>
+        /// <returns>A task that completes once the channel is disposed.</returns>
         public async ValueTask DisposeAsync()
         {
             Channel.ChannelShutdownAsync -= OnChannelShutdownAsync;
@@ -247,6 +289,10 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
             Channel.Dispose();
         }
 
+        /// <summary>
+        /// Begins a new lease on the channel and returns its identifier.
+        /// </summary>
+        /// <returns>The new lease identifier.</returns>
         public long BeginLease()
         {
             var leaseId = Interlocked.Increment(ref _nextLeaseId);
@@ -254,6 +300,12 @@ public sealed class DefaultRabbitMqChannelPool : IRabbitMqChannelPool
             return leaseId;
         }
 
+        /// <summary>
+        /// Completes the lease with the given identifier, guarding against a stale lease returning the channel
+        /// twice.
+        /// </summary>
+        /// <param name="leaseId">The lease identifier being completed.</param>
+        /// <returns><see langword="true" /> when the lease was the current one and is now completed; otherwise <see langword="false" />.</returns>
         public bool TryCompleteLease(long leaseId)
         {
             return Interlocked.CompareExchange(ref _currentLeaseId, 0, leaseId) == leaseId;

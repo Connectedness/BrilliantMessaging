@@ -27,6 +27,15 @@ public sealed class MessageContractRegistryBuilder
         return Add(typeof(T), discriminator, acceptsCanonicalInbound: false);
     }
 
+    /// <summary>
+    /// Validates the accumulated mappings and builds the immutable <see cref="IMessageContractRegistry" />.
+    /// </summary>
+    /// <returns>The built registry.</returns>
+    /// <exception cref="MessageContractRegistryValidationException">
+    /// Thrown when the mappings are inconsistent — for example a message type with two canonical discriminators,
+    /// a discriminator that maps to two message types, or inbound aliases on a type that does not accept its
+    /// canonical discriminator inbound.
+    /// </exception>
     public IMessageContractRegistry Build()
     {
         var validationErrors = Validate();

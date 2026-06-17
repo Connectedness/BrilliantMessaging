@@ -31,5 +31,9 @@ public sealed record RabbitMqTopologyConfiguration(
     MessageContractRegistry? MessageContractDialect = null
 )
 {
+    /// <summary>
+    /// Gets a value indicating whether the configuration defines any inbound consumers (and therefore needs a
+    /// topology runtime).
+    /// </summary>
     public bool HasInboundEndpoints => Consumers.Count > 0;
 }

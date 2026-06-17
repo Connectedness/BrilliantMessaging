@@ -17,6 +17,12 @@ public sealed class CloudEventMessageSerializer : IMessageSerializer
     private readonly CloudEventsOptions _options;
     private readonly IPayloadCodec _payloadCodec;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CloudEventMessageSerializer" /> class.
+    /// </summary>
+    /// <param name="payloadCodec">The codec used to encode the message body.</param>
+    /// <param name="options">The CloudEvents options supplying the default source.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="payloadCodec" /> or <paramref name="options" /> is <see langword="null" />.</exception>
     public CloudEventMessageSerializer(
         IPayloadCodec payloadCodec,
         CloudEventsOptions options
@@ -26,6 +32,9 @@ public sealed class CloudEventMessageSerializer : IMessageSerializer
         _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
+    /// <inheritdoc />
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="message" /> is <see langword="null" />.</exception>
+    /// <exception cref="CloudEventMetadataException">Thrown when a required CloudEvents attribute (id, time, source, type, or data content type) is missing or invalid.</exception>
     public ValueTask<CloudEventEnvelope> SerializeAsync<T>(
         T message,
         in CloudEventMetadata metadata,

@@ -12,9 +12,21 @@ namespace Bmf.Abstractions;
 /// </remarks>
 public interface ICloudEvent
 {
+    /// <summary>
+    /// Gets the identifier of the event. Combined with <see cref="CloudEventAttributeNames.Source" /> it uniquely
+    /// identifies the event. It is created with the message and must remain stable across retries.
+    /// </summary>
     Guid Id { get; }
 
+    /// <summary>
+    /// Gets the timestamp at which the event occurred. Like <see cref="Id" />, it is captured when the message is
+    /// constructed and must not be regenerated while serializing or publishing.
+    /// </summary>
     DateTimeOffset Time { get; }
 
+    /// <summary>
+    /// Gets the optional subject of the event in the context of its source, used to identify the particular thing
+    /// the event is about (for example the resource the event refers to).
+    /// </summary>
     string? Subject { get; }
 }

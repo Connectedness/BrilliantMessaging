@@ -11,6 +11,15 @@ namespace Bmf.Transport.RabbitMq.Outbound;
 /// </remarks>
 public enum RabbitMqPublisherConfirmMode
 {
+    /// <summary>
+    /// Publishes without waiting for a broker acknowledgement. Fastest, but a broker nack or an unroutable
+    /// message can be lost silently.
+    /// </summary>
     FireAndForget = 0,
+
+    /// <summary>
+    /// Waits for a broker confirmation for each publish, surfacing nacks and unroutable returns as a
+    /// <see cref="Bmf.Core.Messaging.Outbound.MessageDeliveryException" />. Required for mandatory routing.
+    /// </summary>
     Confirms = 1
 }

@@ -12,9 +12,20 @@ namespace Bmf.Abstractions;
 /// </remarks>
 public abstract record BaseCloudEvent : ICloudEvent
 {
+    /// <summary>
+    /// Gets the identifier of the event, defaulting to a fresh time-ordered <see cref="BmfUuid.NewId" /> captured
+    /// when the message is constructed. Override the initializer only to adopt an externally supplied id.
+    /// </summary>
     public Guid Id { get; init; } = BmfUuid.NewId();
 
+    /// <summary>
+    /// Gets the timestamp at which the event occurred, defaulting to <see cref="DateTimeOffset.UtcNow" /> at
+    /// construction time.
+    /// </summary>
     public DateTimeOffset Time { get; init; } = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    /// Gets the optional subject of the event in the context of its source.
+    /// </summary>
     public string? Subject { get; init; }
 }

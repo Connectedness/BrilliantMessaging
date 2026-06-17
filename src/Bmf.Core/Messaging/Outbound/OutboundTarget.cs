@@ -6,12 +6,37 @@ using Bmf.Abstractions;
 
 namespace Bmf.Core.Messaging.Outbound;
 
+/// <summary>
+/// Represents a destination a message is published to (for example a RabbitMQ exchange). It is the
+/// non-generic base of the outbound extension model and owns the cross-cutting publish concerns — the
+/// diagnostics activity, the attempt/failure counters, and the duration measurement — so that every
+/// concrete target is instrumented uniformly.
+/// </summary>
+/// <remarks>
+/// Transport authors do not derive from this type directly; they derive from <see cref="OutboundTarget{T}" />,
+/// which adds serialization and contract resolution. The non-generic base exists so that components which
+/// only handle already-serialized payloads (such as <see cref="MessagePublisher" />) can treat targets
+/// uniformly through <see cref="PublishSerializedAsync" />.
+/// </remarks>
 public abstract class OutboundTarget
 {
     private const string SerializedMessageTypeName = "serialized";
 
     private const string PublishActivityName = "bmf.outbound.publish";
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OutboundTarget" /> class.
+    /// </summary>
+    /// <param name="name">The logical name of the target, used to look it up and to tag diagnostics.</param>
+    /// <param name="transportName">The name of the transport that backs the target (for example the RabbitMQ transport).</param>
+    /// <param name="topologyName">
+    /// The name of the topology the target belongs to, or <see langword="null" /> to use
+    /// <see cref="Topology.DefaultName" />.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="name" /> or <paramref name="transportName" /> is null or whitespace, or when
+    /// <paramref name="topologyName" /> is non-null but whitespace.
+    /// </exception>
     protected OutboundTarget(string name, string transportName, string? topologyName = null)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -34,14 +59,35 @@ public abstract class OutboundTarget
         TopologyName = topologyName ?? Topology.DefaultName;
     }
 
+    /// <summary>
+    /// Gets the message type the target publishes, or <see langword="null" /> for a target that only handles
+    /// already-serialized payloads. Overridden by <see cref="OutboundTarget{T}" /> to return the typed contract.
+    /// </summary>
     public virtual Type? MessageType => null;
 
+    /// <summary>
+    /// Gets the logical name of the target.
+    /// </summary>
     public string Name { get; }
 
+    /// <summary>
+    /// Gets the name of the topology the target belongs to.
+    /// </summary>
     public string TopologyName { get; }
 
+    /// <summary>
+    /// Gets the name of the transport that backs the target.
+    /// </summary>
     public string TransportName { get; }
 
+    /// <summary>
+    /// Resolves the value used to tag the runtime message type in publish diagnostics. The base implementation
+    /// returns the type's full name; <see cref="OutboundTarget{T}" /> overrides it to return the registered
+    /// message-contract discriminator.
+    /// </summary>
+    /// <param name="runtimeMessageType">The runtime type of the message being published.</param>
+    /// <returns>The diagnostic name for <paramref name="runtimeMessageType" />.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="runtimeMessageType" /> is <see langword="null" />.</exception>
     public virtual string GetDiagnosticMessageTypeName(Type runtimeMessageType)
     {
         if (runtimeMessageType is null)
@@ -85,6 +131,14 @@ public abstract class OutboundTarget
         }
     }
 
+    /// <summary>
+    /// Performs the transport-specific dispatch of an already serialized message. Implementers do the wire
+    /// publish only; the base class has already opened the diagnostics scope around this call, so an overrider
+    /// must not add publish counters or activities of its own.
+    /// </summary>
+    /// <param name="message">The serialized message to dispatch.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the dispatch to complete.</param>
+    /// <returns>A task that completes when the transport has accepted the message.</returns>
     protected abstract Task PublishSerializedCoreAsync(
         SerializedMessage message,
         CancellationToken cancellationToken
@@ -222,8 +276,31 @@ public abstract class OutboundTarget
     }
 }
 
+/// <summary>
+/// Represents a strongly typed outbound target for messages of type <typeparamref name="T" />. This is the
+/// base class transport authors derive from: it owns serialization, CloudEvents metadata resolution, and the
+/// instrumented publish template, leaving the subclass to implement only the wire-level dispatch.
+/// </summary>
+/// <remarks>
+/// The publish flow is a template method. <see cref="PublishAsync(T, CancellationToken)" /> and its overloads
+/// funnel into <see cref="PublishCoreAsync" />, which resolves the contract discriminator and data schema,
+/// serializes the message into a <see cref="CloudEventEnvelope" /> via <see cref="Serializer" />, and then calls
+/// the subclass-supplied <see cref="PublishTypedCloudEventAsync" /> for the actual transport dispatch. Metadata
+/// resolution deliberately runs outside the instrumented region so that contract-registration mistakes are not
+/// reported as publish failures.
+/// </remarks>
+/// <typeparam name="T">The message type this target publishes.</typeparam>
 public abstract class OutboundTarget<T> : OutboundTarget
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OutboundTarget{T}" /> class.
+    /// </summary>
+    /// <param name="name">The logical name of the target.</param>
+    /// <param name="transportName">The name of the transport that backs the target.</param>
+    /// <param name="serializer">The serializer used to turn messages into <see cref="CloudEventEnvelope" /> instances.</param>
+    /// <param name="messageContractRegistry">The registry used to resolve the contract discriminator and data schema for a message type.</param>
+    /// <param name="topologyName">The name of the topology the target belongs to, or <see langword="null" /> for the default topology.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="serializer" /> or <paramref name="messageContractRegistry" /> is <see langword="null" />.</exception>
     protected OutboundTarget(
         string name,
         string transportName,
@@ -238,17 +315,37 @@ public abstract class OutboundTarget<T> : OutboundTarget
                                   throw new ArgumentNullException(nameof(messageContractRegistry));
     }
 
+    /// <inheritdoc />
     public sealed override Type MessageType => typeof(T);
 
+    /// <summary>
+    /// Gets the serializer the publish template uses to turn a message into a <see cref="CloudEventEnvelope" />.
+    /// Available to subclasses that need to serialize outside the standard template.
+    /// </summary>
     protected IMessageSerializer Serializer { get; }
 
+    /// <summary>
+    /// Gets the message-contract registry the target uses to resolve discriminators and data schemas.
+    /// </summary>
     protected IMessageContractRegistry MessageContractRegistry { get; }
 
+    /// <inheritdoc />
     public sealed override string GetDiagnosticMessageTypeName(Type runtimeMessageType)
     {
         return GetRequiredDiscriminator(runtimeMessageType);
     }
 
+    /// <summary>
+    /// Resolves the registered contract discriminator (the CloudEvents <c>type</c> attribute) for the given
+    /// runtime message type.
+    /// </summary>
+    /// <param name="runtimeMessageType">The runtime type of the message.</param>
+    /// <returns>The discriminator the message type was registered with.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="runtimeMessageType" /> is <see langword="null" />.</exception>
+    /// <exception cref="CloudEventMetadataException">
+    /// Thrown when <paramref name="runtimeMessageType" /> has no registered contract; the message explains how to
+    /// register it with the <see cref="MessageContractRegistryBuilder" />.
+    /// </exception>
     public string GetRequiredDiscriminator(Type runtimeMessageType)
     {
         if (runtimeMessageType is null)
@@ -269,6 +366,13 @@ public abstract class OutboundTarget<T> : OutboundTarget
         }
     }
 
+    /// <summary>
+    /// Resolves the optional data schema (the CloudEvents <c>dataschema</c> attribute) registered for the given
+    /// runtime message type.
+    /// </summary>
+    /// <param name="runtimeMessageType">The runtime type of the message.</param>
+    /// <returns>The registered data schema, or <see langword="null" /> when none was registered.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="runtimeMessageType" /> is <see langword="null" />.</exception>
     public string? GetDataSchema(Type runtimeMessageType)
     {
         if (runtimeMessageType is null)
@@ -279,6 +383,15 @@ public abstract class OutboundTarget<T> : OutboundTarget
         return MessageContractRegistry.GetDataSchema(runtimeMessageType);
     }
 
+    /// <summary>
+    /// Publishes a message, deriving the CloudEvents metadata from the message itself. The message must implement
+    /// <see cref="ICloudEvent" /> (typically by deriving from <see cref="BaseCloudEvent" />); otherwise use an
+    /// overload that takes an explicit <see cref="CloudEventMetadata" />.
+    /// </summary>
+    /// <param name="message">The message to publish.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the publish to complete.</param>
+    /// <returns>A task that completes when the transport has accepted the message.</returns>
+    /// <exception cref="CloudEventMetadataException">Thrown when <paramref name="message" /> does not implement <see cref="ICloudEvent" />.</exception>
     public Task PublishAsync(
         T message,
         CancellationToken cancellationToken = default
@@ -296,6 +409,14 @@ public abstract class OutboundTarget<T> : OutboundTarget
         return PublishAsync(message, in metadata, cancellationToken);
     }
 
+    /// <summary>
+    /// Publishes a message with explicit CloudEvents metadata, resolving the <c>type</c> and <c>dataschema</c>
+    /// attributes from the message contract registry.
+    /// </summary>
+    /// <param name="message">The message to publish.</param>
+    /// <param name="metadata">The CloudEvents metadata (id, source, time, subject) to attach.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the publish to complete.</param>
+    /// <returns>A task that completes when the transport has accepted the message.</returns>
     public Task PublishAsync(
         T message,
         in CloudEventMetadata metadata,
@@ -305,6 +426,16 @@ public abstract class OutboundTarget<T> : OutboundTarget
         return PublishCoreAsync(message, metadata, type: null, dataSchema: null, routingKey: null, cancellationToken);
     }
 
+    /// <summary>
+    /// Publishes a message with explicit CloudEvents metadata and an explicit <c>type</c> and <c>dataschema</c>,
+    /// bypassing contract-registry resolution of those attributes.
+    /// </summary>
+    /// <param name="message">The message to publish.</param>
+    /// <param name="metadata">The CloudEvents metadata (id, source, time, subject) to attach.</param>
+    /// <param name="type">The CloudEvents <c>type</c> attribute to use.</param>
+    /// <param name="dataSchema">The CloudEvents <c>dataschema</c> attribute to use, or <see langword="null" /> for none.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the publish to complete.</param>
+    /// <returns>A task that completes when the transport has accepted the message.</returns>
     public Task PublishAsync(
         T message,
         in CloudEventMetadata metadata,
@@ -316,6 +447,22 @@ public abstract class OutboundTarget<T> : OutboundTarget
         return PublishCoreAsync(message, metadata, type, dataSchema, routingKey: null, cancellationToken);
     }
 
+    /// <summary>
+    /// Runs the instrumented publish template: resolves any unspecified <c>type</c>/<c>dataschema</c>, serializes
+    /// the message into a <see cref="CloudEventEnvelope" />, and dispatches it through
+    /// <see cref="PublishTypedCloudEventAsync" />. Subclasses call this from custom publish entry points (for
+    /// example to supply a transport-specific <paramref name="routingKey" />) so that the diagnostics and
+    /// serialization behaviour stay consistent.
+    /// </summary>
+    /// <param name="message">The message to publish.</param>
+    /// <param name="metadata">The CloudEvents metadata to attach.</param>
+    /// <param name="type">The CloudEvents <c>type</c>, or <see langword="null" /> to resolve it from the contract registry.</param>
+    /// <param name="dataSchema">The CloudEvents <c>dataschema</c>, or <see langword="null" /> to resolve it from the contract registry.</param>
+    /// <param name="routingKey">An optional transport routing key passed through to <see cref="PublishTypedCloudEventAsync" />.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the publish to complete.</param>
+    /// <returns>A task that completes when the transport has accepted the message.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="message" /> is <see langword="null" />.</exception>
+    /// <exception cref="MessageSerializationException">Thrown when serializing the message fails.</exception>
     protected async Task PublishCoreAsync(
         T message,
         CloudEventMetadata metadata,
@@ -379,6 +526,17 @@ public abstract class OutboundTarget<T> : OutboundTarget
         }
     }
 
+    /// <summary>
+    /// Performs the transport-specific dispatch of a serialized typed CloudEvent. This is the single method a
+    /// concrete target must implement; the base class has already serialized the message and opened the
+    /// diagnostics scope, so the override only does the wire publish and must not add its own publish counters or
+    /// activities.
+    /// </summary>
+    /// <param name="message">The original message, available for transport routing decisions.</param>
+    /// <param name="envelope">The serialized CloudEvent to dispatch.</param>
+    /// <param name="routingKey">The optional routing key supplied to <see cref="PublishCoreAsync" />, or <see langword="null" />.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the dispatch to complete.</param>
+    /// <returns>A task that completes when the transport has accepted the message.</returns>
     protected abstract Task PublishTypedCloudEventAsync(
         T message,
         CloudEventEnvelope envelope,
