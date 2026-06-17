@@ -12,6 +12,5 @@
     <PackageProjectUrl>https://github.com/Connectedness/BMF</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Connectedness/BMF</RepositoryUrl>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 </Project>

@@ -17,8 +17,6 @@ Issue: [#44](https://github.com/Connectedness/BMF/issues/44)
 - [x] The root `Directory.Build.props` defines NuGet/package metadata with `<Copyright>`,
       `<Company>`, and `<Authors>`, but does not define `<Version>`.
 - [x] All assemblies included in NuGet packages are signed.
-- [x] Signed Release builds suppress the benign CS8002 warning caused by the non-strong-named
-      `Generator.Equals.Runtime` dependency.
 - [x] NuGet packages are created for every packable project in `BMF.slnx`.
 - [x] All projects that should not publish packages set `IsPackable=false` so solution-level packing only produces
       library packages.
@@ -102,15 +100,6 @@ user/profile name to exchange that token for a temporary NuGet API key, then pas
 to `dotnet nuget push`. The nuget.org trusted publishing policy must be configured
 separately for the `Connectedness/BMF` repository and the workflow file name only, matching NuGet's
 policy rules.
-
-Strong naming the BMF assemblies (`SignAssembly=true`) raises **CS8002** because the transitive
-`Generator.Equals.Runtime` dependency is not strong-named, and `Directory.Build.props` promotes
-warnings to errors in Release. CS8002 is a compile-time warning only: neither the .NET (Core) nor
-the .NET Framework CLR enforces strong-name verification of referenced assemblies at load time, so
-consumers (including .NET Framework 4.8) are unaffected at runtime. The only practical limitation is
-that the package graph cannot be installed into the GAC, which is irrelevant for app-local NuGet
-consumption. Suppress CS8002 centrally via `<NoWarn>` in the root `Directory.Build.props` so it
-covers `Bmf.Core` and every project that transitively references `Generator.Equals.Runtime`.
 
 Validation should include a Release restore/pack package creation path that can be exercised
 without publishing. If the publish workflow itself cannot be fully tested without live credentials,
