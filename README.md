@@ -227,6 +227,75 @@ rabbit
     );
 ```
 
+### Publishing through a target directly
+
+`IMessagePublisher` is the convenient front door, but a target is itself a first-class
+publishing surface — it exposes `PublishAsync(message)` and carries everything it needs
+to build the envelope and route the message. Sometimes you want to skip the
+type-to-target lookup and hold the target yourself: it removes a per-publish resolution,
+makes the routing choice explicit at the call site, and is handy when a type has several
+named targets.
+
+You obtain targets from a `Topology`. The default topology is injectable directly;
+resolve any other by name through `ITopologyRegistry`:
+
+```csharp
+public sealed class Checkout(Topology topology)
+{
+    public Task PlaceAsync(OrderPlaced order, CancellationToken ct) =>
+        // Resolved by message type, or by name with GetRequiredTarget<OrderPlaced>("primary").
+        topology.GetRequiredTarget<OrderPlaced>().PublishAsync(order, ct);
+}
+
+public sealed class Audit(ITopologyRegistry topologies)
+{
+    public Task RecordAsync(OrderPlaced order, CancellationToken ct)
+    {
+        var topology = topologies.GetRequiredTopology("audit");
+        return topology.GetRequiredTarget<OrderPlaced>().PublishAsync(order, ct);
+    }
+}
+```
+
+`GetRequiredTarget` throws when the type or name is unknown; `TryGetTarget` is the
+non-throwing counterpart.
+
+### Routing keys
+
+A target already knows how to route — but sometimes the *call site* knows better,
+because the key is a piece of domain data (a tenant id, a partition, a country code).
+For those cases you can hand a routing key in at publish time. It is a plain,
+optional `string` overlaid on an already-selected target; it never selects the target
+or turns into a transport-specific DSL.
+
+The easy path is `IMessagePublisher`, which takes the key as an optional argument:
+
+```csharp
+await publisher.PublishMessageAsync(order, routingKey: order.TenantId, ct);
+```
+
+Here the key is *optional* in the truest sense: `null`, empty, or whitespace is
+treated exactly as if you had omitted it, and the target falls back to its configured
+routing. A non-blank key, on RabbitMQ, overrides both a fixed target routing key and a
+per-message `Func<T, string>` factory (route headers stay separate, untouched).
+
+When a routing key is non-negotiable, reach for `IOutboundRoutableTarget<T>` instead.
+It is a capability only the targets that actually route on a key expose (RabbitMQ
+direct and topic), and it is deliberately hidden from the routing-key-free
+`OutboundTarget<T>` base — so handing a key to a fanout target is a compile error, not
+a silently ignored argument. Every overload demands a non-blank key. Obtain one from
+the topology:
+
+```csharp
+topology
+    .GetRequiredRoutingTarget<OrderPlaced>() // or (name) for a specific target
+    .PublishAsync(order, routingKey: order.TenantId, ct);
+```
+
+`GetRequiredRoutingTarget` resolves the target like `GetRequiredTarget` but additionally
+throws `OutboundTargetNotRoutableException` when that target doesn't route on a
+caller-supplied key.
+
 ### Consuming
 
 Consumers are configured per queue with `Consume`, and a single queue can dispatch to
