@@ -6,7 +6,7 @@
 [![NuGet](https://img.shields.io/badge/NuGet-0.1.0-blue.svg?style=for-the-badge)](https://www.nuget.org/packages?q=BMF)
 [![Documentation](https://img.shields.io/badge/Docs-Changelog-yellowgreen.svg?style=for-the-badge)](https://github.com/Connectedness/BMF/releases)
 
-BMF is the messaging framework that let's you keep control! No automatic, obscure generation of broker resources, no hidden dependencies, no magic. Define your topologies, publish messages and subscribe to them. Promotes CloudEvents. That's it!
+BMF is the messaging framework that lets you keep control! No automatic, obscure generation of broker resources, no hidden dependencies, no magic. Define your topologies, publish messages and subscribe to them. Promotes CloudEvents. That's it!
 
 ## Why BMF?
 
