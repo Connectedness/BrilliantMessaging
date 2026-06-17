@@ -25,7 +25,7 @@ Issue: [#44](https://github.com/Connectedness/BMF/issues/44)
 - [ ] The workflow decodes the base64-encoded `BMF_SNK` secret to `./BMF.snk` before building or
       packing signed assemblies.
 - [ ] The workflow removes `./BMF.snk` from the runner filesystem even when an earlier step fails.
-- [ ] `BMF.snk` is listed in `.gitignore` so the signing key is never committed from a working tree.
+- [x] `BMF.snk` is listed in `.gitignore` so the signing key is never committed from a working tree.
 - [ ] Package publishing uses NuGet trusted publishing with GitHub OIDC instead of a long-lived API key.
 - [ ] The workflow publishes packages to `nuget.org` through the trusted publishing temporary API key.
 - [ ] A non-publishing verification path restores, builds, and creates signed package artifacts in
