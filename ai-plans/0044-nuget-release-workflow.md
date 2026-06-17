@@ -17,7 +17,7 @@ Issue: [#44](https://github.com/Connectedness/BMF/issues/44)
 - [ ] The root `Directory.Build.props` defines NuGet/package metadata with `<Copyright>`,
       `<Company>`, and `<Authors>`, but does not define `<Version>`.
 - [ ] All assemblies included in NuGet packages are signed.
-- [ ] Signed Release builds suppress the benign CS8002 warning caused by the non-strong-named
+- [x] Signed Release builds suppress the benign CS8002 warning caused by the non-strong-named
       `Generator.Equals.Runtime` dependency.
 - [ ] NuGet packages are created for every project under `./src/` that does not set `IsPackable=false`.
 - [ ] All projects outside `./src/` set `IsPackable=false` so solution-level packing only produces

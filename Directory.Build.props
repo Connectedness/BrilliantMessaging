@@ -5,5 +5,9 @@
     <Nullable>enable</Nullable>
     <LangVersion>14.0</LangVersion>
     <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    <!-- Generator.Equals.Runtime is not strong-named; CS8002 is benign on modern .NET, where
+         strong-name verification of references is not enforced. Suppress it so signed Release
+         builds (SignAssembly=true) do not fail. -->
+    <NoWarn>$(NoWarn);CS8002</NoWarn>
   </PropertyGroup>
 </Project>
