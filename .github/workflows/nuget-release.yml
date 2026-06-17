@@ -52,7 +52,9 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Decode signing key
-        run: printf '%s' '${{ secrets.BMF_SNK }}' | base64 --decode > BMF.snk
+        env:
+          BMF_SNK: ${{ secrets.BMF_SNK }}
+        run: printf '%s' "$BMF_SNK" | base64 --decode > BMF.snk
 
       - name: Restore
         run: dotnet restore BMF.slnx /p:ContinuousIntegrationBuild=true
