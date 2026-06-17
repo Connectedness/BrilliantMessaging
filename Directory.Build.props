@@ -5,6 +5,13 @@
     <Nullable>enable</Nullable>
     <LangVersion>14.0</LangVersion>
     <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    <Authors>Kenny Pflug,Christian Flessa</Authors>
+    <Company>Connectedness</Company>
+    <Copyright>Copyright (c) 2025 Connectedness</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Connectedness/BMF</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/Connectedness/BMF</RepositoryUrl>
     <!-- Generator.Equals.Runtime is not strong-named; CS8002 is benign on modern .NET, where
          strong-name verification of references is not enforced. Suppress it so signed Release
          builds (SignAssembly=true) do not fail. -->
