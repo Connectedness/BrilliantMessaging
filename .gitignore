@@ -10,3 +10,4 @@ obj/
 *.user
 /tmp/
 /BMF.snk
+/artifacts/
