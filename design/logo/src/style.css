@@ -1,6 +1,6 @@
 :root {
   --graphite: #1F2937;
-  --teal: #14B8A6;
+  --teal: #00CDEA;
   --paper: #ffffff;
   --ink: #111827;
   --muted: #6b7280;
@@ -307,6 +307,65 @@ code {
 .chip-name, .chip-hex { display: block; padding: 2px 12px; }
 .chip-name { margin-top: 8px; font-size: 13px; font-weight: 600; }
 .chip-hex { background: none; color: var(--muted); padding-bottom: 10px; }
+
+/* ---- downloads page ---- */
+.dl-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--graphite);
+  cursor: pointer;
+}
+.dl-toggle input { width: 16px; height: 16px; accent-color: var(--teal); cursor: pointer; }
+
+#download-cards { display: grid; gap: 20px; }
+.dl-card {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.dl-preview {
+  margin: 0;
+  flex: 0 0 auto;
+  width: 176px;
+  padding: 24px;
+}
+.dl-body { flex: 1 1 280px; }
+.dl-body h2 { margin: 0 0 16px; }
+.dl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.dl-row-label {
+  width: 38px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.dl-btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--graphite);
+  background: #f1f3f5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.dl-btn:hover {
+  background: var(--teal);
+  color: #06251f;
+  border-color: var(--teal);
+}
 
 /* ---- footer ---- */
 footer {

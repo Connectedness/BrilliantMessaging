@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BMF · Logo — Downloads</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <nav class="topnav">
+      <span class="topnav-brand">BMF · LOGO</span>
+      <div class="topnav-links">
+        <a href="/index.html">Concept 1 · Explicit Route</a>
+        <a href="/concept2.html">Concept 2 · Controlled Flow</a>
+        <a href="/concept3.html">Concept 3 · The Pulse</a>
+        <a href="/downloads.html" class="active">Downloads</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-mark">
+        <svg class="logo--accent pulse-static" data-variant="reuleaux" width="120" height="120" viewBox="0 0 64 64" fill="none"></svg>
+      </div>
+      <h1>BMF</h1>
+      <p class="tagline">Explicit Messaging. No Magic.</p>
+      <p class="concept-label">Concept 3 · Reuleaux — Downloads</p>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>Logo assets</h2>
+        <p>
+          The chosen mark — Concept 3 "The Pulse", Reuleaux variant — in three colour
+          schemes. PNGs are framed exactly like the NuGet icon (mark centred with an
+          8&nbsp;px margin at 128&nbsp;px, scaled proportionally at every other size).
+          The vector download is resolution-independent for print and large displays.
+        </p>
+        <label class="dl-toggle">
+          <input type="checkbox" id="opt-transparent" />
+          <span>Transparent background</span>
+        </label>
+      </section>
+
+      <div id="download-cards"></div>
+
+      <section class="panel">
+        <h2>Web &amp; app icons</h2>
+        <p>
+          Ready-to-link icons built from the full-colour mark. The favicon is a
+          multi-resolution <code>.ico</code> (16 · 32 · 48&nbsp;px) and honours the
+          transparent-background option above. The Apple Touch icon is always exported
+          on the paper background — iOS renders touch icons on an opaque tile, so any
+          transparency would turn black.
+        </p>
+        <div class="dl-row">
+          <span class="dl-row-label">ICO</span>
+          <button id="dl-favicon" class="dl-btn" type="button">favicon · 16 · 32 · 48</button>
+        </div>
+        <div class="dl-row">
+          <span class="dl-row-label">PNG</span>
+          <button id="dl-apple" class="dl-btn" type="button">apple-touch-icon · 180</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Palette</h2>
+        <p class="hint">Recolour any download — the previews and exports update live.</p>
+        <p class="hint">Defaults: Graphite #1F2937 · Teal #00CDEA · Paper #FFFFFF</p>
+        <div class="palette">
+          <label class="chip" data-var="--graphite">
+            <input type="color" value="#1F2937" />
+            <span class="chip-name">Graphite</span>
+            <code class="chip-hex">#1F2937</code>
+          </label>
+          <label class="chip" data-var="--teal">
+            <input type="color" value="#00CDEA" />
+            <span class="chip-name">Teal · the pulse</span>
+            <code class="chip-hex">#00CDEA</code>
+          </label>
+          <label class="chip" data-var="--paper">
+            <input type="color" value="#FFFFFF" />
+            <span class="chip-name">Paper</span>
+            <code class="chip-hex">#FFFFFF</code>
+          </label>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>BMF — The Brilliant Messaging Framework · logo exploration</p>
+    </footer>
+    <script type="module" src="/src/pulse-tuner.js"></script>
+    <script type="module" src="/src/downloads.js"></script>
+    <script type="module" src="/src/palette.js"></script>
+  </body>
+</html>

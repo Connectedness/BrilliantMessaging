@@ -11,6 +11,7 @@ export default defineConfig({
         main: r('./index.html'),
         concept2: r('./concept2.html'),
         concept3: r('./concept3.html'),
+        downloads: r('./downloads.html'),
       },
     },
   },
