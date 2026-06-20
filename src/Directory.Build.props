@@ -7,5 +7,10 @@
 
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageIcon>logo-128x128.png</PackageIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../design/logo-128x128.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>
