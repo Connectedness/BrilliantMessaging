@@ -110,9 +110,9 @@ public sealed class Utf8JsonPayloadCodecTests
         var codec = new Utf8JsonPayloadCodec(options);
         SerializerBaseMessage message = new SerializerDerivedMessage("Base", "Derived");
 
-        Action action = () => codec.Encode(message);
+        Action act = () => codec.Encode(message);
 
-        action.Should()
+        act.Should()
            .Throw<InvalidOperationException>()
            .WithMessage(
                 "*JsonTypeInfo metadata for type 'Bmf.Core.Tests.Messaging.SerializerDerivedMessage'*"
@@ -124,9 +124,9 @@ public sealed class Utf8JsonPayloadCodecTests
     {
         var codec = new Utf8JsonPayloadCodec();
 
-        Action action = () => codec.Encode<string>(null!);
+        Action act = () => codec.Encode<string>(null!);
 
-        action.Should().Throw<ArgumentNullException>().WithParameterName("message");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("message");
     }
 
     [Fact]

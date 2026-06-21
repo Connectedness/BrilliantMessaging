@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Bmf.Core.Messaging.Inbound;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using Bmf.Core.Messaging.Inbound;
 
 namespace Bmf.Transport.RabbitMq.Inbound;
 
@@ -39,7 +40,10 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
     /// <param name="topology">The topology whose consumers this runtime drives.</param>
     /// <param name="serviceScopeFactory">The factory used to create a DI scope per delivery.</param>
     /// <param name="logger">An optional logger; defaults to a no-op logger.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="topology" /> or <paramref name="serviceScopeFactory" /> is <see langword="null" />.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="topology" /> or <paramref name="serviceScopeFactory" /> is
+    /// <see langword="null" />.
+    /// </exception>
     public RabbitMqTopologyRuntime(
         RabbitMqTopology topology,
         IServiceScopeFactory serviceScopeFactory,
@@ -251,6 +255,7 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
             consumer.CopyBody
         );
 
+        var pipelineStarted = false;
         try
         {
             var inspector = (IInboundMessageInspector) scope.ServiceProvider.GetRequiredService(
@@ -289,14 +294,28 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
                 Message = inspectResult.Message
             };
 
+            pipelineStarted = true;
             await _topology.Pipeline(context).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             await acknowledgement.NackAsync(requeue: true, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
+            if (!pipelineStarted)
+            {
+                var tags = new TagList
+                {
+                    { InboundDiagnostics.SourceTagName, transportMessage.Source },
+                    { InboundDiagnostics.TransportNameTagName, transportMessage.TransportName }
+                };
+                InboundDiagnostics.ProcessAttempts.Add(1, tags);
+
+                tags.Add(InboundDiagnostics.OutcomeTagName, "failure");
+                InboundDiagnostics.ProcessFailures.Add(1, tags);
+            }
+
             _logger.LogError(
                 exception,
                 "RabbitMQ inbound delivery failed for queue {QueueName} and delivery tag {DeliveryTag}",

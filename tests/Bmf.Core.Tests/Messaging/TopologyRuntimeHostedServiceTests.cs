@@ -47,6 +47,19 @@ public sealed class TopologyRuntimeHostedServiceTests
     }
 
     [Fact]
+    public void AddBmf_RegistersInboundDiagnosticsMiddleware()
+    {
+        var services = new ServiceCollection();
+
+        services.AddBmf();
+
+        services.Should().Contain(
+            descriptor => descriptor.ServiceType == typeof(InboundDiagnosticsMiddleware) &&
+                          descriptor.Lifetime == ServiceLifetime.Singleton
+        );
+    }
+
+    [Fact]
     public async Task StopAsync_ContinuesStoppingRemainingRuntimes_WhenOneFails()
     {
         var events = new List<string>();

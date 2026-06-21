@@ -5,20 +5,19 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Bmf.Core.Messaging;
+using Bmf.Core.Messaging.Inbound;
+using Bmf.Core.Messaging.Outbound;
+using Bmf.Transport.RabbitMq.Inbound;
+using Bmf.Transport.RabbitMq.Outbound;
+using Bmf.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
 using Xunit;
-
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Outbound;
 
 namespace Bmf.Transport.RabbitMq.Tests.Unit;
 
@@ -96,10 +95,9 @@ public sealed class RabbitMqOutboundChannelGroupTests
     {
         var builder = new RabbitMqTopologyBuilder();
 
-        var action = () => builder.ChannelGroup("$implicit:user-defined", 1);
+        var act = () => builder.ChannelGroup("$implicit:user-defined", 1);
 
-        action
-           .Should().Throw<ArgumentException>()
+        act.Should().Throw<ArgumentException>()
            .WithParameterName("name")
            .WithMessage("Channel group names beginning with '$implicit:' are reserved.*");
     }
@@ -289,8 +287,9 @@ public sealed class RabbitMqOutboundChannelGroupTests
         waitingAcquire.IsCompleted.Should().BeFalse();
         await cancellationTokenSource.CancelAsync();
 
-        Func<Task> action = async () => await waitingAcquire;
-        await action.Should().ThrowAsync<OperationCanceledException>();
+        var act = async () => await waitingAcquire;
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
@@ -467,8 +466,9 @@ public sealed class RabbitMqOutboundChannelGroupTests
         );
         await cancellationTokenSource.CancelAsync();
 
-        var action = async () => await publish;
-        await action.Should().ThrowAsync<OperationCanceledException>();
+        var act = async () => await publish;
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
@@ -502,9 +502,9 @@ public sealed class RabbitMqOutboundChannelGroupTests
             null
         );
 
-        var action = async () => await publisher.PublishRawAsync(message, target, cancellationToken);
+        var act = async () => await publisher.PublishRawAsync(message, target, cancellationToken);
 
-        var deliveryException = (await action.Should().ThrowAsync<MessageDeliveryException>()).Which;
+        var deliveryException = (await act.Should().ThrowAsync<MessageDeliveryException>()).Which;
         deliveryException.TargetName.Should().Be("target");
         deliveryException.Reason.Should().Be(MessageDeliveryFailureReason.Returned);
         deliveryException.InnerException.Should().BeSameAs(publishException);
@@ -568,13 +568,13 @@ public sealed class RabbitMqOutboundChannelGroupTests
             null
         );
 
-        var action = async () => await target.PublishAsync(
+        var act = async () => await target.PublishAsync(
             new ValidationMessageA("value"),
             callerRoutingKey!,
             cancellationToken
         );
 
-        await action.Should().ThrowAsync<ArgumentException>().WithParameterName("routingKey");
+        await act.Should().ThrowAsync<ArgumentException>().WithParameterName("routingKey");
         channel.BasicPublishCallCount.Should().Be(0);
     }
 
@@ -937,8 +937,10 @@ public sealed class RabbitMqOutboundChannelGroupTests
         var provider = new RabbitMqConnectionProvider(
             _ =>
             {
+                // ReSharper disable AccessToDisposedClosure
                 factoryEntered.Set();
                 allowFactoryReturn.Wait(cancellationToken);
+                // ReSharper restore AccessToDisposedClosure
                 return Task.FromResult(connection.Object);
             }
         );
@@ -980,8 +982,10 @@ public sealed class RabbitMqOutboundChannelGroupTests
         var provider = new RabbitMqConnectionProvider(
             _ =>
             {
+                // ReSharper disable AccessToDisposedClosure
                 factoryEntered.Set();
                 allowFactoryReturn.Wait(cancellationToken);
+                // ReSharper restore AccessToDisposedClosure
                 return Task.FromResult(connection.Object);
             }
         );
@@ -996,6 +1000,7 @@ public sealed class RabbitMqOutboundChannelGroupTests
             var disposeTask = Task.Run(
                 () =>
                 {
+                    // ReSharper disable once AccessToDisposedClosure -- task is awaited before disposal
                     disposeStarted.Set();
                     provider.Dispose();
                 },
@@ -1040,11 +1045,11 @@ public sealed class RabbitMqOutboundChannelGroupTests
         services
            .AddBmf()
            .AddRabbitMqTopology(
-                _ =>
+                t =>
                 {
                     foreach (var channelGroup in builder.Build().OutboundChannelGroups)
                     {
-                        _.ChannelGroup(
+                        t.ChannelGroup(
                             channelGroup.Name,
                             channelGroup.MaximumChannelCount,
                             channelGroup.PublisherConfirmMode,
@@ -1052,8 +1057,8 @@ public sealed class RabbitMqOutboundChannelGroupTests
                         );
                     }
 
-                    _.UseConnectionFactory(
-                        serviceProvider =>
+                    t.UseConnectionFactory(
+                        _ =>
                         {
                             createFactoryCallCount++;
                             return new ConnectionFactory
@@ -1064,14 +1069,15 @@ public sealed class RabbitMqOutboundChannelGroupTests
                     );
                 }
             );
-        using var serviceProvider = services.BuildServiceProvider();
+        await using var serviceProvider = services.BuildServiceProvider();
         await using var topology = serviceProvider.GetRequiredService<RabbitMqTopology>();
 
         createFactoryCallCount.Should().Be(0);
 
-        var action = async () => await topology.GetConnectionAsync(cancellationToken);
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        var act = async () => await topology.GetConnectionAsync(cancellationToken);
 
-        var exception = (await action.Should().ThrowAsync<TopologyValidationException>()).Which;
+        var exception = (await act.Should().ThrowAsync<TopologyValidationException>()).Which;
         exception.ValidationErrors.Should().ContainSingle()
            .Which.Should()
            .Be(
@@ -1340,6 +1346,7 @@ public sealed class RabbitMqOutboundChannelGroupTests
             );
         using var serviceProvider = services.BuildServiceProvider();
 
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
         Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
 
         var exception = act.Should().Throw<TopologyValidationException>().Which;

@@ -40,9 +40,9 @@ public sealed class TopologyTests
     [Fact]
     public void Constructor_RejectsInvalidName()
     {
-        var action = () => new TestTopology("   ");
+        var act = () => new TestTopology("   ");
 
-        action.Should().Throw<ArgumentException>().WithParameterName("name");
+        act.Should().Throw<ArgumentException>().WithParameterName("name");
     }
 
     [Fact]
@@ -57,9 +57,9 @@ public sealed class TopologyTests
             }
         );
 
-        var action = () => topology.GetRequiredTarget("named");
+        var act = () => topology.GetRequiredTarget("named");
 
-        action.Should().Throw<OutboundTargetNotFoundException>();
+        act.Should().Throw<OutboundTargetNotFoundException>();
     }
 
     [Fact]

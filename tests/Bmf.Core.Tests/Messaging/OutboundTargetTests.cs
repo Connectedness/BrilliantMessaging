@@ -44,13 +44,13 @@ public sealed class OutboundTargetTests
             CloudEventsTestFactory.CreateSerializer()
         );
 
-        var action = async () => await target.PublishAsync(
+        var act = async () => await target.PublishAsync(
             new SampleMessage("hello"),
             routingKey!,
             cancellationToken
         );
 
-        await action.Should().ThrowAsync<ArgumentException>().WithParameterName("routingKey");
+        await act.Should().ThrowAsync<ArgumentException>().WithParameterName("routingKey");
     }
 
     [Fact]
@@ -59,9 +59,9 @@ public sealed class OutboundTargetTests
         var serializer = new ThrowingSerializer(new InvalidOperationException("boom"));
         var target = new RecordingTarget<SampleMessage>("default", serializer);
 
-        var action = async () => await target.PublishAsync(new SampleMessage("hello"));
+        var act = async () => await target.PublishAsync(new SampleMessage("hello"));
 
-        var exception = (await action.Should().ThrowAsync<MessageSerializationException>()).Which;
+        var exception = (await act.Should().ThrowAsync<MessageSerializationException>()).Which;
         exception.InnerException.Should().BeOfType<InvalidOperationException>();
         exception.MessageType.Should().Be<SampleMessage>();
     }
@@ -72,9 +72,9 @@ public sealed class OutboundTargetTests
         var serializer = new ThrowingSerializer(new OperationCanceledException());
         var target = new RecordingTarget<SampleMessage>("default", serializer);
 
-        var action = async () => await target.PublishAsync(new SampleMessage("hello"));
+        var act = async () => await target.PublishAsync(new SampleMessage("hello"));
 
-        await action.Should().ThrowAsync<OperationCanceledException>();
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
@@ -88,9 +88,9 @@ public sealed class OutboundTargetTests
             )
         );
 
-        var action = async () => await target.PublishAsync(new ThirdPartyMessage("hello"));
+        var act = async () => await target.PublishAsync(new ThirdPartyMessage("hello"));
 
-        var exception = (await action.Should().ThrowAsync<CloudEventMetadataException>()).Which;
+        var exception = (await act.Should().ThrowAsync<CloudEventMetadataException>()).Which;
         exception.AttributeName.Should().Be(CloudEventAttributeNames.Id);
     }
 }

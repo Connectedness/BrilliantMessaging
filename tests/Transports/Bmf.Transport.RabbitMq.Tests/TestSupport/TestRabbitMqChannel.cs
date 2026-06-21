@@ -30,7 +30,13 @@ public sealed class TestRabbitMqChannel
 
     public int BasicConsumeCallCount { get; private set; }
 
+    public int BasicAckCallCount { get; private set; }
+
+    public int BasicNackCallCount { get; private set; }
+
     public IList<string> ConsumedQueues { get; } = new List<string>();
+
+    public bool? LastNackRequeue { get; private set; }
 
     public ushort? LastPrefetchCount { get; private set; }
 
@@ -58,6 +64,8 @@ public sealed class TestRabbitMqChannel
 
     public IChannel Object { get; }
 
+    public IAsyncBasicConsumer? LastConsumer { get; private set; }
+
     public void Close(ushort replyCode = 200, string replyText = "Closed")
     {
         IsOpen = false;
@@ -83,6 +91,34 @@ public sealed class TestRabbitMqChannel
         {
             await _recoveryAsync(Object, new AsyncEventArgs(CancellationToken.None)).ConfigureAwait(false);
         }
+    }
+
+    public Task DeliverAsync(
+        string consumerTag,
+        ulong deliveryTag,
+        bool redelivered,
+        string exchange,
+        string routingKey,
+        IReadOnlyBasicProperties properties,
+        ReadOnlyMemory<byte> body,
+        CancellationToken cancellationToken
+    )
+    {
+        if (LastConsumer is null)
+        {
+            throw new InvalidOperationException("No consumer has been registered.");
+        }
+
+        return LastConsumer.HandleBasicDeliverAsync(
+            consumerTag,
+            deliveryTag,
+            redelivered,
+            exchange,
+            routingKey,
+            properties,
+            body,
+            cancellationToken
+        );
     }
 
     private object? HandleInvoke(MethodInfo targetMethod, object?[]? arguments)
@@ -123,7 +159,15 @@ public sealed class TestRabbitMqChannel
             case "BasicConsumeAsync":
                 BasicConsumeCallCount++;
                 ConsumedQueues.Add((string) arguments![0]!);
+                LastConsumer = (IAsyncBasicConsumer) arguments[6]!;
                 return Task.FromResult($"consumer-{BasicConsumeCallCount}");
+            case "BasicAckAsync":
+                BasicAckCallCount++;
+                return default(ValueTask);
+            case "BasicNackAsync":
+                BasicNackCallCount++;
+                LastNackRequeue = (bool) arguments![2]!;
+                return default(ValueTask);
             case "BasicCancelAsync":
                 return Task.CompletedTask;
             case "DisposeAsync":

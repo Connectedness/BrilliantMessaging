@@ -33,9 +33,9 @@ public sealed class MessageHandlerInvocationTests
     {
         var endpoint = CreateEndpoint();
 
-        Action action = () => _ = endpoint.InvokeHandlerAsync(null!);
+        Action act = () => _ = endpoint.InvokeHandlerAsync(null!);
 
-        action.Should().Throw<ArgumentNullException>().WithParameterName("context");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("context");
     }
 
     [Fact]
@@ -48,9 +48,9 @@ public sealed class MessageHandlerInvocationTests
             TestContext.Current.CancellationToken
         );
 
-        Action action = () => _ = endpoint.InvokeHandlerAsync(context);
+        Action act = () => _ = endpoint.InvokeHandlerAsync(context);
 
-        action.Should().Throw<InvalidOperationException>()
+        act.Should().Throw<InvalidOperationException>()
            .WithMessage("The inbound message has not been deserialized.");
     }
 

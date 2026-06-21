@@ -36,9 +36,9 @@ public sealed class PayloadCodecMessageDeserializerTests
         PayloadCodecMessageDeserializer deserializer = new (new ThrowingPayloadCodec(failure));
         var context = CreateContext("invalid"u8.ToArray());
 
-        var action = async () => await deserializer.DeserializeAsync(context);
+        var act = async () => await deserializer.DeserializeAsync(context);
 
-        var exception = await action.Should().ThrowAsync<MessageDeserializationException>();
+        var exception = await act.Should().ThrowAsync<MessageDeserializationException>();
         exception.Which.MessageType.Should().Be(typeof(TestMessage));
         exception.Which.InnerException.Should().BeSameAs(failure);
     }

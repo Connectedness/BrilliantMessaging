@@ -125,13 +125,13 @@ public sealed class MessagePublisherTests
         );
         var publisher = new MessagePublisher(new TestTopology(Topology.DefaultName));
 
-        var action = async () => await publisher.PublishMessageAsync(
+        var act = async () => await publisher.PublishMessageAsync(
             new SampleMessage("hello"),
             target,
             routingKey: "orders.created"
         );
 
-        var exception = (await action.Should().ThrowAsync<OutboundTargetNotRoutableException>()).Which;
+        var exception = (await act.Should().ThrowAsync<OutboundTargetNotRoutableException>()).Which;
         exception.TargetName.Should().Be("non-routable");
         exception.MessageType.Should().Be<SampleMessage>();
         target.Messages.Should().BeEmpty();
@@ -182,11 +182,11 @@ public sealed class MessagePublisherTests
         );
         var publisher = new MessagePublisher(new TestTopology(Topology.DefaultName));
 
-        var action = async () => await publisher
+        var act = async () => await publisher
            .ForTopology("legacy")
            .PublishMessageAsync(new SampleMessage("hello"), target, routingKey: "orders.created");
 
-        await action.Should().ThrowAsync<OutboundTargetNotRoutableException>();
+        await act.Should().ThrowAsync<OutboundTargetNotRoutableException>();
     }
 
     [Fact]
@@ -253,9 +253,9 @@ public sealed class MessagePublisherTests
         var publisher = new MessagePublisher(EmptyTopology.Create());
         var metadata = default(CloudEventMetadata);
 
-        var action = async () => await publisher.PublishMessageAsync<string>(null!, in metadata);
+        var act = async () => await publisher.PublishMessageAsync<string>(null!, in metadata);
 
-        await action.Should().ThrowAsync<ArgumentNullException>().WithParameterName("message");
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("message");
     }
 
     [Fact]
@@ -263,9 +263,9 @@ public sealed class MessagePublisherTests
     {
         var publisher = new MessagePublisher(EmptyTopology.Create());
 
-        var action = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"));
+        var act = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"));
 
-        await action.Should().ThrowAsync<OutboundTargetNotFoundException>();
+        await act.Should().ThrowAsync<OutboundTargetNotFoundException>();
     }
 
     [Fact]
@@ -273,11 +273,11 @@ public sealed class MessagePublisherTests
     {
         var publisher = new MessagePublisher(new EmptyTopologyRegistry());
 
-        var action = async () => await publisher
+        var act = async () => await publisher
            .ForTopology("missing")
            .PublishMessageAsync(new SampleMessage("hello"));
 
-        var exception = (await action.Should().ThrowAsync<InvalidOperationException>()).Which;
+        var exception = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
         exception.Message.Should().Be(
             "Topology 'missing' is not registered. Registered topologies: (none)."
         );
@@ -288,9 +288,9 @@ public sealed class MessagePublisherTests
     {
         TopologyPublisher publisher = default;
 
-        var action = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"));
+        var act = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"));
 
-        var exception = (await action.Should().ThrowAsync<InvalidOperationException>()).Which;
+        var exception = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
         exception.Message.Should().Be(UninitializedTopologyPublisherMessage);
     }
 
@@ -303,12 +303,12 @@ public sealed class MessagePublisherTests
             new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero)
         );
 
-        var action = async () => await publisher.PublishMessageAsync(
+        var act = async () => await publisher.PublishMessageAsync(
             new ThirdPartyMessage("hello"),
             in metadata
         );
 
-        var exception = (await action.Should().ThrowAsync<InvalidOperationException>()).Which;
+        var exception = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
         exception.Message.Should().Be(UninitializedTopologyPublisherMessage);
     }
 
@@ -326,9 +326,9 @@ public sealed class MessagePublisherTests
         );
         var target = new RecordingTarget<SampleMessage>("raw", CloudEventsTestFactory.CreateSerializer());
 
-        var action = async () => await publisher.PublishRawAsync(message, target);
+        var act = async () => await publisher.PublishRawAsync(message, target);
 
-        var exception = (await action.Should().ThrowAsync<InvalidOperationException>()).Which;
+        var exception = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
         exception.Message.Should().Be(UninitializedTopologyPublisherMessage);
     }
 
@@ -343,11 +343,11 @@ public sealed class MessagePublisherTests
         );
         var publisher = new MessagePublisher(EmptyTopology.Create());
 
-        var action = async () => await publisher
+        var act = async () => await publisher
            .ForTopology("modern")
            .PublishMessageAsync(new SampleMessage("hello"), target);
 
-        var exception = (await action.Should().ThrowAsync<InvalidOperationException>()).Which;
+        var exception = (await act.Should().ThrowAsync<InvalidOperationException>()).Which;
         exception.Message.Should().Be(
             "Outbound target 'explicit' belongs to outbound topology 'legacy', but publish requested outbound topology 'modern'."
         );
@@ -359,9 +359,9 @@ public sealed class MessagePublisherTests
         var target = new RecordingTarget<OtherMessage>("other", CloudEventsTestFactory.CreateSerializer());
         var publisher = new MessagePublisher(EmptyTopology.Create());
 
-        var action = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"), target);
+        var act = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"), target);
 
-        await action.Should().ThrowAsync<OutboundTargetTypeMismatchException>();
+        await act.Should().ThrowAsync<OutboundTargetTypeMismatchException>();
     }
 
     [Fact]
@@ -421,9 +421,9 @@ public sealed class MessagePublisherTests
         var target = new RecordingTarget<SampleMessage>("raw", CloudEventsTestFactory.CreateSerializer());
         var publisher = new MessagePublisher(EmptyTopology.Create());
 
-        var action = async () => await publisher.PublishRawAsync(default, target);
+        var act = async () => await publisher.PublishRawAsync(default, target);
 
-        await action.Should().ThrowAsync<ArgumentException>().WithParameterName("message");
+        await act.Should().ThrowAsync<ArgumentException>().WithParameterName("message");
         target.SerializedMessages.Should().BeEmpty();
     }
 
@@ -454,9 +454,9 @@ public sealed class MessagePublisherTests
         );
         var publisher = new MessagePublisher(EmptyTopology.Create());
 
-        var action = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"), target);
+        var act = async () => await publisher.PublishMessageAsync(new SampleMessage("hello"), target);
 
-        await action.Should().ThrowAsync<MessageDeliveryException>();
+        await act.Should().ThrowAsync<MessageDeliveryException>();
         measurements.Should().ContainSingle();
         measurements[0].Should().Contain(
             new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "failure")

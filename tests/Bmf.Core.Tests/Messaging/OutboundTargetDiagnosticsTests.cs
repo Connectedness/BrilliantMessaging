@@ -163,9 +163,9 @@ public sealed class OutboundTargetDiagnosticsTests
             new ThrowingSerializer(new OperationCanceledException())
         );
 
-        var action = async () => await target.PublishAsync(new SampleMessage("hello"));
+        var act = async () => await target.PublishAsync(new SampleMessage("hello"));
 
-        await action.Should().ThrowAsync<OperationCanceledException>();
+        await act.Should().ThrowAsync<OperationCanceledException>();
         recorder.Attempts.Should().ContainSingle();
         recorder.Failures.Should().BeEmpty();
         recorder.Durations.Should().ContainSingle().Which.Should().Contain(
@@ -185,9 +185,9 @@ public sealed class OutboundTargetDiagnosticsTests
             new ThrowingSerializer(new InvalidOperationException("boom"))
         );
 
-        var action = async () => await target.PublishAsync(new SampleMessage("hello"));
+        var act = async () => await target.PublishAsync(new SampleMessage("hello"));
 
-        await action.Should().ThrowAsync<MessageSerializationException>();
+        await act.Should().ThrowAsync<MessageSerializationException>();
         var failure = recorder.Failures.Should().ContainSingle().Which;
         failure.Should().Contain(
             new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "failure")
@@ -213,9 +213,9 @@ public sealed class OutboundTargetDiagnosticsTests
             deliveryException
         );
 
-        var action = async () => await target.PublishAsync(new SampleMessage("hello"));
+        var act = async () => await target.PublishAsync(new SampleMessage("hello"));
 
-        await action.Should().ThrowAsync<MessageDeliveryException>();
+        await act.Should().ThrowAsync<MessageDeliveryException>();
         var failure = recorder.Failures.Should().ContainSingle().Which;
         failure.Should().Contain(
             new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "failure")

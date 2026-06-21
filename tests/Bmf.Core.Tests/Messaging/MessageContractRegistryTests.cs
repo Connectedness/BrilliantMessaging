@@ -48,9 +48,9 @@ public sealed class MessageContractRegistryTests
         builder.Map<OtherRegistryMessage>("registry.shared");
         builder.MapOutbound<OutboundRegistryMessage>("registry.outbound").WithInboundAlias("registry.legacy");
 
-        Action action = () => builder.Build();
+        var act = builder.Build;
 
-        var exception = action.Should().Throw<MessageContractRegistryValidationException>().Which;
+        var exception = act.Should().Throw<MessageContractRegistryValidationException>().Which;
         exception.ValidationErrors.Should().Equal(
             "CloudEvents discriminator 'registry.shared' maps to multiple message types: 'Bmf.Core.Tests.Messaging.MessageContractRegistryTests+OtherRegistryMessage', 'Bmf.Core.Tests.Messaging.MessageContractRegistryTests+RegistryMessage'.",
             "Message type 'Bmf.Core.Tests.Messaging.MessageContractRegistryTests+OutboundRegistryMessage' registers inbound CloudEvents discriminators but does not accept its canonical discriminator 'registry.outbound' inbound.",
@@ -64,9 +64,9 @@ public sealed class MessageContractRegistryTests
         MessageContractRegistryBuilder builder = new ();
         builder.Map<RegistryMessage>("registry.current").WithInboundAlias("registry.current");
 
-        Action action = () => builder.Build();
+        var act = builder.Build;
 
-        var exception = action.Should().Throw<MessageContractRegistryValidationException>().Which;
+        var exception = act.Should().Throw<MessageContractRegistryValidationException>().Which;
         exception.ValidationErrors.Should().ContainSingle()
            .Which.Should()
            .Be(

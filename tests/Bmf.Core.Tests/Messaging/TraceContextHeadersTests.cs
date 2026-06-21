@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using FluentAssertions;
-using Bmf.Core.Messaging.Outbound;
+using Bmf.Core.Messaging;
+using Bmf.Core.Messaging.Inbound;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -79,5 +82,34 @@ public sealed class TraceContextHeadersTests
         TraceContextHeaders.Inject(headers);
 
         headers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Extract_ReadsTraceContextAndBaggageFromTransportMessage()
+    {
+        using var activity = new Activity("extract")
+           .SetIdFormat(ActivityIdFormat.W3C)
+           .Start();
+        activity.TraceStateString = "vendor=value";
+        activity.AddBaggage("tenant", "tenant-7");
+        var headers = new Dictionary<string, object?>();
+        TraceContextHeaders.Inject(headers, activity);
+
+        headers["traceparent"] = Encoding.UTF8.GetBytes((string) headers["traceparent"]!);
+        headers["tracestate"] = Encoding.UTF8.GetBytes((string) headers["tracestate"]!);
+        headers["baggage"] = Encoding.UTF8.GetBytes((string) headers["baggage"]!);
+        var transport = new TestTransportMessage(headers);
+
+        var result = TraceContextHeaders.Extract(transport);
+
+        result.TraceParent.Should().Be(activity.Id);
+        result.TraceState.Should().Be("vendor=value");
+        result.Baggage.Should().ContainSingle(pair => pair.Key == "tenant" && pair.Value == "tenant-7");
+    }
+
+    private sealed class TestTransportMessage : TransportMessage
+    {
+        public TestTransportMessage(IReadOnlyDictionary<string, object?> headers)
+            : base("test", "source", ReadOnlyMemory<byte>.Empty, headers) { }
     }
 }
