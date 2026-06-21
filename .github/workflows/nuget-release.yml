@@ -1,0 +1,176 @@
+name: NuGet Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semantic version to release (e.g. 1.2.3 or 1.2.3-dev)'
+        required: true
+        default: '0.1.0'
+      publish:
+        description: 'Publish packages to nuget.org'
+        required: true
+        type: boolean
+        default: false
+      create_release:
+        description: 'Publish a GitHub release (only when packages are published)'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+  PACKAGE_OUTPUT: ${{ github.workspace }}/artifacts/packages
+
+jobs:
+  validate:
+    name: Validate release version
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate version
+        id: version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: ./scripts/release-version.sh
+
+  pack:
+    name: Pack signed NuGet packages
+    runs-on: ubuntu-latest
+    needs: validate
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('global.json', 'Directory.Packages.props', 'Directory.Build.props', 'src/Directory.Build.props', 'tests/Directory.Build.props', '**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Decode signing key
+        env:
+          BMF_SNK: ${{ secrets.BMF_SNK }}
+        run: printf '%s' "$BMF_SNK" | base64 --decode > BMF.snk
+
+      - name: Restore
+        run: dotnet restore BMF.slnx /p:ContinuousIntegrationBuild=true
+
+      - name: Pack
+        run: >
+          dotnet pack ./BMF.slnx
+          --configuration Release
+          --no-restore
+          --output "${{ env.PACKAGE_OUTPUT }}"
+          /p:SignAssembly=true
+          /p:AssemblyOriginatorKeyFile=${{ github.workspace }}/BMF.snk
+          /p:ContinuousIntegrationBuild=true
+          /p:IncludeSymbols=true
+          /p:PackageRequireLicenseAcceptance=false
+          /p:SymbolPackageFormat=snupkg
+          /p:Version=${{ needs.validate.outputs.version }}
+
+      - name: Verify package icon and tags
+        run: ./scripts/verify-packages.sh "${{ env.PACKAGE_OUTPUT }}"
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: nuget-packages
+          path: ${{ env.PACKAGE_OUTPUT }}
+          if-no-files-found: error
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f BMF.snk
+
+  publish:
+    name: Publish NuGet packages
+    runs-on: ubuntu-latest
+    needs: pack
+    if: ${{ inputs.publish }}
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: nuget-packages
+          path: artifacts/packages
+
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Push packages
+        run: >
+          dotnet nuget push artifacts/packages/*.nupkg
+          --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+
+  release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs: [validate, publish]
+    if: ${{ inputs.publish && inputs.create_release }}
+
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Publish GitHub release
+        uses: release-drafter/release-drafter@v7
+        with:
+          config-name: release-drafter.yml
+          version: ${{ needs.validate.outputs.version }}
+          name: v${{ needs.validate.outputs.version }}
+          tag: v${{ needs.validate.outputs.version }}
+          publish: true
+          prerelease: ${{ needs.validate.outputs.prerelease }}
+          latest: ${{ needs.validate.outputs.prerelease == 'false' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

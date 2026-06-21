@@ -9,3 +9,5 @@ obj/
 *.suo
 *.user
 /tmp/
+/BMF.snk
+/artifacts/

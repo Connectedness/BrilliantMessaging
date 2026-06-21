@@ -7,10 +7,16 @@
 
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <PackageIcon>logo-128x128.png</PackageIcon>
+    <PackageTags>messaging;communication;rabbitmq;amqp;bmf;cloudevents</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="../../design/logo-128x128.png" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)../design/logo-128x128.png" Pack="true" PackagePath="\" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
   </ItemGroup>
 </Project>

@@ -21,6 +21,20 @@ env:
   NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
 
 jobs:
+  script-tests:
+    name: Shell script tests
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Test release-version script
+        run: ./scripts/release-version.test.sh
+
   build-test:
     name: Build and test
     runs-on: ubuntu-latest

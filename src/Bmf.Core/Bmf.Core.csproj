@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageId>Bmf.Core</PackageId>
+    <Description>The Brilliant Messaging Framework – Transport-agnostic abstractions and logic.</Description>
   </PropertyGroup>
 
   <ItemGroup>
