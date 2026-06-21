@@ -10,13 +10,15 @@ namespace Bmf.Core.Messaging.Inbound;
 /// <see cref="Bmf.Core.Messaging.Outbound.OutboundDiagnostics" /> for the corresponding producer-hop telemetry.
 /// </summary>
 /// <remarks>
-/// The consumer span and the <see cref="ConsumedMessages" />/<see cref="OperationDuration" /> instruments are
-/// annotated with the OpenTelemetry <c>messaging.*</c> semantic conventions defined in
+/// The consumer span is annotated with the OpenTelemetry <c>messaging.*</c> semantic conventions defined in
 /// <see cref="Bmf.Core.Messaging.MessagingSemanticConventions" /> (pinned to
 /// <see cref="Bmf.Core.Messaging.MessagingSemanticConventions.SemanticConventionsVersion" />):
 /// <c>messaging.system</c>, <c>messaging.operation.type</c>=<c>process</c> (and <c>messaging.operation.name</c>),
 /// <c>messaging.destination.name</c> (the consumed source), <c>messaging.rabbitmq.destination.routing_key</c> when
-/// present, <c>messaging.message.id</c>, <c>messaging.message.body.size</c>, and <c>error.type</c> on failure.
+/// present, <c>messaging.message.id</c>, <c>messaging.message.body.size</c>, and <c>error.type</c> on failure. The
+/// <see cref="ConsumedMessages" />/<see cref="OperationDuration" /> instruments use only the low-cardinality metric
+/// dimensions: <c>messaging.system</c>, <c>messaging.operation.name</c>, <c>messaging.destination.name</c>, and
+/// <c>error.type</c> on failure.
 /// </remarks>
 public static class InboundDiagnostics
 {

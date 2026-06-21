@@ -9,14 +9,15 @@ namespace Bmf.Core.Messaging.Outbound;
 /// <see cref="MeterName" /> to observe the framework's outbound telemetry.
 /// </summary>
 /// <remarks>
-/// The publish span and the <see cref="SentMessages" />/<see cref="OperationDuration" /> instruments are annotated
-/// with the OpenTelemetry <c>messaging.*</c> semantic conventions defined in
+/// The publish span is annotated with the OpenTelemetry <c>messaging.*</c> semantic conventions defined in
 /// <see cref="MessagingSemanticConventions" /> (pinned to
 /// <see cref="MessagingSemanticConventions.SemanticConventionsVersion" />): <c>messaging.system</c>,
 /// <c>messaging.operation.type</c>=<c>send</c> (and <c>messaging.operation.name</c>),
 /// <c>messaging.destination.name</c> (the exchange), <c>messaging.rabbitmq.destination.routing_key</c> when present,
 /// <c>messaging.message.id</c>, <c>messaging.message.body.size</c>, and <c>error.type</c> on failure. The
-/// topology-provisioning instruments are intentionally outside the messaging conventions and keep their
+/// <see cref="SentMessages" />/<see cref="OperationDuration" /> instruments use only the low-cardinality metric
+/// dimensions: <c>messaging.system</c>, <c>messaging.operation.name</c>, <c>messaging.destination.name</c>, and
+/// <c>error.type</c> on failure. The topology-provisioning instruments are intentionally outside the messaging conventions and keep their
 /// <c>bmf.outbound.topology.provisioning.*</c> names. Use <see cref="Bmf.Core.Messaging.Inbound.InboundDiagnostics" />
 /// for the corresponding consumer-hop telemetry.
 /// </remarks>
