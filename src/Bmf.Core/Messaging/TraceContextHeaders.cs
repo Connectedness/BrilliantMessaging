@@ -86,8 +86,7 @@ public static class TraceContextHeaders
         return new TraceContextHeadersExtractResult(
             traceParent,
             traceState,
-            propagator.ExtractBaggage(transportMessage, GetTransportMessageHeader) ??
-            Array.Empty<KeyValuePair<string, string?>>()
+            ToBaggageMap(propagator.ExtractBaggage(transportMessage, GetTransportMessageHeader))
         );
     }
 
@@ -115,9 +114,27 @@ public static class TraceContextHeaders
         return new TraceContextHeadersExtractResult(
             traceParent,
             traceState,
-            propagator.ExtractBaggage(headers, GetDictionaryHeader) ??
-            Array.Empty<KeyValuePair<string, string?>>()
+            ToBaggageMap(propagator.ExtractBaggage(headers, GetDictionaryHeader))
         );
+    }
+
+    private static Dictionary<string, string?> ToBaggageMap(IEnumerable<KeyValuePair<string, string?>>? baggage)
+    {
+        // Materialize an owned snapshot keyed ordinally: it is the extracted value's immutable backing store, and
+        // collapsing any repeated baggage key (last wins) keeps the map a faithful, deduplicated view of the wire.
+        var map = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        if (baggage is null)
+        {
+            return map;
+        }
+
+        foreach (var pair in baggage)
+        {
+            map[pair.Key] = pair.Value;
+        }
+
+        return map;
     }
 
     private static void GetTransportMessageHeader(
