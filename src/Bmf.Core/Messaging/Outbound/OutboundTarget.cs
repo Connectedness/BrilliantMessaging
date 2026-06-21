@@ -20,8 +20,6 @@ namespace Bmf.Core.Messaging.Outbound;
 /// </remarks>
 public abstract class OutboundTarget
 {
-    private const string SerializedMessageTypeName = "serialized";
-
     private const string PublishActivityName = "bmf.outbound.publish";
 
     /// <summary>
@@ -81,22 +79,19 @@ public abstract class OutboundTarget
     public string TransportName { get; }
 
     /// <summary>
-    /// Resolves the value used to tag the runtime message type in publish diagnostics. The base implementation
-    /// returns the type's full name; <see cref="OutboundTarget{T}" /> overrides it to return the registered
-    /// message-contract discriminator.
+    /// Gets the OpenTelemetry <c>messaging.system</c> value for publishes from this target. The base implementation
+    /// returns <see cref="TransportName" /> (for the RabbitMQ transport this is already <c>rabbitmq</c>); transports
+    /// override it only when the messaging-system identifier differs from the transport name.
     /// </summary>
-    /// <param name="runtimeMessageType">The runtime type of the message being published.</param>
-    /// <returns>The diagnostic name for <paramref name="runtimeMessageType" />.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="runtimeMessageType" /> is <see langword="null" />.</exception>
-    public virtual string GetDiagnosticMessageTypeName(Type runtimeMessageType)
-    {
-        if (runtimeMessageType is null)
-        {
-            throw new ArgumentNullException(nameof(runtimeMessageType));
-        }
+    protected virtual string MessagingSystem => TransportName;
 
-        return runtimeMessageType.FullName ?? runtimeMessageType.Name;
-    }
+    /// <summary>
+    /// Gets the OpenTelemetry <c>messaging.destination.name</c> for publishes from this target — the producer-side
+    /// destination, known at activity-start time, that names the span and tags the metrics. The base returns
+    /// <see langword="null" /> (no destination); a concrete transport target overrides it (for RabbitMQ, the
+    /// exchange).
+    /// </summary>
+    protected virtual string? DestinationName => null;
 
     /// <summary>
     /// Publishes an already serialized message. This is a non-virtual template that owns the publish
@@ -109,9 +104,10 @@ public abstract class OutboundTarget
         CancellationToken cancellationToken = default
     )
     {
-        var diagnostics = StartPublishDiagnostics(GetRawDiagnosticMessageTypeName());
+        var diagnostics = StartPublishDiagnostics();
         try
         {
+            diagnostics.SetMessage(message.MessageId, message.Body.Length);
             await PublishSerializedCoreAsync(message, cancellationToken).ConfigureAwait(false);
             diagnostics.Succeeded();
         }
@@ -145,20 +141,31 @@ public abstract class OutboundTarget
     );
 
     /// <summary>
-    /// Starts the publish diagnostics for a single attempt: opens the activity, sets the common tags, and
-    /// records the attempt counter. The returned mutable struct is the single instrumented funnel for both the
-    /// raw and typed publish paths; callers report the outcome and then call <see cref="PublishDiagnostics.Record" />.
-    /// Returning a struct (rather than wrapping the work in a delegate) keeps the publish hot path free of the
-    /// closure, delegate, and extra state-machine allocations a callback would introduce.
+    /// Starts the publish diagnostics for a single publish: opens the <see cref="ActivityKind.Producer" /> activity,
+    /// names it per the messaging span-name convention (<c>send {destination}</c>), and sets the transport-neutral
+    /// <c>messaging.*</c> attributes known at start (<c>messaging.system</c>, <c>messaging.operation.type</c>,
+    /// <c>messaging.operation.name</c>, and <c>messaging.destination.name</c>). The returned mutable struct is the
+    /// single instrumented funnel for both the raw and typed publish paths; callers add the per-message attributes
+    /// via <see cref="PublishDiagnostics.SetMessage" />, report the outcome, and then call
+    /// <see cref="PublishDiagnostics.Record" />, which emits <c>messaging.client.sent.messages</c> and
+    /// <c>messaging.client.operation.duration</c>. Returning a struct (rather than wrapping the work in a delegate)
+    /// keeps the publish hot path free of the closure, delegate, and extra state-machine allocations a callback would
+    /// introduce.
     /// </summary>
-    private protected PublishDiagnostics StartPublishDiagnostics(string messageTypeName)
+    private protected PublishDiagnostics StartPublishDiagnostics()
     {
+        var system = MessagingSystem;
+        var destination = DestinationName;
+
         var baseTags = new TagList
         {
-            { OutboundDiagnostics.MessageTypeTagName, messageTypeName },
-            { OutboundDiagnostics.TargetNameTagName, Name },
-            { OutboundDiagnostics.TransportNameTagName, TransportName }
+            { MessagingSemanticConventions.MessagingSystem, system },
+            { MessagingSemanticConventions.MessagingOperationName, MessagingSemanticConventions.SendOperation }
         };
+        if (destination is not null)
+        {
+            baseTags.Add(MessagingSemanticConventions.MessagingDestinationName, destination);
+        }
 
         var activity = OutboundDiagnostics.ActivitySource.StartActivity(
             PublishActivityName,
@@ -166,45 +173,31 @@ public abstract class OutboundTarget
         );
         if (activity is not null)
         {
-            activity.SetTag(OutboundDiagnostics.MessageTypeTagName, messageTypeName);
-            activity.SetTag(OutboundDiagnostics.TargetNameTagName, Name);
-            activity.SetTag(OutboundDiagnostics.TransportNameTagName, TransportName);
+            activity.DisplayName = destination is null ?
+                MessagingSemanticConventions.SendOperation :
+                $"{MessagingSemanticConventions.SendOperation} {destination}";
+            activity.SetTag(MessagingSemanticConventions.MessagingSystem, system);
+            activity.SetTag(
+                MessagingSemanticConventions.MessagingOperationType,
+                MessagingSemanticConventions.SendOperation
+            );
+            activity.SetTag(
+                MessagingSemanticConventions.MessagingOperationName,
+                MessagingSemanticConventions.SendOperation
+            );
+            if (destination is not null)
+            {
+                activity.SetTag(MessagingSemanticConventions.MessagingDestinationName, destination);
+            }
         }
 
-        var startedTimestamp = Stopwatch.GetTimestamp();
-        OutboundDiagnostics.PublishAttempts.Add(1, baseTags);
-
-        return new PublishDiagnostics(activity, baseTags, startedTimestamp);
+        return new PublishDiagnostics(activity, baseTags, Stopwatch.GetTimestamp());
     }
 
-    private string GetRawDiagnosticMessageTypeName()
-    {
-        // Every concrete target today derives from OutboundTarget<T>, so MessageType is non-null and the
-        // raw path tags the typed discriminator. The "serialized" fallback exists only for a non-generic
-        // OutboundTarget; it is unreachable until such a target is introduced.
-        if (MessageType is null)
-        {
-            return SerializedMessageTypeName;
-        }
-
-        return GetDiagnosticMessageTypeName(MessageType);
-    }
-
-    private static double GetDurationMilliseconds(long startedTimestamp)
+    private static double GetDurationSeconds(long startedTimestamp)
     {
         var elapsedTicks = Stopwatch.GetTimestamp() - startedTimestamp;
-        return elapsedTicks * 1000d / Stopwatch.Frequency;
-    }
-
-    private static string GetDeliveryFailureReasonName(MessageDeliveryFailureReason reason)
-    {
-        return reason switch
-        {
-            MessageDeliveryFailureReason.Nacked => "nacked",
-            MessageDeliveryFailureReason.Returned => "returned",
-            MessageDeliveryFailureReason.Timeout => "timeout",
-            _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unsupported delivery-failure reason.")
-        };
+        return (double) elapsedTicks / Stopwatch.Frequency;
     }
 
     /// <summary>
@@ -218,16 +211,33 @@ public abstract class OutboundTarget
         private readonly Activity? _activity;
         private readonly TagList _baseTags;
         private readonly long _startedTimestamp;
-        private string _outcome;
-        private string? _deliveryFailureReason;
+        private string? _errorType;
 
         public PublishDiagnostics(Activity? activity, TagList baseTags, long startedTimestamp)
         {
             _activity = activity;
             _baseTags = baseTags;
             _startedTimestamp = startedTimestamp;
-            _outcome = "success";
-            _deliveryFailureReason = null;
+            _errorType = null;
+        }
+
+        /// <summary>
+        /// Records the per-message <c>messaging.message.id</c> and <c>messaging.message.body.size</c> on the span.
+        /// These are span-only attributes (the high-cardinality message id is never a metric dimension).
+        /// </summary>
+        public readonly void SetMessage(string? messageId, int bodySize)
+        {
+            if (_activity is null)
+            {
+                return;
+            }
+
+            if (messageId is not null)
+            {
+                _activity.SetTag(MessagingSemanticConventions.MessagingMessageId, messageId);
+            }
+
+            _activity.SetTag(MessagingSemanticConventions.MessagingMessageBodySize, bodySize);
         }
 
         public readonly void Succeeded()
@@ -235,43 +245,57 @@ public abstract class OutboundTarget
             _activity?.SetStatus(ActivityStatusCode.Ok);
         }
 
-        public void Cancelled()
+        public readonly void Cancelled()
         {
-            _outcome = "cancelled";
+            // A graceful-shutdown cancellation is not an error: no error.type is set on the span or the metric.
         }
 
         public void Failed(Exception exception)
         {
-            _outcome = "failure";
-            _deliveryFailureReason = exception is MessageDeliveryException deliveryException ?
-                GetDeliveryFailureReasonName(deliveryException.Reason) :
-                null;
-
-            OutboundDiagnostics.PublishFailures.Add(1, BuildOutcomeTags());
+            _errorType = MessagingSemanticConventions.ResolveErrorType(exception);
+            _activity?.SetTag(MessagingSemanticConventions.ErrorType, _errorType);
             _activity?.SetStatus(ActivityStatusCode.Error);
-            if (_deliveryFailureReason is not null)
-            {
-                _activity?.SetTag(OutboundDiagnostics.DeliveryFailureReasonTagName, _deliveryFailureReason);
-            }
+            RecordException(_activity, exception);
         }
 
         public readonly void Record()
         {
-            OutboundDiagnostics.PublishDuration.Record(GetDurationMilliseconds(_startedTimestamp), BuildOutcomeTags());
-            _activity?.SetTag(OutboundDiagnostics.OutcomeTagName, _outcome);
+            var outcomeTags = BuildOutcomeTags();
+            OutboundDiagnostics.SentMessages.Add(1, outcomeTags);
+            OutboundDiagnostics.OperationDuration.Record(GetDurationSeconds(_startedTimestamp), outcomeTags);
             _activity?.Dispose();
         }
 
         private readonly TagList BuildOutcomeTags()
         {
             var tags = _baseTags;
-            tags.Add(OutboundDiagnostics.OutcomeTagName, _outcome);
-            if (_deliveryFailureReason is not null)
+            if (_errorType is not null)
             {
-                tags.Add(OutboundDiagnostics.DeliveryFailureReasonTagName, _deliveryFailureReason);
+                tags.Add(MessagingSemanticConventions.ErrorType, _errorType);
             }
 
             return tags;
+        }
+
+        private static void RecordException(Activity? activity, Exception exception)
+        {
+            if (activity is null)
+            {
+                return;
+            }
+
+            var tags = new ActivityTagsCollection
+            {
+                { "exception.type", exception.GetType().FullName },
+                { "exception.message", exception.Message }
+            };
+
+            if (exception.StackTrace is not null)
+            {
+                tags.Add("exception.stacktrace", exception.StackTrace);
+            }
+
+            activity.AddEvent(new ActivityEvent("exception", tags: tags));
         }
     }
 }
@@ -300,7 +324,10 @@ public abstract class OutboundTarget<T> : OutboundTarget
     /// <param name="serializer">The serializer used to turn messages into <see cref="CloudEventEnvelope" /> instances.</param>
     /// <param name="messageContractRegistry">The registry used to resolve the contract discriminator and data schema for a message type.</param>
     /// <param name="topologyName">The name of the topology the target belongs to, or <see langword="null" /> for the default topology.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="serializer" /> or <paramref name="messageContractRegistry" /> is <see langword="null" />.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="serializer" /> or <paramref name="messageContractRegistry" /> is
+    /// <see langword="null" />.
+    /// </exception>
     protected OutboundTarget(
         string name,
         string transportName,
@@ -328,12 +355,6 @@ public abstract class OutboundTarget<T> : OutboundTarget
     /// Gets the message-contract registry the target uses to resolve discriminators and data schemas.
     /// </summary>
     protected IMessageContractRegistry MessageContractRegistry { get; }
-
-    /// <inheritdoc />
-    public sealed override string GetDiagnosticMessageTypeName(Type runtimeMessageType)
-    {
-        return GetRequiredDiscriminator(runtimeMessageType);
-    }
 
     /// <summary>
     /// Resolves the registered contract discriminator (the CloudEvents <c>type</c> attribute) for the given
@@ -486,7 +507,7 @@ public abstract class OutboundTarget<T> : OutboundTarget
         var resolvedDataSchema = dataSchema ?? GetDataSchema(runtimeType);
 
         // The instrumented region begins here, at serialization, and runs through transport dispatch.
-        var diagnostics = StartPublishDiagnostics(resolvedType);
+        var diagnostics = StartPublishDiagnostics();
         try
         {
             CloudEventEnvelope envelope;
@@ -507,6 +528,7 @@ public abstract class OutboundTarget<T> : OutboundTarget
                 throw new MessageSerializationException(runtimeType, exception);
             }
 
+            diagnostics.SetMessage(envelope.Id, envelope.Data.Length);
             await PublishTypedCloudEventAsync(message, envelope, routingKey, cancellationToken).ConfigureAwait(false);
             diagnostics.Succeeded();
         }

@@ -15,7 +15,7 @@
 
 </div>
 
-BMF is the messaging framework that lets you keep control! No automatic, obscure generation of broker resources, no hidden dependencies, no magic. Define your topologies, publish messages and subscribe to them. Promotes CloudEvents. That's it!
+BMF is the messaging framework that lets you keep control! No automatic, obscure generation of broker resources, no hidden dependencies, no magic. Define your topologies, publish messages, and subscribe to them. Promotes CloudEvents. That's it!
 
 ## Why BMF?
 
@@ -35,6 +35,7 @@ All packages target `netstandard2.0`, so they happily light up on modern .NET as
 | `Bmf.Abstractions` | The CloudEvents contracts: `ICloudEvent` and `BaseCloudEvent`. |
 | `Bmf.Core` | Publishing, consuming, message contracts, the topology model, and DI wiring. |
 | `Bmf.Transport.RabbitMq` | The RabbitMQ transport — exchanges, queues, bindings, publishers, and consumers. |
+| `Bmf.OpenTelemetry` | One-line registration of BMF's tracing and metrics with the OpenTelemetry SDK. |
 
 ## Installation
 
@@ -42,6 +43,13 @@ RabbitMQ is the only transport today, and it transitively references the other t
 
 ```bash
 dotnet add package Bmf.Transport.RabbitMq
+```
+
+Want distributed traces and metrics? Add the optional observability integration
+alongside it — see [Observability](#observability):
+
+```bash
+dotnet add package Bmf.OpenTelemetry
 ```
 
 ## Quick start
@@ -408,6 +416,46 @@ One honest caveat: automatic recovery is an *availability* mechanism, not a deli
 guarantee. It does not buffer or replay messages that were in flight during an outage.
 If you need at-least-once effects, make your publishes safe to retry or put an outbox
 in front of them.
+
+### Observability
+
+BMF instruments both hops of every message out of the box, using the BCL-native
+`ActivitySource` and `Meter` primitives that OpenTelemetry consumes directly — there is
+nothing to switch on in `Bmf.Core`. A publish opens a `Producer` span and a delivery
+opens a `Consumer` span parented to it across the broker, so a single trace follows a
+message from publisher to handler. Spans and metrics are labeled with the
+[OpenTelemetry `messaging.*` semantic conventions](https://opentelemetry.io/docs/specs/semconv/messaging/),
+so Jaeger, Tempo, Grafana, Datadog, and Azure Monitor classify them as messaging
+operations and light up their built-in messaging dashboards without any bespoke mapping.
+
+Spans use `ActivityKind.Producer`/`ActivityKind.Consumer` and the convention span name
+(`send {exchange}` / `process {queue}`), and carry `messaging.system`,
+`messaging.operation.type`/`messaging.operation.name`, `messaging.destination.name`,
+`messaging.rabbitmq.destination.routing_key` (when present), `messaging.message.id`, and
+`messaging.message.body.size`. A failure adds a low-cardinality `error.type`; a
+graceful-shutdown cancellation is deliberately *not* an error, so normal deploys don't
+inflate your error-rate panels. The metric instruments are
+`messaging.client.sent.messages`, `messaging.client.consumed.messages`, and
+`messaging.client.operation.duration` (in seconds).
+
+To collect any of this, point your `TracerProvider`/`MeterProvider` at BMF's sources.
+The `Bmf.OpenTelemetry` package is the one-line way to do it:
+
+```csharp
+using Bmf.OpenTelemetry;
+
+services
+    .AddOpenTelemetry()
+    .WithTracing(tracing => tracing.AddBmfInstrumentation())
+    .WithMetrics(metrics => metrics.AddBmfInstrumentation());
+```
+
+`AddBmfInstrumentation` registers the `Bmf.Outbound` and `Bmf.Inbound` activity sources
+and meters. It references only `OpenTelemetry.Api`, so it forces no SDK choice on you,
+and `Bmf.Core` and the transports take no OpenTelemetry package reference at all. Without
+the package you can subscribe to the same names directly with
+`AddSource("Bmf.Outbound", "Bmf.Inbound")` and `AddMeter("Bmf.Outbound", "Bmf.Inbound")`;
+the package is just the discoverable, named convenience.
 
 ## License
 

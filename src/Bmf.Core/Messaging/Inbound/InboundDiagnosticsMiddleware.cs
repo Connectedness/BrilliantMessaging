@@ -5,12 +5,23 @@ using System.Threading.Tasks;
 namespace Bmf.Core.Messaging.Inbound;
 
 /// <summary>
-/// Inbound middleware that opens the consumer-hop span and records inbound process metrics. It extracts W3C
-/// trace context from the transport headers, parents the <see cref="ActivityKind.Consumer" /> activity to the
-/// producer span carried over the broker, and makes that activity current while acknowledgement, deserialization,
-/// user middleware, and the handler run. Register it outermost so handler-initiated publishes automatically
-/// become children of the consumer span and so the metrics cover the whole framework pipeline.
+/// Inbound middleware that opens the consumer-hop span and records inbound process metrics, annotated with the
+/// OpenTelemetry <c>messaging.*</c> semantic conventions (see
+/// <see cref="Bmf.Core.Messaging.MessagingSemanticConventions" />). It extracts W3C trace context from the transport
+/// headers, parents the <see cref="ActivityKind.Consumer" /> activity to the producer span carried over the broker,
+/// and makes that activity current while acknowledgement, deserialization, user middleware, and the handler run.
+/// Register it outermost so handler-initiated publishes automatically become children of the consumer span and so the
+/// metrics cover the whole framework pipeline.
 /// </summary>
+/// <remarks>
+/// The span is named per the messaging span-name convention (<c>process {destination}</c>) and carries
+/// <c>messaging.system</c>, <c>messaging.operation.type</c>=<c>process</c>, <c>messaging.operation.name</c>,
+/// <c>messaging.destination.name</c> (the consumed source), <c>messaging.rabbitmq.destination.routing_key</c> when
+/// present, <c>messaging.message.id</c>, and <c>messaging.message.body.size</c>. A failure additionally sets a bounded
+/// <c>error.type</c> on both the span and the <c>messaging.client.consumed.messages</c> counter, and records the
+/// exception on the span. A graceful-shutdown cancellation is not an error: it leaves <c>error.type</c> absent on
+/// both the span and the metric.
+/// </remarks>
 public sealed class InboundDiagnosticsMiddleware : IMessageMiddleware
 {
     private const string ProcessActivityName = "bmf.inbound.process";
@@ -29,15 +40,17 @@ public sealed class InboundDiagnosticsMiddleware : IMessageMiddleware
             throw new ArgumentNullException(nameof(next));
         }
 
+        var transport = context.Transport;
+        var destination = transport.Source;
+
         var baseTags = new TagList
         {
-            { InboundDiagnostics.MessageTypeTagName, context.Endpoint.Discriminator },
-            { InboundDiagnostics.EndpointNameTagName, context.Endpoint.Name },
-            { InboundDiagnostics.SourceTagName, context.Transport.Source },
-            { InboundDiagnostics.TransportNameTagName, context.Transport.TransportName }
+            { MessagingSemanticConventions.MessagingSystem, transport.MessagingSystem },
+            { MessagingSemanticConventions.MessagingOperationName, MessagingSemanticConventions.ProcessOperation },
+            { MessagingSemanticConventions.MessagingDestinationName, destination }
         };
 
-        var traceContext = TraceContextHeaders.Extract(context.Transport);
+        var traceContext = TraceContextHeaders.Extract(transport);
         using var activity = InboundDiagnostics.ActivitySource.StartActivity(
             ProcessActivityName,
             ActivityKind.Consumer,
@@ -46,21 +59,42 @@ public sealed class InboundDiagnosticsMiddleware : IMessageMiddleware
 
         if (activity is not null)
         {
+            activity.DisplayName = $"{MessagingSemanticConventions.ProcessOperation} {destination}";
             activity.TraceStateString = traceContext.TraceState;
             foreach (var baggage in traceContext.Baggage)
             {
                 activity.AddBaggage(baggage.Key, baggage.Value);
             }
 
-            foreach (var tag in baseTags)
+            activity.SetTag(MessagingSemanticConventions.MessagingSystem, transport.MessagingSystem);
+            activity.SetTag(
+                MessagingSemanticConventions.MessagingOperationType,
+                MessagingSemanticConventions.ProcessOperation
+            );
+            activity.SetTag(
+                MessagingSemanticConventions.MessagingOperationName,
+                MessagingSemanticConventions.ProcessOperation
+            );
+            activity.SetTag(MessagingSemanticConventions.MessagingDestinationName, destination);
+
+            if (transport.MessageId is not null)
             {
-                activity.SetTag(tag.Key, tag.Value);
+                activity.SetTag(MessagingSemanticConventions.MessagingMessageId, transport.MessageId);
+            }
+
+            activity.SetTag(MessagingSemanticConventions.MessagingMessageBodySize, transport.Body.Length);
+
+            if (!string.IsNullOrEmpty(transport.DestinationRoutingKey))
+            {
+                activity.SetTag(
+                    MessagingSemanticConventions.MessagingRabbitMqDestinationRoutingKey,
+                    transport.DestinationRoutingKey
+                );
             }
         }
 
-        var outcome = "success";
+        string? errorType = null;
         var startedTimestamp = Stopwatch.GetTimestamp();
-        InboundDiagnostics.ProcessAttempts.Add(1, baseTags);
         try
         {
             await next(context).ConfigureAwait(false);
@@ -68,37 +102,40 @@ public sealed class InboundDiagnosticsMiddleware : IMessageMiddleware
         }
         catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
         {
-            outcome = "cancelled";
+            // A graceful-shutdown cancellation is not an error: no error.type is set on the span or the metric.
             throw;
         }
         catch (Exception exception)
         {
-            outcome = "failure";
-            var failureTags = BuildOutcomeTags(baseTags, outcome);
-            InboundDiagnostics.ProcessFailures.Add(1, failureTags);
+            errorType = MessagingSemanticConventions.ResolveErrorType(exception);
+            activity?.SetTag(MessagingSemanticConventions.ErrorType, errorType);
             activity?.SetStatus(ActivityStatusCode.Error);
             RecordException(activity, exception);
             throw;
         }
         finally
         {
-            var outcomeTags = BuildOutcomeTags(baseTags, outcome);
-            InboundDiagnostics.ProcessDuration.Record(GetDurationMilliseconds(startedTimestamp), outcomeTags);
-            activity?.SetTag(InboundDiagnostics.OutcomeTagName, outcome);
+            var outcomeTags = BuildOutcomeTags(baseTags, errorType);
+            InboundDiagnostics.ConsumedMessages.Add(1, outcomeTags);
+            InboundDiagnostics.OperationDuration.Record(GetDurationSeconds(startedTimestamp), outcomeTags);
         }
     }
 
-    private static TagList BuildOutcomeTags(TagList baseTags, string outcome)
+    private static TagList BuildOutcomeTags(TagList baseTags, string? errorType)
     {
         var tags = baseTags;
-        tags.Add(InboundDiagnostics.OutcomeTagName, outcome);
+        if (errorType is not null)
+        {
+            tags.Add(MessagingSemanticConventions.ErrorType, errorType);
+        }
+
         return tags;
     }
 
-    private static double GetDurationMilliseconds(long startedTimestamp)
+    private static double GetDurationSeconds(long startedTimestamp)
     {
         var elapsedTicks = Stopwatch.GetTimestamp() - startedTimestamp;
-        return elapsedTicks * 1000d / Stopwatch.Frequency;
+        return (double) elapsedTicks / Stopwatch.Frequency;
     }
 
     private static void RecordException(Activity? activity, Exception exception)

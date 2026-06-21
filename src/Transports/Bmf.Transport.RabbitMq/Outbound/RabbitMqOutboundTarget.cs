@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Exceptions;
 using Bmf.Abstractions;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Outbound;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 
 namespace Bmf.Transport.RabbitMq.Outbound;
 
@@ -33,7 +34,6 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
     public const string CloudEventsHeaderPrefix = "cloudEvents:";
 
     private readonly RabbitMqOutboundChannelGroup _channelGroup;
-    private readonly string _exchangeName;
     private readonly bool _isMandatory;
 
     /// <summary>
@@ -59,9 +59,15 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
         : base(name, "rabbitmq", serializer, messageContractRegistry, topologyName)
     {
         _channelGroup = channelGroup ?? throw new ArgumentNullException(nameof(channelGroup));
-        _exchangeName = exchangeName ?? throw new ArgumentNullException(nameof(exchangeName));
+        DestinationName = exchangeName ?? throw new ArgumentNullException(nameof(exchangeName));
         _isMandatory = isMandatory;
     }
+
+    /// <summary>
+    /// Gets the OpenTelemetry <c>messaging.destination.name</c> for publishes from this target: the configured
+    /// exchange. This names the producer span (<c>send {exchange}</c>) and tags the publish metrics.
+    /// </summary>
+    protected sealed override string DestinationName { get; }
 
     /// <inheritdoc />
     protected sealed override Task PublishSerializedCoreAsync(
@@ -186,6 +192,16 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
         CancellationToken cancellationToken
     )
     {
+        // The producer span is the current activity at the dispatch binding (the same insight used for trace
+        // injection), so the transport-specific routing key is set here, where it is resolved per publish.
+        if (!string.IsNullOrEmpty(routingKey))
+        {
+            Activity.Current?.SetTag(
+                MessagingSemanticConventions.MessagingRabbitMqDestinationRoutingKey,
+                routingKey
+            );
+        }
+
         await using var lease = await _channelGroup.AcquireAsync(cancellationToken).ConfigureAwait(false);
 
         if (_channelGroup.PublisherConfirmMode == RabbitMqPublisherConfirmMode.FireAndForget)
@@ -236,7 +252,7 @@ public abstract class RabbitMqOutboundTarget<TMessage> : OutboundTarget<TMessage
     )
     {
         return channel.BasicPublishAsync(
-            exchange: _exchangeName,
+            exchange: DestinationName,
             routingKey: routingKey,
             mandatory: _isMandatory,
             basicProperties: properties,

@@ -21,6 +21,8 @@ public sealed class RecordingTarget<TMessage> : OutboundTarget<TMessage>, IOutbo
     )
         : base(name, "test", serializer, messageContractRegistry, topologyName) { }
 
+    protected override string? DestinationName => "recording-exchange";
+
     public List<TMessage> Messages { get; } = [];
 
     public List<CloudEventEnvelope> CloudEventEnvelopes { get; } = [];

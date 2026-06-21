@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Inbound;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -305,15 +306,19 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
         {
             if (!pipelineStarted)
             {
+                // The pre-pipeline reject never reaches InboundDiagnosticsMiddleware, so the runtime owns this
+                // delivery's messaging.client.consumed.messages measurement and carries the bounded error.type.
                 var tags = new TagList
                 {
-                    { InboundDiagnostics.SourceTagName, transportMessage.Source },
-                    { InboundDiagnostics.TransportNameTagName, transportMessage.TransportName }
+                    { MessagingSemanticConventions.MessagingSystem, transportMessage.MessagingSystem },
+                    {
+                        MessagingSemanticConventions.MessagingOperationName,
+                        MessagingSemanticConventions.ProcessOperation
+                    },
+                    { MessagingSemanticConventions.MessagingDestinationName, transportMessage.Source },
+                    { MessagingSemanticConventions.ErrorType, MessagingSemanticConventions.ResolveErrorType(exception) }
                 };
-                InboundDiagnostics.ProcessAttempts.Add(1, tags);
-
-                tags.Add(InboundDiagnostics.OutcomeTagName, "failure");
-                InboundDiagnostics.ProcessFailures.Add(1, tags);
+                InboundDiagnostics.ConsumedMessages.Add(1, tags);
             }
 
             _logger.LogError(

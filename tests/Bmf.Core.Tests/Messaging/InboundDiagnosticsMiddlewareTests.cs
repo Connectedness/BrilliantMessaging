@@ -48,29 +48,59 @@ public sealed class InboundDiagnosticsMiddlewareTests
         activity.Should().BeSameAs(currentActivity);
         activity.OperationName.Should().Be(ProcessActivityName);
         activity.Kind.Should().Be(ActivityKind.Consumer);
+        activity.DisplayName.Should().Be($"{MessagingSemanticConventions.ProcessOperation} source");
         activity.TraceId.Should().Be(producer.TraceId);
         activity.ParentSpanId.Should().Be(producer.SpanId);
         activity.TraceStateString.Should().Be("vendor=value");
         baggageValue.Should().Be("tenant-7");
-        activity.GetTagItem(InboundDiagnostics.MessageTypeTagName).Should().Be("tests.message");
-        activity.GetTagItem(InboundDiagnostics.EndpointNameTagName).Should().Be("endpoint");
-        activity.GetTagItem(InboundDiagnostics.SourceTagName).Should().Be("source");
-        activity.GetTagItem(InboundDiagnostics.TransportNameTagName).Should().Be("test");
-        activity.GetTagItem(InboundDiagnostics.OutcomeTagName).Should().Be("success");
+        activity.GetTagItem(MessagingSemanticConventions.MessagingSystem).Should().Be("test");
+        activity
+           .GetTagItem(MessagingSemanticConventions.MessagingOperationType)
+           .Should().Be(MessagingSemanticConventions.ProcessOperation);
+        activity
+           .GetTagItem(MessagingSemanticConventions.MessagingOperationName)
+           .Should().Be(MessagingSemanticConventions.ProcessOperation);
+        activity.GetTagItem(MessagingSemanticConventions.MessagingDestinationName).Should().Be("source");
+        activity.GetTagItem(MessagingSemanticConventions.MessagingMessageBodySize).Should().Be(0);
         activity.Status.Should().Be(ActivityStatusCode.Ok);
+        activity.GetTagItem(MessagingSemanticConventions.ErrorType).Should().BeNull();
 
-        var attempt = recorder.Attempts.Should().ContainSingle().Which;
-        attempt.Should().Contain(
-            new KeyValuePair<string, object?>(InboundDiagnostics.MessageTypeTagName, "tests.message"),
-            new KeyValuePair<string, object?>(InboundDiagnostics.EndpointNameTagName, "endpoint"),
-            new KeyValuePair<string, object?>(InboundDiagnostics.SourceTagName, "source"),
-            new KeyValuePair<string, object?>(InboundDiagnostics.TransportNameTagName, "test")
+        var consumed = recorder.ConsumedMessages.Should().ContainSingle().Which;
+        consumed.Should().Contain(
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.MessagingSystem, "test"),
+            new KeyValuePair<string, object?>(
+                MessagingSemanticConventions.MessagingOperationName,
+                MessagingSemanticConventions.ProcessOperation
+            ),
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.MessagingDestinationName, "source")
         );
-        attempt.Should().NotContain(tag => tag.Key == InboundDiagnostics.OutcomeTagName);
+        consumed.Should().NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
         recorder.Durations.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(InboundDiagnostics.MessageTypeTagName, "tests.message")
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.MessagingDestinationName, "source")
         );
-        recorder.Failures.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SetsMessageIdAndRoutingKeyAttributesWhenPresent()
+    {
+        using var recorder = new InboundDiagnosticsRecorder();
+        var middleware = new InboundDiagnosticsMiddleware();
+        var context = new IncomingMessageContext(
+            new TestTransportMessage(headers: null, messageId: "message-42", routingKey: "orders.created"),
+            CreateEndpoint(),
+            EmptyServiceProvider.Instance,
+            NoOpAcknowledgement.Instance,
+            TestContext.Current.CancellationToken,
+            typeof(TestMessage)
+        );
+
+        await middleware.InvokeAsync(context, static _ => Task.CompletedTask);
+
+        var activity = recorder.StartedActivities.Should().ContainSingle().Which;
+        activity.GetTagItem(MessagingSemanticConventions.MessagingMessageId).Should().Be("message-42");
+        activity
+           .GetTagItem(MessagingSemanticConventions.MessagingRabbitMqDestinationRoutingKey)
+           .Should().Be("orders.created");
     }
 
     [Fact]
@@ -87,8 +117,8 @@ public sealed class InboundDiagnosticsMiddlewareTests
         var activity = recorder.StartedActivities.Should().ContainSingle().Which;
         activity.ParentSpanId.ToString().Should().Be("0000000000000000");
         activity.ParentId.Should().BeNull();
-        activity.GetTagItem(InboundDiagnostics.OutcomeTagName).Should().Be("success");
-        recorder.Attempts.Should().ContainSingle();
+        activity.GetTagItem(MessagingSemanticConventions.ErrorType).Should().BeNull();
+        recorder.ConsumedMessages.Should().ContainSingle();
         recorder.Durations.Should().ContainSingle();
     }
 
@@ -110,12 +140,12 @@ public sealed class InboundDiagnosticsMiddlewareTests
 
         currentActivity.Should().BeNull();
         recorder.StartedActivities.Should().BeEmpty();
-        recorder.Attempts.Should().ContainSingle();
+        recorder.ConsumedMessages.Should().ContainSingle();
         recorder.Durations.Should().ContainSingle();
     }
 
     [Fact]
-    public async Task InvokeAsync_RecordsAttemptBeforeCallingNextWithoutOutcome()
+    public async Task InvokeAsync_RecordsConsumedMessageAndDurationAfterNext()
     {
         using var recorder = new InboundDiagnosticsRecorder();
         var middleware = new InboundDiagnosticsMiddleware();
@@ -124,22 +154,23 @@ public sealed class InboundDiagnosticsMiddlewareTests
             CreateContext(cancellationToken: TestContext.Current.CancellationToken),
             _ =>
             {
-                recorder
-                   .Attempts.Should().ContainSingle()
-                   .Which.Should().NotContain(tag => tag.Key == InboundDiagnostics.OutcomeTagName);
-                recorder.Failures.Should().BeEmpty();
+                // The headline counter and duration are recorded once at completion, not before the pipeline runs.
+                recorder.ConsumedMessages.Should().BeEmpty();
                 recorder.Durations.Should().BeEmpty();
                 return Task.CompletedTask;
             }
         );
 
-        recorder.Durations.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(InboundDiagnostics.OutcomeTagName, "success")
-        );
+        recorder
+           .ConsumedMessages.Should().ContainSingle().Which
+           .Should().NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
+        recorder
+           .Durations.Should().ContainSingle().Which
+           .Should().NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
     }
 
     [Fact]
-    public async Task InvokeAsync_RecordsFailureOutcomeAndException()
+    public async Task InvokeAsync_RecordsFailureErrorTypeAndException()
     {
         using var recorder = new InboundDiagnosticsRecorder();
         var middleware = new InboundDiagnosticsMiddleware();
@@ -151,24 +182,29 @@ public sealed class InboundDiagnosticsMiddlewareTests
         );
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        recorder
-           .Attempts.Should().ContainSingle()
-           .Which.Should().NotContain(tag => tag.Key == InboundDiagnostics.OutcomeTagName);
-        recorder.Failures.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(InboundDiagnostics.OutcomeTagName, "failure")
+        recorder.ConsumedMessages.Should().ContainSingle().Which.Should().Contain(
+            new KeyValuePair<string, object?>(
+                MessagingSemanticConventions.ErrorType,
+                MessagingSemanticConventions.ErrorTypeOther
+            )
         );
         recorder.Durations.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(InboundDiagnostics.OutcomeTagName, "failure")
+            new KeyValuePair<string, object?>(
+                MessagingSemanticConventions.ErrorType,
+                MessagingSemanticConventions.ErrorTypeOther
+            )
         );
 
         var activity = recorder.StartedActivities.Should().ContainSingle().Which;
         activity.Status.Should().Be(ActivityStatusCode.Error);
-        activity.GetTagItem(InboundDiagnostics.OutcomeTagName).Should().Be("failure");
+        activity
+           .GetTagItem(MessagingSemanticConventions.ErrorType)
+           .Should().Be(MessagingSemanticConventions.ErrorTypeOther);
         activity.Events.Should().ContainSingle(@event => @event.Name == "exception");
     }
 
     [Fact]
-    public async Task InvokeAsync_RecordsCancellationOutcomeWithoutFailureCount()
+    public async Task InvokeAsync_RecordsCancellationWithoutErrorType()
     {
         using var recorder = new InboundDiagnosticsRecorder();
         using CancellationTokenSource cancellationTokenSource = new ();
@@ -184,15 +220,14 @@ public sealed class InboundDiagnosticsMiddlewareTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         recorder
-           .Attempts.Should().ContainSingle()
-           .Which.Should().NotContain(tag => tag.Key == InboundDiagnostics.OutcomeTagName);
-        recorder.Failures.Should().BeEmpty();
-        recorder.Durations.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(InboundDiagnostics.OutcomeTagName, "cancelled")
-        );
+           .ConsumedMessages.Should().ContainSingle().Which.Should()
+           .NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
+        recorder
+           .Durations.Should().ContainSingle().Which.Should()
+           .NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
         recorder
            .StartedActivities.Should().ContainSingle()
-           .Which.GetTagItem(InboundDiagnostics.OutcomeTagName).Should().Be("cancelled");
+           .Which.GetTagItem(MessagingSemanticConventions.ErrorType).Should().BeNull();
     }
 
     private static IncomingMessageContext CreateContext(
@@ -202,19 +237,24 @@ public sealed class InboundDiagnosticsMiddlewareTests
     {
         return new IncomingMessageContext(
             new TestTransportMessage(headers),
-            new InboundEndpoint<TestMessage>(
-                "endpoint",
-                "test",
-                Topology.DefaultName,
-                typeof(TestHandler),
-                typeof(PayloadCodecMessageDeserializer),
-                "tests.message",
-                MessageHandlerInvocation.Create<TestMessage, TestHandler>()
-            ),
+            CreateEndpoint(),
             EmptyServiceProvider.Instance,
             NoOpAcknowledgement.Instance,
             cancellationToken,
             typeof(TestMessage)
+        );
+    }
+
+    private static InboundEndpoint CreateEndpoint()
+    {
+        return new InboundEndpoint<TestMessage>(
+            "endpoint",
+            "test",
+            Topology.DefaultName,
+            typeof(TestHandler),
+            typeof(PayloadCodecMessageDeserializer),
+            "tests.message",
+            MessageHandlerInvocation.Create<TestMessage, TestHandler>()
         );
     }
 
@@ -234,13 +274,25 @@ public sealed class InboundDiagnosticsMiddlewareTests
 
     private sealed class TestTransportMessage : TransportMessage
     {
-        public TestTransportMessage(IReadOnlyDictionary<string, object?>? headers)
+        private readonly string? _routingKey;
+
+        public TestTransportMessage(
+            IReadOnlyDictionary<string, object?>? headers,
+            string? messageId = null,
+            string? routingKey = null
+        )
             : base(
                 "test",
                 "source",
                 ReadOnlyMemory<byte>.Empty,
-                headers ?? new Dictionary<string, object?>()
-            ) { }
+                headers ?? new Dictionary<string, object?>(),
+                messageId: messageId
+            )
+        {
+            _routingKey = routingKey;
+        }
+
+        public override string? DestinationRoutingKey => _routingKey;
     }
 
     private sealed class NoOpAcknowledgement : IMessageAcknowledgement

@@ -81,8 +81,9 @@ public sealed class OutboundDiagnosticsStaticInitializationTests
     public void OutboundDiagnostics_ActivitySourceNameMatchesActivitySourceAndMeter()
     {
         OutboundDiagnostics.ActivitySourceName.Should().Be("Bmf.Outbound");
+        OutboundDiagnostics.MeterName.Should().Be("Bmf.Outbound");
         OutboundDiagnostics.ActivitySource.Name.Should().Be(OutboundDiagnostics.ActivitySourceName);
-        OutboundDiagnostics.Meter.Name.Should().Be(OutboundDiagnostics.ActivitySourceName);
+        OutboundDiagnostics.Meter.Name.Should().Be(OutboundDiagnostics.MeterName);
     }
 
     /// <summary>

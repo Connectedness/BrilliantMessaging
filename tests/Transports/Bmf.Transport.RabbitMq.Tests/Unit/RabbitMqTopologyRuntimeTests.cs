@@ -73,7 +73,7 @@ public sealed class RabbitMqTopologyRuntimeTests
     }
 
     [Fact]
-    public async Task DeliveryFailureBeforePipeline_RecordsAttemptAndFailureMetrics()
+    public async Task DeliveryFailureBeforePipeline_RecordsConsumedMessageWithErrorType()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         using var recorder = new InboundDiagnosticsRecorder();
@@ -128,15 +128,17 @@ public sealed class RabbitMqTopologyRuntimeTests
             cancellationToken
         );
 
-        recorder.Attempts.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(InboundDiagnostics.SourceTagName, "inbound"),
-            new KeyValuePair<string, object?>(InboundDiagnostics.TransportNameTagName, "rabbitmq")
-        );
-        recorder.Attempts.Single().Should().NotContain(tag => tag.Key == InboundDiagnostics.OutcomeTagName);
-        recorder.Failures.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(InboundDiagnostics.SourceTagName, "inbound"),
-            new KeyValuePair<string, object?>(InboundDiagnostics.TransportNameTagName, "rabbitmq"),
-            new KeyValuePair<string, object?>(InboundDiagnostics.OutcomeTagName, "failure")
+        recorder.ConsumedMessages.Should().ContainSingle().Which.Should().Contain(
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.MessagingSystem, "rabbitmq"),
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.MessagingDestinationName, "inbound"),
+            new KeyValuePair<string, object?>(
+                MessagingSemanticConventions.MessagingOperationName,
+                MessagingSemanticConventions.ProcessOperation
+            ),
+            new KeyValuePair<string, object?>(
+                MessagingSemanticConventions.ErrorType,
+                MessagingSemanticConventions.ErrorTypeOther
+            )
         );
         recorder.Durations.Should().BeEmpty();
         channel.BasicNackCallCount.Should().Be(1);
@@ -204,11 +206,11 @@ public sealed class RabbitMqTopologyRuntimeTests
 
         channel.BasicNackCallCount.Should().Be(1);
         channel.LastNackRequeue.Should().BeTrue();
-        recorder.Attempts.Should().ContainSingle();
-        recorder.Failures.Should().BeEmpty();
-        recorder.Durations.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(InboundDiagnostics.OutcomeTagName, "cancelled")
-        );
+        // A graceful-shutdown cancellation is an ordinary consumed-message increment with error.type absent.
+        recorder.ConsumedMessages.Should().ContainSingle().Which.Should()
+           .NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
+        recorder.Durations.Should().ContainSingle().Which.Should()
+           .NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
 
         await runtime.StopAsync(cancellationToken);
     }
