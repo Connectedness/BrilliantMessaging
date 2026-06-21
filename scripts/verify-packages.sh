@@ -7,7 +7,7 @@ set -uo pipefail
 
 package_dir="${1:-artifacts/packages}"
 expected_icon='logo-128x128.png'
-expected_tags='messaging communication rabbitmq amqp bmf cloudevents'
+expected_tags=(messaging communication rabbitmq amqp bmf cloudevents)
 
 shopt -s nullglob
 packages=("$package_dir"/*.nupkg)
@@ -29,8 +29,26 @@ for package in "${packages[@]}"; do
   fi
 
   nuspec="$(unzip -p "$package" '*.nuspec' 2>/dev/null || true)"
-  if ! printf '%s' "$nuspec" | grep -qF "<tags>$expected_tags</tags>"; then
-    echo "FAIL: $name does not declare tags '$expected_tags'"
+  tag_value="$(printf '%s' "$nuspec" | tr '\r\n' '  ' | sed -n 's:.*<tags>\([^<]*\)</tags>.*:\1:p')"
+  normalized_tags="${tag_value//;/ }"
+  read -r -a package_tags <<< "$normalized_tags"
+
+  missing_tags=()
+  for expected_tag in "${expected_tags[@]}"; do
+    tag_found=0
+    for package_tag in "${package_tags[@]}"; do
+      if [ "$package_tag" = "$expected_tag" ]; then
+        tag_found=1
+        break
+      fi
+    done
+    if [ "$tag_found" -eq 0 ]; then
+      missing_tags+=("$expected_tag")
+    fi
+  done
+
+  if [ ${#missing_tags[@]} -gt 0 ]; then
+    echo "FAIL: $name is missing expected tag(s): ${missing_tags[*]}"
     package_ok=0
   fi
 
