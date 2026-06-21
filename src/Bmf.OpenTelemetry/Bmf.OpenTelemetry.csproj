@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageId>Bmf.OpenTelemetry</PackageId>
+    <Description>The Brilliant Messaging Framework – OpenTelemetry integration that wires BMF's activity sources and meters into a TracerProvider/MeterProvider.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bmf.Core\Bmf.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Api" />
+  </ItemGroup>
+</Project>

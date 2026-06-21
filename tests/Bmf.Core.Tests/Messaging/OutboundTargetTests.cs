@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Bmf.Abstractions;
+using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Outbound;
 using Bmf.Core.Tests.Messaging.TestSupport;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -92,5 +94,70 @@ public sealed class OutboundTargetTests
 
         var exception = (await act.Should().ThrowAsync<CloudEventMetadataException>()).Which;
         exception.AttributeName.Should().Be(CloudEventAttributeNames.Id);
+    }
+
+    [Theory]
+    [InlineData("name")]
+    [InlineData("transportName")]
+    [InlineData("topologyName")]
+    public void Constructor_RejectsBlankTextArguments(string parameterName)
+    {
+        var name = parameterName == "name" ? " " : "target";
+        var transportName = parameterName == "transportName" ? " " : "test";
+        var topologyName = parameterName == "topologyName" ? " " : Topology.DefaultName;
+
+        var act = () => new TestTarget(name, transportName, topologyName);
+
+        act.Should().Throw<ArgumentException>().WithParameterName(parameterName);
+    }
+
+    [Fact]
+    public void GenericConstructor_RejectsNullSerializerAndRegistry()
+    {
+        var registry = CloudEventsTestFactory.CreateRegistry();
+        var serializer = CloudEventsTestFactory.CreateSerializer();
+
+        var nullSerializer = () => new RecordingTarget<SampleMessage>("target", null!, registry);
+        var nullRegistry = () => new RecordingTarget<SampleMessage>("target", serializer, null!);
+
+        nullSerializer.Should().Throw<ArgumentNullException>().WithParameterName("serializer");
+        nullRegistry.Should().Throw<ArgumentNullException>().WithParameterName("messageContractRegistry");
+    }
+
+    [Fact]
+    public async Task PublishAsync_RejectsNullMessage()
+    {
+        var target = new RecordingTarget<SampleMessage>("target", CloudEventsTestFactory.CreateSerializer());
+        CloudEventMetadata metadata = new (Guid.NewGuid(), DateTimeOffset.UtcNow);
+
+        var act = async () => await target.PublishAsync(null!, in metadata);
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("message");
+    }
+
+    [Fact]
+    public void ContractLookup_RejectsNullRuntimeMessageType()
+    {
+        var target = new RecordingTarget<SampleMessage>("target", CloudEventsTestFactory.CreateSerializer());
+
+        var discriminator = () => target.GetRequiredDiscriminator(null!);
+        var dataSchema = () => target.GetDataSchema(null!);
+
+        discriminator.Should().Throw<ArgumentNullException>().WithParameterName("runtimeMessageType");
+        dataSchema.Should().Throw<ArgumentNullException>().WithParameterName("runtimeMessageType");
+    }
+
+    private sealed class TestTarget : OutboundTarget
+    {
+        public TestTarget(string name, string transportName, string? topologyName)
+            : base(name, transportName, topologyName) { }
+
+        protected override Task PublishSerializedCoreAsync(
+            SerializedMessage message,
+            CancellationToken cancellationToken
+        )
+        {
+            return Task.CompletedTask;
+        }
     }
 }

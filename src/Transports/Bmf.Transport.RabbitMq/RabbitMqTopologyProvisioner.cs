@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitMQ.Client;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Outbound;
+using RabbitMQ.Client;
 
 namespace Bmf.Transport.RabbitMq;
 
@@ -16,6 +16,12 @@ namespace Bmf.Transport.RabbitMq;
 /// </summary>
 public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
 {
+    // Topology provisioning is not a messaging operation, so it stays outside the OpenTelemetry messaging
+    // conventions and keeps the bmf.* tag scheme alongside its bmf.outbound.topology.provisioning.* instruments.
+    private const string TransportNameTagName = "bmf.outbound.transport.name";
+
+    private const string OutcomeTagName = "bmf.outbound.outcome";
+
     private readonly RabbitMqTopology _topology;
 
     /// <summary>
@@ -36,11 +42,11 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
         var startedTimestamp = Stopwatch.GetTimestamp();
         KeyValuePair<string, object?>[] attemptTags =
         [
-            new (OutboundDiagnostics.TransportNameTagName, "rabbitmq")
+            new (TransportNameTagName, "rabbitmq")
         ];
 
         OutboundDiagnostics.TopologyProvisioningAttempts.Add(1, attemptTags);
-        activity?.SetTag(OutboundDiagnostics.TransportNameTagName, "rabbitmq");
+        activity?.SetTag(TransportNameTagName, "rabbitmq");
 
         try
         {
@@ -63,10 +69,13 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
 
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            // Only a cancellation of the caller's token is a graceful, non-error cancellation. An
+            // OperationCanceledException raised while the caller's token is not signalled is a genuine
+            // provisioning failure and falls through to the failure path below.
             outcome = "cancelled";
-            activity?.SetTag(OutboundDiagnostics.OutcomeTagName, outcome);
+            activity?.SetTag(OutcomeTagName, outcome);
             throw;
         }
         catch
@@ -76,24 +85,24 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
                 1,
                 new[]
                 {
-                    new KeyValuePair<string, object?>(OutboundDiagnostics.TransportNameTagName, "rabbitmq"),
-                    new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, outcome)
+                    new KeyValuePair<string, object?>(TransportNameTagName, "rabbitmq"),
+                    new KeyValuePair<string, object?>(OutcomeTagName, outcome)
                 }
             );
             activity?.SetStatus(ActivityStatusCode.Error);
-            activity?.SetTag(OutboundDiagnostics.OutcomeTagName, outcome);
+            activity?.SetTag(OutcomeTagName, outcome);
             throw;
         }
         finally
         {
             KeyValuePair<string, object?>[] durationTags =
             [
-                new (OutboundDiagnostics.TransportNameTagName, "rabbitmq"),
-                new (OutboundDiagnostics.OutcomeTagName, outcome)
+                new (TransportNameTagName, "rabbitmq"),
+                new (OutcomeTagName, outcome)
             ];
             var durationMilliseconds = (Stopwatch.GetTimestamp() - startedTimestamp) * 1000d / Stopwatch.Frequency;
             OutboundDiagnostics.TopologyProvisioningDuration.Record(durationMilliseconds, durationTags);
-            activity?.SetTag(OutboundDiagnostics.OutcomeTagName, outcome);
+            activity?.SetTag(OutcomeTagName, outcome);
             activity?.Dispose();
         }
     }

@@ -3,8 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using RabbitMQ.Client;
 using Bmf.Core.Messaging.Inbound;
+using RabbitMQ.Client;
 
 namespace Bmf.Transport.RabbitMq.Inbound;
 
@@ -116,6 +116,9 @@ public sealed class RabbitMqTransportMessage : TransportMessage
     /// Gets the routing key the message was delivered with.
     /// </summary>
     public string RoutingKey { get; }
+
+    /// <inheritdoc />
+    public override string? DestinationRoutingKey => RoutingKey;
 
     /// <summary>
     /// Gets the consumer tag of the consumer that received the message.

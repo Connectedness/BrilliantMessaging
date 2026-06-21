@@ -428,13 +428,13 @@ public sealed class MessagePublisherTests
     }
 
     [Fact]
-    public async Task PublishMessageAsync_TagsDeliveryFailureReason()
+    public async Task PublishMessageAsync_TagsDeliveryFailureReasonAsBoundedErrorType()
     {
         var measurements = new List<KeyValuePair<string, object?>[]>();
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, meterListener) =>
         {
-            if (instrument.Name == "bmf.outbound.publish.failures")
+            if (instrument.Name == "messaging.client.sent.messages")
             {
                 meterListener.EnableMeasurementEvents(instrument);
             }
@@ -459,16 +459,10 @@ public sealed class MessagePublisherTests
         await act.Should().ThrowAsync<MessageDeliveryException>();
         measurements.Should().ContainSingle();
         measurements[0].Should().Contain(
-            new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "failure")
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.ErrorType, "returned")
         );
         measurements[0].Should().Contain(
-            new KeyValuePair<string, object?>(OutboundDiagnostics.DeliveryFailureReasonTagName, "returned")
-        );
-        measurements[0].Should().Contain(
-            new KeyValuePair<string, object?>(
-                OutboundDiagnostics.MessageTypeTagName,
-                CloudEventsTestFactory.SampleDiscriminator
-            )
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.MessagingSystem, "test")
         );
     }
 }

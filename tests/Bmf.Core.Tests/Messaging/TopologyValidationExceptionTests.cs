@@ -1,6 +1,6 @@
 using System;
-using FluentAssertions;
 using Bmf.Core.Messaging;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -21,5 +21,13 @@ public sealed class TopologyValidationExceptionTests
         Action act = () => _ = new TopologyValidationException(Array.Empty<string>());
 
         act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Constructor_RejectsNullErrors()
+    {
+        Action act = () => _ = new TopologyValidationException(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("validationErrors");
     }
 }

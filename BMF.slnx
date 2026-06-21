@@ -16,6 +16,7 @@
         <File Path="src/Directory.Build.props" />
         <Project Path="src/Bmf.Abstractions/Bmf.Abstractions.csproj" />
         <Project Path="src/Bmf.Core/Bmf.Core.csproj" />
+        <Project Path="src/Bmf.OpenTelemetry/Bmf.OpenTelemetry.csproj" />
     </Folder>
     <Folder Name="/benchmarks/">
         <Project Path="benchmarks/Bmf.Benchmarks/Bmf.Benchmarks.csproj" />
@@ -27,6 +28,7 @@
         <File Path="tests/AGENTS.md" />
         <File Path="tests/Directory.Build.props" />
         <Project Path="tests/Bmf.Core.Tests/Bmf.Core.Tests.csproj" />
+        <Project Path="tests/Bmf.OpenTelemetry.Tests/Bmf.OpenTelemetry.Tests.csproj" />
     </Folder>
     <Folder Name="/tests/Transports/">
         <Project Path="tests/Transports/Bmf.Transport.RabbitMq.Tests/Bmf.Transport.RabbitMq.Tests.csproj" />

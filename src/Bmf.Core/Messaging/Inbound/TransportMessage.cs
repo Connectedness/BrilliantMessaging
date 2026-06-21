@@ -91,6 +91,20 @@ public abstract class TransportMessage
     public string Source { get; }
 
     /// <summary>
+    /// Gets the OpenTelemetry <c>messaging.system</c> value for deliveries from this transport. The base returns
+    /// <see cref="TransportName" /> (for RabbitMQ this is already <c>rabbitmq</c>); a transport overrides it only
+    /// when the messaging-system identifier differs from the transport name.
+    /// </summary>
+    public virtual string MessagingSystem => TransportName;
+
+    /// <summary>
+    /// Gets the transport routing key the delivery carried (the OpenTelemetry
+    /// <c>messaging.rabbitmq.destination.routing_key</c>), or <see langword="null" /> when the transport has none.
+    /// The base returns <see langword="null" />; a routing transport (such as RabbitMQ) overrides it.
+    /// </summary>
+    public virtual string? DestinationRoutingKey => null;
+
+    /// <summary>
     /// Gets the message body.
     /// </summary>
     /// <remarks>

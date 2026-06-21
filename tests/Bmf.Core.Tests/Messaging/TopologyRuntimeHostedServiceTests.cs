@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Bmf.Core.Messaging;
+using Bmf.Core.Messaging.Inbound;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -57,6 +57,14 @@ public sealed class TopologyRuntimeHostedServiceTests
             descriptor => descriptor.ServiceType == typeof(InboundDiagnosticsMiddleware) &&
                           descriptor.Lifetime == ServiceLifetime.Singleton
         );
+    }
+
+    [Fact]
+    public void Constructor_RejectsNullRuntimes()
+    {
+        var act = () => new TopologyRuntimeHostedService(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("runtimes");
     }
 
     [Fact]

@@ -10,7 +10,8 @@ public sealed class InboundDiagnosticsStaticInitializationTests
     public void InboundDiagnostics_ActivitySourceNameMatchesActivitySourceAndMeter()
     {
         InboundDiagnostics.ActivitySourceName.Should().Be("Bmf.Inbound");
+        InboundDiagnostics.MeterName.Should().Be("Bmf.Inbound");
         InboundDiagnostics.ActivitySource.Name.Should().Be(InboundDiagnostics.ActivitySourceName);
-        InboundDiagnostics.Meter.Name.Should().Be(InboundDiagnostics.ActivitySourceName);
+        InboundDiagnostics.Meter.Name.Should().Be(InboundDiagnostics.MeterName);
     }
 }

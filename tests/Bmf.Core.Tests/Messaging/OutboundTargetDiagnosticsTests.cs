@@ -1,22 +1,27 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
+using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Outbound;
 using Bmf.Core.Tests.Messaging.TestSupport;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
 
 /// <summary>
-/// Verifies that publish diagnostics are owned by the target layer, so direct target publishes and
-/// publisher-mediated publishes emit identical activities and metrics without nesting or double counting.
+/// Verifies that publish diagnostics are owned by the target layer and labelled with the OpenTelemetry
+/// <c>messaging.*</c> semantic conventions, so direct target publishes and publisher-mediated publishes emit
+/// identical activities and metrics without nesting or double counting.
 /// </summary>
 [Collection("Diagnostics")]
 public sealed class OutboundTargetDiagnosticsTests
 {
     private const string PublishActivityName = "bmf.outbound.publish";
+
+    private const string Destination = "recording-exchange";
 
     [Fact]
     public async Task DirectTypedPublish_RecordsSingleInstrumentedPublish()
@@ -30,21 +35,27 @@ public sealed class OutboundTargetDiagnosticsTests
         var activity = recorder.StartedActivities.Should().ContainSingle().Which;
         activity.OperationName.Should().Be(PublishActivityName);
         activity.Kind.Should().Be(ActivityKind.Producer);
-        activity
-           .GetTagItem(OutboundDiagnostics.MessageTypeTagName)
-           .Should().Be(CloudEventsTestFactory.SampleDiscriminator);
-        activity.GetTagItem(OutboundDiagnostics.TargetNameTagName).Should().Be("default");
-        activity.GetTagItem(OutboundDiagnostics.TransportNameTagName).Should().Be("test");
-        activity.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
+        activity.DisplayName.Should().Be($"{MessagingSemanticConventions.SendOperation} {Destination}");
+        activity.GetTagItem(MessagingSemanticConventions.MessagingSystem).Should().Be("test");
+        activity.GetTagItem(MessagingSemanticConventions.MessagingOperationType)
+           .Should().Be(MessagingSemanticConventions.SendOperation);
+        activity.GetTagItem(MessagingSemanticConventions.MessagingOperationName)
+           .Should().Be(MessagingSemanticConventions.SendOperation);
+        activity.GetTagItem(MessagingSemanticConventions.MessagingDestinationName).Should().Be(Destination);
+        activity.GetTagItem(MessagingSemanticConventions.MessagingMessageId).Should().NotBeNull();
+        activity.GetTagItem(MessagingSemanticConventions.MessagingMessageBodySize).Should().BeOfType<int>();
+        activity.Status.Should().Be(ActivityStatusCode.Ok);
+        activity.GetTagItem(MessagingSemanticConventions.ErrorType).Should().BeNull();
 
-        recorder.Attempts.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(
-                OutboundDiagnostics.MessageTypeTagName,
-                CloudEventsTestFactory.SampleDiscriminator
-            )
+        var sent = recorder.SentMessages.Should().ContainSingle().Which;
+        sent.Should().Contain(
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.MessagingSystem, "test")
         );
+        sent.Should().Contain(
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.MessagingDestinationName, Destination)
+        );
+        sent.Should().NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
         recorder.Durations.Should().ContainSingle();
-        recorder.Failures.Should().BeEmpty();
     }
 
     [Fact]
@@ -59,16 +70,13 @@ public sealed class OutboundTargetDiagnosticsTests
 
         var activity = recorder.StartedActivities.Should().ContainSingle().Which;
         activity.OperationName.Should().Be(PublishActivityName);
-        // The raw path derives the message-type tag from the target rather than the typed discriminator.
-        activity
-           .GetTagItem(OutboundDiagnostics.MessageTypeTagName)
-           .Should().Be(CloudEventsTestFactory.SampleDiscriminator);
-        activity.GetTagItem(OutboundDiagnostics.TargetNameTagName).Should().Be("raw");
-        activity.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
+        activity.GetTagItem(MessagingSemanticConventions.MessagingSystem).Should().Be("test");
+        activity.GetTagItem(MessagingSemanticConventions.MessagingDestinationName).Should().Be(Destination);
+        activity.GetTagItem(MessagingSemanticConventions.MessagingMessageBodySize).Should().Be(message.Body.Length);
+        activity.Status.Should().Be(ActivityStatusCode.Ok);
 
-        recorder.Attempts.Should().ContainSingle();
+        recorder.SentMessages.Should().ContainSingle();
         recorder.Durations.Should().ContainSingle();
-        recorder.Failures.Should().BeEmpty();
         target.SerializedMessages.Should().ContainSingle().Which.Should().Be(message);
     }
 
@@ -84,10 +92,9 @@ public sealed class OutboundTargetDiagnosticsTests
 
         recorder
            .StartedActivities.Should().ContainSingle()
-           .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
-        recorder.Attempts.Should().ContainSingle();
+           .Which.Status.Should().Be(ActivityStatusCode.Ok);
+        recorder.SentMessages.Should().ContainSingle();
         recorder.Durations.Should().ContainSingle();
-        recorder.Failures.Should().BeEmpty();
     }
 
     [Fact]
@@ -102,10 +109,9 @@ public sealed class OutboundTargetDiagnosticsTests
 
         recorder
            .StartedActivities.Should().ContainSingle()
-           .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
-        recorder.Attempts.Should().ContainSingle();
+           .Which.Status.Should().Be(ActivityStatusCode.Ok);
+        recorder.SentMessages.Should().ContainSingle();
         recorder.Durations.Should().ContainSingle();
-        recorder.Failures.Should().BeEmpty();
     }
 
     [Fact]
@@ -119,14 +125,14 @@ public sealed class OutboundTargetDiagnosticsTests
 
         var activity = recorder.StartedActivities.Should().ContainSingle().Which;
         activity.OperationName.Should().Be(PublishActivityName);
-        activity
-           .GetTagItem(OutboundDiagnostics.MessageTypeTagName)
-           .Should().Be(CloudEventsTestFactory.SampleDiscriminator);
-        activity.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
+        activity.GetTagItem(MessagingSemanticConventions.MessagingOperationName)
+           .Should().Be(MessagingSemanticConventions.SendOperation);
+        activity.Status.Should().Be(ActivityStatusCode.Ok);
 
-        recorder.Attempts.Should().ContainSingle();
+        recorder.SentMessages.Should().ContainSingle();
         recorder.Durations.Should().ContainSingle();
-        recorder.Failures.Should().BeEmpty();
+        // The RabbitMQ-namespaced routing-key tag is set by the transport, not the Core funnel; the Core target
+        // only routes the key to the transport, which the recording double captures here.
         target.RoutingKeys.Should().ContainSingle().Which.Should().Be("orders.created");
     }
 
@@ -147,17 +153,44 @@ public sealed class OutboundTargetDiagnosticsTests
 
         recorder
            .StartedActivities.Should().ContainSingle()
-           .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("success");
-        recorder.Attempts.Should().ContainSingle();
+           .Which.Status.Should().Be(ActivityStatusCode.Ok);
+        recorder.SentMessages.Should().ContainSingle();
         recorder.Durations.Should().ContainSingle();
-        recorder.Failures.Should().BeEmpty();
         target.RoutingKeys.Should().ContainSingle().Which.Should().Be("orders.created");
     }
 
     [Fact]
-    public async Task Publish_RecordsCancellationOutcomeWithoutFailureCount()
+    public async Task Publish_WhenCallerTokenCancelled_RecordsCancellationWithoutErrorType()
     {
         using var recorder = new OutboundDiagnosticsRecorder();
+        using CancellationTokenSource cancellationTokenSource = new ();
+        await cancellationTokenSource.CancelAsync();
+        var target = new RecordingTarget<SampleMessage>(
+            "default",
+            new ThrowingSerializer(new OperationCanceledException())
+        );
+
+        // ReSharper disable once AccessToDisposedClosure -- act is awaited before disposal
+        var act = async () => await target.PublishAsync(new SampleMessage("hello"), cancellationTokenSource.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        // A cancellation of the caller's token is an ordinary counter increment with error.type absent, like success.
+        recorder.SentMessages.Should().ContainSingle().Which.Should()
+           .NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
+        recorder.Durations.Should().ContainSingle().Which.Should()
+           .NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);
+        recorder
+           .StartedActivities.Should().ContainSingle()
+           .Which.GetTagItem(MessagingSemanticConventions.ErrorType).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Publish_WhenCancellationIsNotFromCallerToken_RecordsFailureWithOtherErrorType()
+    {
+        using var recorder = new OutboundDiagnosticsRecorder();
+        // The caller's token is never signalled, so an OperationCanceledException from inside the publish is an
+        // unexpected cancellation (e.g. an unrelated internal timeout) and must be classified as a failure rather
+        // than suppressed as a graceful cancellation.
         var target = new RecordingTarget<SampleMessage>(
             "default",
             new ThrowingSerializer(new OperationCanceledException())
@@ -166,18 +199,26 @@ public sealed class OutboundTargetDiagnosticsTests
         var act = async () => await target.PublishAsync(new SampleMessage("hello"));
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        recorder.Attempts.Should().ContainSingle();
-        recorder.Failures.Should().BeEmpty();
-        recorder.Durations.Should().ContainSingle().Which.Should().Contain(
-            new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "cancelled")
+        recorder.SentMessages.Should().ContainSingle().Which.Should().Contain(
+            new KeyValuePair<string, object?>(
+                MessagingSemanticConventions.ErrorType,
+                MessagingSemanticConventions.ErrorTypeOther
+            )
         );
-        recorder
-           .StartedActivities.Should().ContainSingle()
-           .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("cancelled");
+        recorder.Durations.Should().ContainSingle().Which.Should().Contain(
+            new KeyValuePair<string, object?>(
+                MessagingSemanticConventions.ErrorType,
+                MessagingSemanticConventions.ErrorTypeOther
+            )
+        );
+        var activity = recorder.StartedActivities.Should().ContainSingle().Which;
+        activity.Status.Should().Be(ActivityStatusCode.Error);
+        activity.GetTagItem(MessagingSemanticConventions.ErrorType)
+           .Should().Be(MessagingSemanticConventions.ErrorTypeOther);
     }
 
     [Fact]
-    public async Task Publish_RecordsSerializationFailureWithoutDeliveryReason()
+    public async Task Publish_RecordsSerializationFailureWithOtherErrorType()
     {
         using var recorder = new OutboundDiagnosticsRecorder();
         var target = new RecordingTarget<SampleMessage>(
@@ -188,18 +229,27 @@ public sealed class OutboundTargetDiagnosticsTests
         var act = async () => await target.PublishAsync(new SampleMessage("hello"));
 
         await act.Should().ThrowAsync<MessageSerializationException>();
-        var failure = recorder.Failures.Should().ContainSingle().Which;
-        failure.Should().Contain(
-            new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "failure")
+        recorder.SentMessages.Should().ContainSingle().Which.Should().Contain(
+            new KeyValuePair<string, object?>(
+                MessagingSemanticConventions.ErrorType,
+                MessagingSemanticConventions.ErrorTypeOther
+            )
         );
-        failure.Should().NotContain(tag => tag.Key == OutboundDiagnostics.DeliveryFailureReasonTagName);
-        recorder
-           .StartedActivities.Should().ContainSingle()
-           .Which.GetTagItem(OutboundDiagnostics.OutcomeTagName).Should().Be("failure");
+        recorder.Durations.Should().ContainSingle().Which.Should().Contain(
+            new KeyValuePair<string, object?>(
+                MessagingSemanticConventions.ErrorType,
+                MessagingSemanticConventions.ErrorTypeOther
+            )
+        );
+        var activity = recorder.StartedActivities.Should().ContainSingle().Which;
+        activity.Status.Should().Be(ActivityStatusCode.Error);
+        activity.GetTagItem(MessagingSemanticConventions.ErrorType)
+           .Should().Be(MessagingSemanticConventions.ErrorTypeOther);
+        activity.Events.Should().ContainSingle(@event => @event.Name == "exception");
     }
 
     [Fact]
-    public async Task Publish_RecordsDeliveryFailureReason()
+    public async Task Publish_RecordsDeliveryFailureReasonAsBoundedErrorType()
     {
         using var recorder = new OutboundDiagnosticsRecorder();
         var deliveryException = new MessageDeliveryException(
@@ -216,16 +266,12 @@ public sealed class OutboundTargetDiagnosticsTests
         var act = async () => await target.PublishAsync(new SampleMessage("hello"));
 
         await act.Should().ThrowAsync<MessageDeliveryException>();
-        var failure = recorder.Failures.Should().ContainSingle().Which;
-        failure.Should().Contain(
-            new KeyValuePair<string, object?>(OutboundDiagnostics.OutcomeTagName, "failure")
+        recorder.SentMessages.Should().ContainSingle().Which.Should().Contain(
+            new KeyValuePair<string, object?>(MessagingSemanticConventions.ErrorType, "nacked")
         );
-        failure.Should().Contain(
-            new KeyValuePair<string, object?>(OutboundDiagnostics.DeliveryFailureReasonTagName, "nacked")
-        );
-        recorder
-           .StartedActivities.Should().ContainSingle()
-           .Which.GetTagItem(OutboundDiagnostics.DeliveryFailureReasonTagName).Should().Be("nacked");
+        var activity = recorder.StartedActivities.Should().ContainSingle().Which;
+        activity.GetTagItem(MessagingSemanticConventions.ErrorType).Should().Be("nacked");
+        activity.Status.Should().Be(ActivityStatusCode.Error);
     }
 
     private static SerializedMessage CreateSerializedMessage()

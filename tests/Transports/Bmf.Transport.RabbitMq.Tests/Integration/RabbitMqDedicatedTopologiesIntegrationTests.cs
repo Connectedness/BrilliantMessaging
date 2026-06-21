@@ -385,8 +385,22 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
                 consumed.Name.Should().Be("consumed");
                 consumerActivity.TraceId.Should().Be(producerActivity.TraceId);
                 consumerActivity.ParentSpanId.Should().Be(producerActivity.SpanId);
-                consumerActivity.GetTagItem(InboundDiagnostics.MessageTypeTagName)
-                   .Should().Be(RabbitMqCloudEventsTestFactory.PublishMessageDiscriminator);
+
+                producerActivity
+                   .GetTagItem(MessagingSemanticConventions.MessagingOperationType)
+                   .Should().Be(MessagingSemanticConventions.SendOperation);
+                consumerActivity
+                   .GetTagItem(MessagingSemanticConventions.MessagingOperationType)
+                   .Should().Be(MessagingSemanticConventions.ProcessOperation);
+                consumerActivity.GetTagItem(MessagingSemanticConventions.MessagingSystem).Should().Be("rabbitmq");
+
+                // The producer's messaging.message.id (the CloudEvents id) is recovered on the consumer span,
+                // so inbound and outbound telemetry join across the broker by message id.
+                var producerMessageId = producerActivity.GetTagItem(MessagingSemanticConventions.MessagingMessageId);
+                producerMessageId.Should().NotBeNull();
+                consumerActivity
+                   .GetTagItem(MessagingSemanticConventions.MessagingMessageId)
+                   .Should().Be(producerMessageId);
 
                 var outboundTopology =
                     serviceProvider.GetRequiredKeyedService<RabbitMqTopology>(Topology.DefaultName);

@@ -14,11 +14,9 @@ namespace Bmf.Core.Tests.Messaging.TestSupport;
 /// </summary>
 public sealed class OutboundDiagnosticsRecorder : IDisposable
 {
-    public const string AttemptsInstrumentName = "bmf.outbound.publish.attempts";
+    public const string SentMessagesInstrumentName = "messaging.client.sent.messages";
 
-    public const string FailuresInstrumentName = "bmf.outbound.publish.failures";
-
-    public const string DurationInstrumentName = "bmf.outbound.publish.duration";
+    public const string OperationDurationInstrumentName = "messaging.client.operation.duration";
 
     private readonly ActivityListener _activityListener;
     private readonly MeterListener _meterListener;
@@ -37,7 +35,7 @@ public sealed class OutboundDiagnosticsRecorder : IDisposable
         {
             InstrumentPublished = (instrument, listener) =>
             {
-                if (instrument.Meter.Name == OutboundDiagnostics.ActivitySourceName)
+                if (instrument.Meter.Name == OutboundDiagnostics.MeterName)
                 {
                     listener.EnableMeasurementEvents(instrument);
                 }
@@ -46,21 +44,16 @@ public sealed class OutboundDiagnosticsRecorder : IDisposable
         _meterListener.SetMeasurementEventCallback<long>(
             (instrument, _, tags, _) =>
             {
-                switch (instrument.Name)
+                if (instrument.Name == SentMessagesInstrumentName)
                 {
-                    case AttemptsInstrumentName:
-                        Attempts.Add(tags.ToArray());
-                        break;
-                    case FailuresInstrumentName:
-                        Failures.Add(tags.ToArray());
-                        break;
+                    SentMessages.Add(tags.ToArray());
                 }
             }
         );
         _meterListener.SetMeasurementEventCallback<double>(
             (instrument, _, tags, _) =>
             {
-                if (instrument.Name == DurationInstrumentName)
+                if (instrument.Name == OperationDurationInstrumentName)
                 {
                     Durations.Add(tags.ToArray());
                 }
@@ -71,9 +64,7 @@ public sealed class OutboundDiagnosticsRecorder : IDisposable
 
     public List<Activity> StartedActivities { get; } = [];
 
-    public List<KeyValuePair<string, object?>[]> Attempts { get; } = [];
-
-    public List<KeyValuePair<string, object?>[]> Failures { get; } = [];
+    public List<KeyValuePair<string, object?>[]> SentMessages { get; } = [];
 
     public List<KeyValuePair<string, object?>[]> Durations { get; } = [];
 

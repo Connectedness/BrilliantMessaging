@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
-using FluentAssertions;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Inbound;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -85,6 +85,16 @@ public sealed class TraceContextHeadersTests
     }
 
     [Fact]
+    public void Inject_RejectsNullHeaderCarriers()
+    {
+        var stringHeaders = () => TraceContextHeaders.Inject((IDictionary<string, string?>) null!);
+        var objectHeaders = () => TraceContextHeaders.Inject((IDictionary<string, object?>) null!);
+
+        stringHeaders.Should().Throw<ArgumentNullException>().WithParameterName("headers");
+        objectHeaders.Should().Throw<ArgumentNullException>().WithParameterName("headers");
+    }
+
+    [Fact]
     public void Extract_ReadsTraceContextAndBaggageFromTransportMessage()
     {
         using var activity = new Activity("extract")
@@ -105,6 +115,59 @@ public sealed class TraceContextHeadersTests
         result.TraceParent.Should().Be(activity.Id);
         result.TraceState.Should().Be("vendor=value");
         result.Baggage.Should().ContainSingle(pair => pair.Key == "tenant" && pair.Value == "tenant-7");
+    }
+
+    [Fact]
+    public void Extract_ReadsTraceContextFromObjectHeaderTypes()
+    {
+        using var activity = new Activity("extract-object-headers")
+           .SetIdFormat(ActivityIdFormat.W3C)
+           .Start();
+        activity.TraceStateString = "vendor=value";
+        activity.AddBaggage("tenant", "tenant-7");
+        activity.AddBaggage("attempt", "2");
+        var injected = new Dictionary<string, object?>();
+        TraceContextHeaders.Inject(injected, activity);
+        var headers = new Dictionary<string, object?>
+        {
+            ["traceparent"] = Encoding.UTF8.GetBytes((string) injected["traceparent"]!),
+            ["tracestate"] = new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes((string) injected["tracestate"]!)),
+            ["baggage"] = new Memory<byte>(Encoding.UTF8.GetBytes((string) injected["baggage"]!)),
+            ["ignored-null"] = null,
+            ["numeric"] = 42
+        };
+
+        var result = TraceContextHeaders.Extract(headers);
+
+        result.TraceParent.Should().Be(activity.Id);
+        result.TraceState.Should().Be("vendor=value");
+        result.Baggage.Should().Contain(pair => pair.Key == "tenant" && pair.Value == "tenant-7");
+        result.Baggage.Should().Contain(pair => pair.Key == "attempt" && pair.Value == "2");
+    }
+
+    [Fact]
+    public void Extract_ReturnsEmptyResultWhenNoTraceHeadersArePresent()
+    {
+        var result = TraceContextHeaders.Extract(
+            new Dictionary<string, object?>
+            {
+                ["tenant"] = "tenant-7"
+            }
+        );
+
+        result.TraceParent.Should().BeNull();
+        result.TraceState.Should().BeNull();
+        result.Baggage.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Extract_RejectsNullCarriers()
+    {
+        Action transportMessage = () => TraceContextHeaders.Extract((TransportMessage) null!);
+        Action objectHeaders = () => TraceContextHeaders.Extract((IReadOnlyDictionary<string, object?>) null!);
+
+        transportMessage.Should().Throw<ArgumentNullException>().WithParameterName("transportMessage");
+        objectHeaders.Should().Throw<ArgumentNullException>().WithParameterName("headers");
     }
 
     private sealed class TestTransportMessage : TransportMessage
