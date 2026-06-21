@@ -402,6 +402,12 @@ side, its own publisher-confirm settings. Point a target at a named group with
 `UseChannelGroup` to give a hot path its own dedicated, independently-tuned channels —
 or just lean on the implicit defaults until a benchmark tells you otherwise.
 
+Every channel counts against the broker's negotiated `channel_max`, so BMF sums its
+worst-case channel budget across all groups and checks it against the limit the broker
+advertises on the initial connection — an over-provisioned pool fails fast at startup
+rather than starving for channels under load. Keep `channel_max` consistent across the
+nodes of a RabbitMQ cluster so that check holds wherever a connection lands.
+
 ### Reliability and recovery
 
 The RabbitMQ transport requires RabbitMQ.Client's automatic connection recovery
