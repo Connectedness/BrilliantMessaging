@@ -297,7 +297,7 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
             pipelineStarted = true;
             await _topology.Pipeline(context).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             await acknowledgement.NackAsync(requeue: true, CancellationToken.None).ConfigureAwait(false);
         }

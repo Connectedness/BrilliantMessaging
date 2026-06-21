@@ -145,6 +145,74 @@ public sealed class RabbitMqTopologyRuntimeTests
         await runtime.StopAsync(cancellationToken);
     }
 
+    [Fact]
+    public async Task DeliveryCancellationFromEventArgsToken_RequeuesWithoutFailureMetrics()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var recorder = new InboundDiagnosticsRecorder();
+        var channel = new TestRabbitMqChannel();
+        var connection = new TestRabbitMqConnection();
+        connection.EnqueueChannel(channel.Object);
+        RabbitMqConnectionProvider connectionProvider = new (_ => Task.FromResult(connection.Object));
+        var topologyBuilder = new RabbitMqTopologyBuilder();
+        topologyBuilder.UseConnectionFactory(static _ => new ConnectionFactory());
+        topologyBuilder.Queue("inbound");
+        topologyBuilder.Consume(
+            "inbound",
+            consumer => consumer
+               .UseInspector<RawInspector>()
+               .Handle<ValidationMessageA, CancellingValidationMessageAHandler>(
+                    handler => handler
+                       .WithDeserializer<RawDeserializer>()
+                       .ManualAck()
+                )
+        );
+        RabbitMqTopologyCompiler compiler = new (
+            RabbitMqCloudEventsTestFactory.CreateRegistry(),
+            NullLoggerFactory.Instance,
+            static _ => null,
+            static _ => true
+        );
+        await using var topology = compiler.Compile(
+            Topology.DefaultName,
+            topologyBuilder.Build(),
+            connectionProvider
+        );
+        var services = new ServiceCollection();
+        services.AddSingleton<InboundDiagnosticsMiddleware>();
+        services.AddSingleton<FrameworkMessageAcknowledgementMiddleware>();
+        services.AddSingleton<MessageDeserializationMiddleware>();
+        services.AddSingleton<RawInspector>();
+        services.AddSingleton<RawDeserializer>();
+        services.AddSingleton<CancellingValidationMessageAHandler>();
+        await using var serviceProvider = services.BuildServiceProvider();
+        var runtime = new RabbitMqTopologyRuntime(topology, serviceProvider.GetRequiredService<IServiceScopeFactory>());
+
+        await runtime.StartAsync(cancellationToken);
+        using CancellationTokenSource deliveryCancellationTokenSource = new ();
+        await deliveryCancellationTokenSource.CancelAsync();
+        await channel.DeliverAsync(
+            "consumer-1",
+            42,
+            redelivered: false,
+            "events",
+            "validation-a",
+            new BasicProperties(),
+            "{}"u8.ToArray(),
+            deliveryCancellationTokenSource.Token
+        );
+
+        channel.BasicNackCallCount.Should().Be(1);
+        channel.LastNackRequeue.Should().BeTrue();
+        recorder.Attempts.Should().ContainSingle();
+        recorder.Failures.Should().BeEmpty();
+        recorder.Durations.Should().ContainSingle().Which.Should().Contain(
+            new KeyValuePair<string, object?>(InboundDiagnostics.OutcomeTagName, "cancelled")
+        );
+
+        await runtime.StopAsync(cancellationToken);
+    }
+
     private sealed class ValidationMessageAHandler : IMessageHandler<ValidationMessageA>
     {
         public Task HandleAsync(
@@ -166,6 +234,46 @@ public sealed class RabbitMqTopologyRuntimeTests
         )
         {
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CancellingValidationMessageAHandler : IMessageHandler<ValidationMessageA>
+    {
+        public Task HandleAsync(
+            ValidationMessageA message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RawInspector : IInboundMessageInspector
+    {
+        public ValueTask<InboundMessageInspectionResult> InspectAsync(
+            TransportMessage transportMessage,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return new ValueTask<InboundMessageInspectionResult>(
+                new InboundMessageInspectionResult(
+                    RabbitMqCloudEventsTestFactory.ValidationMessageADiscriminator,
+                    typeof(ValidationMessageA)
+                )
+            );
+        }
+    }
+
+    private sealed class RawDeserializer : IMessageDeserializer
+    {
+        public ValueTask<object?> DeserializeAsync(
+            IncomingMessageContext context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return new ValueTask<object?>(new ValidationMessageA("raw"));
         }
     }
 }
