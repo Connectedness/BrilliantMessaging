@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using FluentAssertions;
 using Bmf.Core.Messaging;
 using Xunit;
@@ -72,6 +73,100 @@ public sealed class MessageContractRegistryTests
            .Be(
                 "Inbound CloudEvents discriminator 'registry.current' is registered multiple times for message type 'Bmf.Core.Tests.Messaging.MessageContractRegistryTests+RegistryMessage'."
             );
+    }
+
+    [Fact]
+    public void Constructor_CopiesMappingsAndOrdersRegisteredMessageTypes()
+    {
+        var discriminators = new Dictionary<Type, string>
+        {
+            [typeof(OtherRegistryMessage)] = "registry.other",
+            [typeof(RegistryMessage)] = "registry.current"
+        };
+        var inbound = new Dictionary<string, Type>(StringComparer.Ordinal)
+        {
+            ["registry.current"] = typeof(RegistryMessage),
+            ["registry.legacy"] = typeof(RegistryMessage)
+        };
+        var dataSchemas = new Dictionary<Type, string>
+        {
+            [typeof(RegistryMessage)] = "/schemas/current"
+        };
+        MessageContractRegistry registry = new (discriminators, inbound, dataSchemas);
+
+        discriminators.Clear();
+        inbound.Clear();
+        dataSchemas.Clear();
+
+        registry.RegisteredMessageTypes.Should().Equal(typeof(OtherRegistryMessage), typeof(RegistryMessage));
+        registry.GetDiscriminator(typeof(RegistryMessage)).Should().Be("registry.current");
+        registry.GetInboundDiscriminators(typeof(RegistryMessage)).Should().Equal("registry.current", "registry.legacy");
+        registry.TryGetDataSchema(typeof(RegistryMessage), out var dataSchema).Should().BeTrue();
+        dataSchema.Should().Be("/schemas/current");
+        registry.TryGetDataSchema(typeof(OtherRegistryMessage), out dataSchema).Should().BeFalse();
+        dataSchema.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_RejectsNullMappings()
+    {
+        var discriminators = new Dictionary<Type, string>();
+        var inbound = new Dictionary<string, Type>();
+        var dataSchemas = new Dictionary<Type, string>();
+
+        var nullDiscriminators = () => new MessageContractRegistry(null!, inbound, dataSchemas);
+        var nullInbound = () => new MessageContractRegistry(discriminators, null!, dataSchemas);
+        var nullDataSchemas = () => new MessageContractRegistry(discriminators, inbound, null!);
+
+        nullDiscriminators.Should().Throw<ArgumentNullException>()
+           .WithParameterName("discriminatorsByMessageType");
+        nullInbound.Should().Throw<ArgumentNullException>().WithParameterName("messageTypesByDiscriminator");
+        nullDataSchemas.Should().Throw<ArgumentNullException>().WithParameterName("dataSchemasByMessageType");
+    }
+
+    [Fact]
+    public void Lookups_RejectInvalidArgumentsAndReportMissingContracts()
+    {
+        MessageContractRegistry registry = new (
+            new Dictionary<Type, string>
+            {
+                [typeof(RegistryMessage)] = "registry.current"
+            },
+            new Dictionary<string, Type>(StringComparer.Ordinal)
+            {
+                ["registry.current"] = typeof(RegistryMessage)
+            },
+            new Dictionary<Type, string>()
+        );
+
+        var getNullDiscriminator = () => registry.GetDiscriminator(null!);
+        var tryNullDiscriminator = () => registry.TryGetDiscriminator(null!, out _);
+        var getNullDataSchema = () => registry.GetDataSchema(null!);
+        var getNullInbound = () => registry.GetInboundDiscriminators(null!);
+        var resolveBlank = () => registry.TryResolveType(" ", out _);
+        var tryNullDataSchema = () => registry.TryGetDataSchema(null!, out _);
+        var missingContract = () => registry.GetDiscriminator(typeof(OtherRegistryMessage));
+
+        getNullDiscriminator.Should().Throw<ArgumentNullException>().WithParameterName("messageType");
+        tryNullDiscriminator.Should().Throw<ArgumentNullException>().WithParameterName("messageType");
+        getNullDataSchema.Should().Throw<ArgumentNullException>().WithParameterName("messageType");
+        getNullInbound.Should().Throw<ArgumentNullException>().WithParameterName("messageType");
+        resolveBlank.Should().Throw<ArgumentException>().WithParameterName("discriminator");
+        tryNullDataSchema.Should().Throw<ArgumentNullException>().WithParameterName("messageType");
+        registry.TryGetDiscriminator(typeof(OtherRegistryMessage), out var discriminator).Should().BeFalse();
+        discriminator.Should().BeNull();
+        registry.TryResolveType("registry.missing", out var messageType).Should().BeFalse();
+        messageType.Should().BeNull();
+        missingContract.Should().Throw<MessageContractNotRegisteredException>()
+           .Which.MessageType.Should().Be(typeof(OtherRegistryMessage));
+    }
+
+    [Fact]
+    public void MessageContractNotRegisteredException_RejectsNullMessageType()
+    {
+        var act = () => new MessageContractNotRegisteredException(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("messageType");
     }
 
     [Fact]
