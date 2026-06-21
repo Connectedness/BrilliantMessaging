@@ -280,6 +280,60 @@ public sealed class TopologyTests
         exception.Message.Should().Be("Inbound endpoint 'endpoint' is not registered.");
     }
 
+    [Fact]
+    public void TopologyData_PrepareTopologyDataStructures_RejectsNullDictionaries()
+    {
+        var targetsByMessageType = new Dictionary<Type, OutboundTarget>();
+        var targetsByName = new Dictionary<string, OutboundTarget>(StringComparer.Ordinal);
+        var endpointsByName = new Dictionary<string, InboundEndpoint>(StringComparer.Ordinal);
+
+        var nullMessageTargets = () => TopologyData.PrepareTopologyDataStructures(
+            null!,
+            targetsByName,
+            endpointsByName
+        );
+        var nullNamedTargets = () => TopologyData.PrepareTopologyDataStructures(
+            targetsByMessageType,
+            null!,
+            endpointsByName
+        );
+        var nullEndpoints = () => TopologyData.PrepareTopologyDataStructures(
+            targetsByMessageType,
+            targetsByName,
+            null!
+        );
+
+        nullMessageTargets.Should().Throw<ArgumentNullException>().WithParameterName("targetsByMessageType");
+        nullNamedTargets.Should().Throw<ArgumentNullException>().WithParameterName("targetsByName");
+        nullEndpoints.Should().Throw<ArgumentNullException>().WithParameterName("endpointsByName");
+    }
+
+    [Fact]
+    public void SingleTopologyRegistry_ExposesDefaultTopologyAndReportsMissingNames()
+    {
+        var topology = EmptyTopology.Create();
+        SingleTopologyRegistry registry = new (topology);
+
+        registry.Names.Should().ContainSingle().Which.Should().Be(Topology.DefaultName);
+        registry.TryGetTopology(Topology.DefaultName, out var resolved).Should().BeTrue();
+        resolved.Should().BeSameAs(topology);
+        registry.GetRequiredTopology(Topology.DefaultName).Should().BeSameAs(topology);
+        registry.TryGetTopology("missing", out var missing).Should().BeFalse();
+        missing.Should().BeNull();
+        var getMissing = () => registry.GetRequiredTopology("missing");
+
+        getMissing.Should().Throw<InvalidOperationException>()
+           .WithMessage("Topology 'missing' is not registered. Registered topologies: default.");
+    }
+
+    [Fact]
+    public void SingleTopologyRegistry_RejectsNullTopology()
+    {
+        var act = () => new SingleTopologyRegistry(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("topology");
+    }
+
     private sealed class SampleMessageHandler : IMessageHandler<SampleMessage>
     {
         public Task HandleAsync(

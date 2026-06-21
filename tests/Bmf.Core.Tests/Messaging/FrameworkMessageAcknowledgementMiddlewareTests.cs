@@ -58,6 +58,7 @@ public sealed class FrameworkMessageAcknowledgementMiddlewareTests
 
         var act = async () => await middleware.InvokeAsync(
             context,
+            // ReSharper disable once AccessToDisposedClosure -- delegate is called before disposal
             _ => throw new OperationCanceledException(cancellationTokenSource.Token)
         );
 
@@ -79,6 +80,23 @@ public sealed class FrameworkMessageAcknowledgementMiddlewareTests
         await middleware.InvokeAsync(context, static _ => Task.CompletedTask);
 
         acknowledgement.Actions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InvokeAsync_RejectsNullArguments()
+    {
+        var context = CreateContext(
+            new RecordingAcknowledgement(),
+            MessageAckMode.Auto,
+            TestContext.Current.CancellationToken
+        );
+        FrameworkMessageAcknowledgementMiddleware middleware = new ();
+
+        var nullContext = async () => await middleware.InvokeAsync(null!, static _ => Task.CompletedTask);
+        var nullNext = async () => await middleware.InvokeAsync(context, null!);
+
+        await nullContext.Should().ThrowAsync<ArgumentNullException>().WithParameterName("context");
+        await nullNext.Should().ThrowAsync<ArgumentNullException>().WithParameterName("next");
     }
 
     private static IncomingMessageContext CreateContext(

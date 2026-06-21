@@ -1,6 +1,6 @@
 using System;
-using FluentAssertions;
 using Bmf.Core.Messaging.Outbound;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -42,5 +42,13 @@ public sealed class MessageDeliveryExceptionTests
         act.Should().Throw<ArgumentException>()
            .WithParameterName("innerException")
            .WithMessage("A delivery failure other than timeout must provide an inner exception.*");
+    }
+
+    [Fact]
+    public void Constructor_RejectsUnsupportedDeliveryFailureReason()
+    {
+        var act = () => _ = new MessageDeliveryException("target", (MessageDeliveryFailureReason) 999);
+
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("reason");
     }
 }

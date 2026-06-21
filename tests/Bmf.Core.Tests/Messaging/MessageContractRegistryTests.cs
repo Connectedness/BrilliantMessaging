@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using FluentAssertions;
 using Bmf.Core.Messaging;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -76,6 +76,52 @@ public sealed class MessageContractRegistryTests
     }
 
     [Fact]
+    public void Map_RejectsBlankCanonicalDiscriminator()
+    {
+        MessageContractRegistryBuilder builder = new ();
+
+        var inbound = () => builder.Map<RegistryMessage>(" ");
+        var outbound = () => builder.MapOutbound<RegistryMessage>(" ");
+
+        inbound.Should().Throw<ArgumentException>().WithParameterName("discriminator");
+        outbound.Should().Throw<ArgumentException>().WithParameterName("discriminator");
+    }
+
+    [Fact]
+    public void MapBuilder_RejectsBlankAliasAndDataSchema()
+    {
+        MessageContractRegistryBuilder builder = new ();
+        var map = builder.Map<RegistryMessage>("registry.current");
+
+        var blankAlias = () => map.WithInboundAlias(" ");
+        var blankDataSchema = () => map.WithDataSchema(" ");
+
+        blankAlias.Should().Throw<ArgumentException>().WithParameterName("discriminator");
+        blankDataSchema.Should().Throw<ArgumentException>().WithParameterName("dataSchema");
+    }
+
+    [Fact]
+    public void MapBuilder_RejectsInvalidDataSchemaUriReference()
+    {
+        MessageContractRegistryBuilder builder = new ();
+        var map = builder.Map<RegistryMessage>("registry.current");
+
+        var act = () => map.WithDataSchema("http://[::1");
+
+        act.Should().Throw<ArgumentException>().WithParameterName("dataSchema");
+    }
+
+    [Fact]
+    public void ValidationException_RejectsNullOrEmptyErrorList()
+    {
+        var nullErrors = () => new MessageContractRegistryValidationException(null!);
+        var emptyErrors = () => new MessageContractRegistryValidationException([]);
+
+        nullErrors.Should().Throw<ArgumentNullException>().WithParameterName("validationErrors");
+        emptyErrors.Should().Throw<ArgumentException>().WithParameterName("validationErrors");
+    }
+
+    [Fact]
     public void Constructor_CopiesMappingsAndOrdersRegisteredMessageTypes()
     {
         var discriminators = new Dictionary<Type, string>
@@ -100,7 +146,8 @@ public sealed class MessageContractRegistryTests
 
         registry.RegisteredMessageTypes.Should().Equal(typeof(OtherRegistryMessage), typeof(RegistryMessage));
         registry.GetDiscriminator(typeof(RegistryMessage)).Should().Be("registry.current");
-        registry.GetInboundDiscriminators(typeof(RegistryMessage)).Should().Equal("registry.current", "registry.legacy");
+        registry.GetInboundDiscriminators(typeof(RegistryMessage)).Should()
+           .Equal("registry.current", "registry.legacy");
         registry.TryGetDataSchema(typeof(RegistryMessage), out var dataSchema).Should().BeTrue();
         dataSchema.Should().Be("/schemas/current");
         registry.TryGetDataSchema(typeof(OtherRegistryMessage), out dataSchema).Should().BeFalse();

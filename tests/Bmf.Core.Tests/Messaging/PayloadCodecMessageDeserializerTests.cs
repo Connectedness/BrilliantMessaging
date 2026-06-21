@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Inbound;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -41,6 +41,24 @@ public sealed class PayloadCodecMessageDeserializerTests
         var exception = await act.Should().ThrowAsync<MessageDeserializationException>();
         exception.Which.MessageType.Should().Be(typeof(TestMessage));
         exception.Which.InnerException.Should().BeSameAs(failure);
+    }
+
+    [Fact]
+    public void Constructor_RejectsNullPayloadCodec()
+    {
+        var act = () => new PayloadCodecMessageDeserializer(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("payloadCodec");
+    }
+
+    [Fact]
+    public async Task DeserializeAsync_RejectsNullContext()
+    {
+        PayloadCodecMessageDeserializer deserializer = new (new RecordingPayloadCodec(new TestMessage("decoded")));
+
+        var act = async () => await deserializer.DeserializeAsync(null!);
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("context");
     }
 
     private static IncomingMessageContext CreateContext(ReadOnlyMemory<byte> body)

@@ -230,6 +230,19 @@ public sealed class InboundDiagnosticsMiddlewareTests
            .Which.GetTagItem(MessagingSemanticConventions.ErrorType).Should().BeNull();
     }
 
+    [Fact]
+    public async Task InvokeAsync_RejectsNullArguments()
+    {
+        var middleware = new InboundDiagnosticsMiddleware();
+        var context = CreateContext(cancellationToken: TestContext.Current.CancellationToken);
+
+        var nullContext = async () => await middleware.InvokeAsync(null!, static _ => Task.CompletedTask);
+        var nullNext = async () => await middleware.InvokeAsync(context, null!);
+
+        await nullContext.Should().ThrowAsync<ArgumentNullException>().WithParameterName("context");
+        await nullNext.Should().ThrowAsync<ArgumentNullException>().WithParameterName("next");
+    }
+
     private static IncomingMessageContext CreateContext(
         IReadOnlyDictionary<string, object?>? headers = null,
         CancellationToken cancellationToken = default

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using FluentAssertions;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Outbound;
 using Bmf.Core.Tests.Messaging.TestSupport;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -43,5 +43,33 @@ public sealed class OutboundTargetContractValidatorTests
         OutboundTargetContractValidator.CollectValidationErrors(registry, typedTargets, validationErrors);
 
         validationErrors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CollectValidationErrors_RejectsNullArguments()
+    {
+        var registry = CloudEventsTestFactory.CreateRegistry();
+        KeyValuePair<string, Type>[] typedTargets = [new ("sample", typeof(SampleMessage))];
+        List<string> validationErrors = [];
+
+        var nullRegistry = () => OutboundTargetContractValidator.CollectValidationErrors(
+            null!,
+            typedTargets,
+            validationErrors
+        );
+        var nullTargets = () => OutboundTargetContractValidator.CollectValidationErrors(
+            registry,
+            null!,
+            validationErrors
+        );
+        var nullErrors = () => OutboundTargetContractValidator.CollectValidationErrors(
+            registry,
+            typedTargets,
+            null!
+        );
+
+        nullRegistry.Should().Throw<ArgumentNullException>().WithParameterName("messageContractRegistry");
+        nullTargets.Should().Throw<ArgumentNullException>().WithParameterName("typedTargets");
+        nullErrors.Should().Throw<ArgumentNullException>().WithParameterName("validationErrors");
     }
 }
