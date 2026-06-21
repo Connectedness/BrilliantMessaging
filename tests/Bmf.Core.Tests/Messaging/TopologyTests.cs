@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Inbound;
 using Bmf.Core.Messaging.Outbound;
 using Bmf.Core.Tests.Messaging.TestSupport;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -173,6 +173,111 @@ public sealed class TopologyTests
 
         byType.Should().Throw<OutboundTargetNotRoutableException>().Which.MessageType.Should().Be<SampleMessage>();
         byName.Should().Throw<OutboundTargetNotRoutableException>();
+    }
+
+    [Fact]
+    public void TargetLookups_ReturnFalseOrThrowForMissingTargets()
+    {
+        var topology = new TestTopology(Topology.DefaultName);
+
+        var requiredByType = () => topology.GetRequiredTarget<SampleMessage>();
+        var requiredByName = () => topology.GetRequiredTarget("missing");
+
+        topology.TryGetTarget(typeof(SampleMessage), out var targetByType).Should().BeFalse();
+        targetByType.Should().BeNull();
+        topology.TryGetTarget("missing", out var targetByName).Should().BeFalse();
+        targetByName.Should().BeNull();
+        requiredByType.Should().Throw<OutboundTargetNotFoundException>();
+        requiredByName.Should().Throw<OutboundTargetNotFoundException>();
+    }
+
+    [Fact]
+    public void TargetLookups_RejectNullOrBlankInputs()
+    {
+        var topology = new TestTopology(Topology.DefaultName);
+
+        var requiredByNullType = () => topology.GetRequiredTarget((Type) null!);
+        var tryByNullType = () => topology.TryGetTarget((Type) null!, out _);
+        var requiredByBlankName = () => topology.GetRequiredTarget(" ");
+        var tryByBlankName = () => topology.TryGetTarget(" ", out _);
+
+        requiredByNullType.Should().Throw<ArgumentNullException>().WithParameterName("messageType");
+        tryByNullType.Should().Throw<ArgumentNullException>().WithParameterName("messageType");
+        requiredByBlankName.Should().Throw<ArgumentException>().WithParameterName("name");
+        tryByBlankName.Should().Throw<ArgumentException>().WithParameterName("name");
+    }
+
+    [Fact]
+    public void TargetLookups_ThrowWhenNamedTargetHasDifferentMessageType()
+    {
+        var target = new RecordingTarget<OtherMessage>("named", CloudEventsTestFactory.CreateSerializer());
+        var topology = new TestTopology(
+            Topology.DefaultName,
+            targetsByName: new Dictionary<string, OutboundTarget>(StringComparer.Ordinal)
+            {
+                ["named"] = target
+            }
+        );
+
+        var act = () => topology.GetRequiredTarget<SampleMessage>("named");
+
+        act.Should().Throw<OutboundTargetTypeMismatchException>()
+           .Which.ExpectedMessageType.Should().Be(typeof(OtherMessage));
+    }
+
+    [Fact]
+    public void EndpointLookups_ReturnEndpointOrReportMissingEndpoint()
+    {
+        var endpoint = new InboundEndpoint<SampleMessage>(
+            "endpoint",
+            "test",
+            Topology.DefaultName,
+            typeof(SampleMessageHandler),
+            typeof(PayloadCodecMessageDeserializer),
+            "sample",
+            MessageHandlerInvocation.Create<SampleMessage, SampleMessageHandler>()
+        );
+        var topology = new TestTopology(
+            Topology.DefaultName,
+            endpointsByName: new Dictionary<string, InboundEndpoint>(StringComparer.Ordinal)
+            {
+                [endpoint.Name] = endpoint
+            }
+        );
+
+        var missingRequired = () => topology.GetRequiredEndpoint("missing");
+
+        topology.GetRequiredEndpoint("endpoint").Should().BeSameAs(endpoint);
+        topology.TryGetEndpoint("endpoint", out var resolved).Should().BeTrue();
+        resolved.Should().BeSameAs(endpoint);
+        topology.TryGetEndpoint("missing", out var missing).Should().BeFalse();
+        missing.Should().BeNull();
+        missingRequired.Should().Throw<InboundEndpointNotFoundException>()
+           .Which.EndpointName.Should().Be("missing");
+    }
+
+    [Fact]
+    public void EndpointLookups_RejectBlankNames()
+    {
+        var topology = new TestTopology(Topology.DefaultName);
+
+        var required = () => topology.GetRequiredEndpoint(" ");
+        var tryGet = () => topology.TryGetEndpoint(" ", out _);
+
+        required.Should().Throw<ArgumentException>().WithParameterName("name");
+        tryGet.Should().Throw<ArgumentException>().WithParameterName("name");
+    }
+
+    [Fact]
+    public void InboundEndpointNotFoundException_PreservesEndpointNameAndInnerException()
+    {
+        InvalidOperationException inner = new ("inner");
+
+        var exception = new InboundEndpointNotFoundException("endpoint", inner);
+
+        exception.EndpointName.Should().Be("endpoint");
+        exception.InnerException.Should().BeSameAs(inner);
+        exception.Message.Should().Be("Inbound endpoint 'endpoint' is not registered.");
     }
 
     private sealed class SampleMessageHandler : IMessageHandler<SampleMessage>

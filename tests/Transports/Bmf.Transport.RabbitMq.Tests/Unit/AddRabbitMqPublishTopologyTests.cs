@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Inbound;
@@ -246,6 +247,107 @@ public sealed class AddRabbitMqPublishTopologyTests
         targetRegistry
            .GetRequiredTarget("headers-target").GetType()
            .Name.Should().Be("RabbitMqHeadersOutboundTarget`1");
+    }
+
+    [Fact]
+    public void AddRabbitMqOutboundTopology_InterfaceBuilderAppliesBrokerDeclarationsAndPublisherDefaults()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqOutboundTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(new ConnectionFactory());
+                    builder.WithDefaultPublisherConfirmMode(RabbitMqPublisherConfirmMode.Confirms);
+                    builder.WithDefaultPublisherConfirmTimeout(TimeSpan.FromSeconds(3));
+                    builder.Exchange(
+                        "orders",
+                        ExchangeType.Direct,
+                        exchange => exchange
+                           .DurableExchange(false)
+                           .AutoDeleteExchange()
+                           .WithArgument("alternate-exchange", "orders-unrouted")
+                    );
+                    builder.Exchange(
+                        "orders-unrouted",
+                        ExchangeType.Fanout,
+                        exchange => exchange.WithDeclareMode(RabbitMqDeclareMode.Passive)
+                    );
+                    builder.Queue(
+                        "orders-created",
+                        queue => queue
+                           .WithDeclareMode(RabbitMqDeclareMode.Passive)
+                           .DurableQueue(false)
+                           .ExclusiveQueue()
+                           .AutoDeleteQueue()
+                           .WithArgument("x-custom", "custom")
+                           .WithExpires(TimeSpan.FromSeconds(30))
+                           .WithMaxLength(100)
+                           .WithMaxLengthBytes(4096)
+                           .WithQueueType("classic")
+                           .SingleActiveConsumer()
+                    );
+                    builder.QueueBinding(
+                        "orders",
+                        "orders-created",
+                        "orders.created",
+                        binding => binding.WithArgument("bind", "queue")
+                    );
+                    builder.ExchangeBinding(
+                        "orders",
+                        "orders-unrouted",
+                        "orders.unrouted",
+                        binding => binding.WithArgument("bind", "exchange")
+                    );
+                    builder.MapMessageContracts(
+                        contracts => contracts.MapOutbound<ValidationMessageA>("tests.rabbitmq.validation-a.outbound")
+                    );
+                    builder.ChannelGroup(
+                        "publishing",
+                        maximumChannelCount: 2,
+                        publisherConfirmMode: RabbitMqPublisherConfirmMode.Confirms,
+                        publisherConfirmTimeout: TimeSpan.FromSeconds(4)
+                    );
+                    builder.Publish<ValidationMessageA>(
+                        target => target
+                           .ToDirectExchange("orders", static message => $"orders.{message.Value}")
+                           .UseChannelGroup("publishing")
+                           .Mandatory()
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var topology = serviceProvider.GetRequiredService<RabbitMqTopology>();
+        var orders = topology.Exchanges.Single(static exchange => exchange.Name == "orders");
+        var queue = topology.Queues.Should().ContainSingle().Which;
+        var queueBinding = topology.Bindings.OfType<RabbitMqQueueBindingDefinition>().Should().ContainSingle().Which;
+        var exchangeBinding = topology.Bindings.OfType<RabbitMqExchangeBindingDefinition>().Should().ContainSingle().Which;
+        var channelGroup = topology.OutboundChannelGroups.Single(static group => group.Name == "publishing");
+
+        orders.Durable.Should().BeFalse();
+        orders.AutoDelete.Should().BeTrue();
+        orders.Arguments.Should().Contain("alternate-exchange", "orders-unrouted");
+        queue.DeclareMode.Should().Be(RabbitMqDeclareMode.Passive);
+        queue.Durable.Should().BeFalse();
+        queue.Exclusive.Should().BeTrue();
+        queue.AutoDelete.Should().BeTrue();
+        queue.Arguments.Should().Contain("x-custom", "custom");
+        queue.Arguments.Should().Contain("x-expires", 30000L);
+        queue.Arguments.Should().Contain("x-max-length", 100L);
+        queue.Arguments.Should().Contain("x-max-length-bytes", 4096L);
+        queue.Arguments.Should().Contain("x-queue-type", "classic");
+        queue.Arguments.Should().Contain("x-single-active-consumer", true);
+        queueBinding.Arguments.Should().Contain("bind", "queue");
+        exchangeBinding.Arguments.Should().Contain("bind", "exchange");
+        channelGroup.MaximumChannelCount.Should().Be(2);
+        channelGroup.PublisherConfirmMode.Should().Be(RabbitMqPublisherConfirmMode.Confirms);
+        channelGroup.PublisherConfirmTimeout.Should().Be(TimeSpan.FromSeconds(4));
+        topology.GetRequiredTarget<ValidationMessageA>()
+           .GetRequiredDiscriminator(typeof(ValidationMessageA))
+           .Should().Be("tests.rabbitmq.validation-a.outbound");
     }
 
     [Fact]

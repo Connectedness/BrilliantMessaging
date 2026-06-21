@@ -74,6 +74,54 @@ public sealed class MessageContractRegistryTests
             );
     }
 
+    [Fact]
+    public void EffectiveRegistry_PrefersDialectAndFallsBackToCanonicalContracts()
+    {
+        MessageContractRegistryBuilder canonicalBuilder = new ();
+        canonicalBuilder.Map<RegistryMessage>("canonical.current").WithInboundAlias("canonical.legacy");
+        canonicalBuilder.Map<OtherRegistryMessage>("canonical.other").WithDataSchema("/schemas/other");
+        MessageContractRegistryBuilder dialectBuilder = new ();
+        dialectBuilder.Map<RegistryMessage>("dialect.current").WithInboundAlias("dialect.legacy");
+        var registry = new EffectiveMessageContractRegistry(
+            canonicalBuilder.Build(),
+            (MessageContractRegistry) dialectBuilder.Build()
+        );
+
+        registry.GetDiscriminator(typeof(RegistryMessage)).Should().Be("dialect.current");
+        registry.GetDataSchema(typeof(RegistryMessage)).Should().BeNull();
+        registry.GetDiscriminator(typeof(OtherRegistryMessage)).Should().Be("canonical.other");
+        registry.GetDataSchema(typeof(OtherRegistryMessage)).Should().Be("/schemas/other");
+        registry.GetInboundDiscriminators(typeof(RegistryMessage)).Should().Equal(
+            "canonical.current",
+            "canonical.legacy",
+            "dialect.current",
+            "dialect.legacy"
+        );
+        registry.TryGetDiscriminator(typeof(OtherRegistryMessage), out var discriminator).Should().BeTrue();
+        discriminator.Should().Be("canonical.other");
+        registry.TryResolveType("dialect.legacy", out var dialectType).Should().BeTrue();
+        dialectType.Should().Be<RegistryMessage>();
+        registry.TryResolveType("canonical.other", out var canonicalType).Should().BeTrue();
+        canonicalType.Should().Be<OtherRegistryMessage>();
+    }
+
+    [Fact]
+    public void EffectiveRegistry_RejectsNullConstructorAndLookupArguments()
+    {
+        MessageContractRegistryBuilder builder = new ();
+        builder.Map<RegistryMessage>("registry.current");
+        var registry = (MessageContractRegistry) builder.Build();
+
+        var nullCanonical = () => new EffectiveMessageContractRegistry(null!, registry);
+        var nullDialect = () => new EffectiveMessageContractRegistry(registry, null!);
+        var nullMessageType =
+            () => new EffectiveMessageContractRegistry(registry, registry).GetInboundDiscriminators(null!);
+
+        nullCanonical.Should().Throw<ArgumentNullException>().WithParameterName("canonical");
+        nullDialect.Should().Throw<ArgumentNullException>().WithParameterName("dialect");
+        nullMessageType.Should().Throw<ArgumentNullException>().WithParameterName("messageType");
+    }
+
     private sealed record RegistryMessage;
 
     private sealed record OtherRegistryMessage;

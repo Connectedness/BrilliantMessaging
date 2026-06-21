@@ -370,6 +370,83 @@ public sealed class AddRabbitMqConsumeTopologyTests
     }
 
     [Fact]
+    public void AddRabbitMqInboundTopology_InterfaceBuilderAppliesSharedBrokerAndPipelineSettings()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<RawInspector>();
+        services.AddSingleton<RawDeserializer>();
+        services.AddSingleton<CustomDeserializationMiddleware>();
+        services.AddSingleton<PipelineMarkerMiddleware>();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqInboundTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(new ConnectionFactory());
+                    builder.Exchange("source", ExchangeType.Topic);
+                    builder.Exchange("alternate", ExchangeType.Fanout);
+                    builder.Queue(
+                        "inbound",
+                        queue => queue
+                           .DurableQueue(false)
+                           .ExclusiveQueue()
+                           .AutoDeleteQueue()
+                           .WithMessageTtl(TimeSpan.FromSeconds(5))
+                           .WithDeadLetterExchange("alternate")
+                           .WithDeadLetterRoutingKey("dead")
+                    );
+                    builder.QueueBinding(
+                        "source",
+                        "inbound",
+                        "validation.*",
+                        binding => binding.WithArgument("x-match", "all")
+                    );
+                    builder.ExchangeBinding("source", "alternate", "overflow");
+                    builder.ChannelGroup(
+                        "shared-inbound",
+                        maximumChannelCount: 2,
+                        prefetchCount: 8,
+                        consumerDispatchConcurrency: 3
+                    );
+                    builder.UseDeserializationMiddleware<CustomDeserializationMiddleware>();
+                    builder.ConfigureInboundPipeline(pipeline => pipeline.UseMiddleware<PipelineMarkerMiddleware>());
+                    builder.WithShutdownTimeout(TimeSpan.FromSeconds(7));
+                    builder.Consume(
+                        "inbound",
+                        endpoint => endpoint
+                           .UseInspector<RawInspector>()
+                           .UseChannelGroup("shared-inbound")
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>(
+                                handler => handler.WithDeserializer<RawDeserializer>()
+                            )
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var topology = serviceProvider.GetRequiredKeyedService<RabbitMqTopology>(RabbitMqTopology.DefaultInboundName);
+        var queue = topology.Queues.Should().ContainSingle().Which;
+        var consumer = topology.Consumers.Should().ContainSingle().Which;
+
+        topology.Name.Should().Be(RabbitMqTopology.DefaultInboundName);
+        topology.Exchanges.Should().HaveCount(2);
+        topology.Bindings.Should().HaveCount(2);
+        topology.ShutdownTimeout.Should().Be(TimeSpan.FromSeconds(7));
+        queue.Durable.Should().BeFalse();
+        queue.Exclusive.Should().BeTrue();
+        queue.AutoDelete.Should().BeTrue();
+        queue.Arguments.Should().Contain("x-message-ttl", 5000L);
+        queue.Arguments.Should().Contain("x-dead-letter-exchange", "alternate");
+        queue.Arguments.Should().Contain("x-dead-letter-routing-key", "dead");
+        consumer.ChannelGroup.Name.Should().Be("shared-inbound");
+        consumer.ChannelGroup.MaximumChannelCount.Should().Be(2);
+        consumer.ChannelGroup.PrefetchCount.Should().Be(8);
+        consumer.ChannelGroup.ConsumerDispatchConcurrency.Should().Be(3);
+        consumer.InspectorType.Should().Be(typeof(RawInspector));
+        topology.Pipeline.Should().NotBeNull();
+    }
+
+    [Fact]
     public void Compile_RejectsUnregisteredInboundDeserializer()
     {
         var services = new ServiceCollection();
@@ -395,6 +472,96 @@ public sealed class AddRabbitMqConsumeTopologyTests
         var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Contain(
             $"Inbound deserializer '{typeof(RawDeserializer)}' for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' is not registered."
+        );
+    }
+
+    [Fact]
+    public void Compile_RejectsUnregisteredInboundDeserializationMiddleware()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.UseDeserializationMiddleware<CustomDeserializationMiddleware>();
+                    builder.Consume(
+                        "inbound",
+                        endpoint => endpoint.Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should().Contain(
+                $"Inbound deserialization middleware '{typeof(CustomDeserializationMiddleware)}' is not registered."
+            );
+    }
+
+    [Fact]
+    public void Compile_RejectsOutboundOnlyContractForInboundEndpoint()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddBmf()
+           .UseCloudEvents(options => options.Source = "/tests/rabbitmq")
+           .MapMessageContracts(contracts => contracts.MapOutbound<ValidationMessageA>("tests.outbound-only"))
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        endpoint => endpoint.Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should().Contain(
+                "Inbound endpoint for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' has no inbound CloudEvents discriminators. Use MessageContractRegistryBuilder.Map<T>(...) instead of MapOutbound<T>(...)."
+            );
+    }
+
+    [Fact]
+    public void Compile_RejectsDuplicateInboundEndpointNamesAndDispatchKeys()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        endpoint => endpoint
+                           .HandleNamed<ValidationMessageA, ValidationMessageAHandler>("duplicate")
+                           .HandleNamed<ValidationMessageA, AlternateValidationMessageAHandler>("duplicate")
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        var exception = act.Should().Throw<TopologyValidationException>().Which;
+        exception.ValidationErrors.Should().Contain("Inbound endpoint name 'duplicate' is configured multiple times.");
+        exception.ValidationErrors.Should().Contain(
+            "Inbound endpoint discriminator 'tests.rabbitmq.validation-a' is configured multiple times for queue 'inbound'."
         );
     }
 
@@ -766,6 +933,18 @@ public sealed class AddRabbitMqConsumeTopologyTests
         }
     }
 
+    private sealed class AlternateValidationMessageAHandler : IMessageHandler<ValidationMessageA>
+    {
+        public Task HandleAsync(
+            ValidationMessageA message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken
+        )
+        {
+            return Task.CompletedTask;
+        }
+    }
+
     private interface IValidationMessageAHandler : IMessageHandler<ValidationMessageA>;
 
     private abstract class AbstractValidationMessageAHandler : IMessageHandler<ValidationMessageA>
@@ -876,6 +1055,23 @@ public sealed class AddRabbitMqConsumeTopologyTests
         )
         {
             return new ValueTask<object?>(new ValidationMessageB("raw"));
+        }
+    }
+
+    private sealed class CustomDeserializationMiddleware : IMessageMiddleware
+    {
+        public Task InvokeAsync(IncomingMessageContext context, MessageDelegate next)
+        {
+            return next(context);
+        }
+    }
+
+    private sealed class PipelineMarkerMiddleware : IMessageMiddleware
+    {
+        public Task InvokeAsync(IncomingMessageContext context, MessageDelegate next)
+        {
+            context.Items.SetItem(new MessageContextKey<string>("pipeline-marker"), "seen");
+            return next(context);
         }
     }
 }
