@@ -20,14 +20,14 @@ comparer-independent before release.
 
 ## Acceptance Criteria
 
-- [ ] `CloudEventEnvelope` extension equality is symmetric regardless of the key comparer used by
+- [x] `CloudEventEnvelope` extension equality is symmetric regardless of the key comparer used by
       either caller-supplied dictionary.
-- [ ] Extension equality and `GetExtensionsHashCode` are consistent: keys are matched and hashed
+- [x] Extension equality and `GetExtensionsHashCode` are consistent: keys are matched and hashed
       ordinally, so two envelopes that are `Equals` always yield the same hash code.
-- [ ] Automated tests need to be written, including cases where extension dictionaries are built
+- [x] Automated tests need to be written, including cases where extension dictionaries are built
       with a non-ordinal comparer (e.g. `OrdinalIgnoreCase`) to lock in symmetric, ordinal
       behaviour.
-- [ ] No new build warnings (Release builds treat warnings as errors).
+- [x] No new build warnings (Release builds treat warnings as errors).
 
 ## Technical Details
 

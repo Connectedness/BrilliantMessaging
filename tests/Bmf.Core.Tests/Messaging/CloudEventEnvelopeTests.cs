@@ -54,6 +54,47 @@ public sealed class CloudEventEnvelopeTests
     }
 
     [Fact]
+    public void Equals_UsesOrdinalExtensionKeysRegardlessOfDictionaryComparer()
+    {
+        var ordinal = CreateEnvelope(
+            extensions: new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["alpha"] = "one"
+            }
+        );
+        var ordinalIgnoreCase = CreateEnvelope(
+            extensions: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ALPHA"] = "one"
+            }
+        );
+
+        ordinal.Should().NotBe(ordinalIgnoreCase);
+        ordinalIgnoreCase.Should().NotBe(ordinal);
+    }
+
+    [Fact]
+    public void GetHashCode_UsesOrdinalExtensionKeysRegardlessOfDictionaryComparer()
+    {
+        var ordinal = CreateEnvelope(
+            extensions: new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["alpha"] = "one"
+            }
+        );
+        var ordinalIgnoreCase = CreateEnvelope(
+            extensions: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["alpha"] = "one"
+            }
+        );
+
+        ordinal.Should().Be(ordinalIgnoreCase);
+        ordinalIgnoreCase.Should().Be(ordinal);
+        ordinal.GetHashCode().Should().Be(ordinalIgnoreCase.GetHashCode());
+    }
+
+    [Fact]
     public void GetHashCode_CreatesSameHashCodeForEqualEnvelopes()
     {
         var left = CreateEnvelope(

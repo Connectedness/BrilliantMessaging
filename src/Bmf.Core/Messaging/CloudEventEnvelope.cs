@@ -91,10 +91,16 @@ public readonly record struct CloudEventEnvelope(
             return false;
         }
 
+        var leftByOrdinalKey = new Dictionary<string, string?>(left.Count, StringComparer.Ordinal);
         foreach (var pair in left)
         {
-            if (!right.TryGetValue(pair.Key, out var value) ||
-                !string.Equals(pair.Value, value, StringComparison.Ordinal))
+            leftByOrdinalKey.Add(pair.Key, pair.Value);
+        }
+
+        foreach (var pair in right)
+        {
+            if (!leftByOrdinalKey.TryGetValue(pair.Key, out var value) ||
+                !string.Equals(value, pair.Value, StringComparison.Ordinal))
             {
                 return false;
             }
