@@ -626,12 +626,12 @@ public sealed class RabbitMqPublishingIntegrationTests
 
             var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
 
-            var action = async () => await publisher.PublishMessageAsync(
+            var act = async () => await publisher.PublishMessageAsync(
                 new RabbitMqPublishMessage(47, "unroutable"),
                 cancellationToken: cancellationToken
             );
 
-            var exception = (await action.Should().ThrowAsync<MessageDeliveryException>()).Which;
+            var exception = (await act.Should().ThrowAsync<MessageDeliveryException>()).Which;
             exception
                .TargetName.Should()
                .Be(typeof(RabbitMqPublishMessage).FullName);
@@ -692,12 +692,12 @@ public sealed class RabbitMqPublishingIntegrationTests
                 cancellationToken: cancellationToken
             );
 
-            var action = async () => await publisher.PublishMessageAsync(
+            var act = async () => await publisher.PublishMessageAsync(
                 new RabbitMqPublishMessage(49, "rejected"),
                 cancellationToken: cancellationToken
             );
 
-            var exception = (await action.Should().ThrowAsync<MessageDeliveryException>()).Which;
+            var exception = (await act.Should().ThrowAsync<MessageDeliveryException>()).Which;
             exception
                .TargetName.Should()
                .Be(typeof(RabbitMqPublishMessage).FullName);

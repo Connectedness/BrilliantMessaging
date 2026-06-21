@@ -38,12 +38,12 @@ public sealed class FrameworkMessageAcknowledgementMiddlewareTests
         );
         FrameworkMessageAcknowledgementMiddleware middleware = new ();
 
-        var action = async () => await middleware.InvokeAsync(
+        var act = async () => await middleware.InvokeAsync(
             context,
             static _ => throw new InvalidOperationException("failure")
         );
 
-        await action.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<InvalidOperationException>();
         acknowledgement.Actions.Should().Equal("nack:false");
     }
 
@@ -56,12 +56,12 @@ public sealed class FrameworkMessageAcknowledgementMiddlewareTests
         var context = CreateContext(acknowledgement, MessageAckMode.Auto, cancellationTokenSource.Token);
         FrameworkMessageAcknowledgementMiddleware middleware = new ();
 
-        var action = async () => await middleware.InvokeAsync(
+        var act = async () => await middleware.InvokeAsync(
             context,
             _ => throw new OperationCanceledException(cancellationTokenSource.Token)
         );
 
-        await action.Should().ThrowAsync<OperationCanceledException>();
+        await act.Should().ThrowAsync<OperationCanceledException>();
         acknowledgement.Actions.Should().Equal("nack:true");
     }
 

@@ -64,6 +64,7 @@ public static class BmfServiceCollectionExtensions
         );
         services.TryAddSingleton<ITopologyRegistry, TopologyRegistry>();
         services.TryAddSingleton<CloudEventsInboundMessageInspector>();
+        services.TryAddSingleton<InboundDiagnosticsMiddleware>();
         services.TryAddSingleton<FrameworkMessageAcknowledgementMiddleware>();
         services.TryAddSingleton<MessageDeserializationMiddleware>();
         services.TryAddSingleton<IMessagePublisher>(

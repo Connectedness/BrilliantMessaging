@@ -18,8 +18,8 @@ public sealed class TopologyValidationExceptionTests
     [Fact]
     public void Constructor_RequiresAtLeastOneError()
     {
-        Action action = () => _ = new TopologyValidationException(Array.Empty<string>());
+        Action act = () => _ = new TopologyValidationException(Array.Empty<string>());
 
-        action.Should().Throw<ArgumentException>();
+        act.Should().Throw<ArgumentException>();
     }
 }

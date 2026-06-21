@@ -3,17 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Bmf.Core.Messaging;
+using Bmf.Core.Messaging.Inbound;
+using Bmf.Core.Messaging.Outbound;
+using Bmf.Transport.RabbitMq.Inbound;
+using Bmf.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RabbitMQ.Client;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
 using Xunit;
-
-using Bmf.Transport.RabbitMq.Inbound;
 
 namespace Bmf.Transport.RabbitMq.Tests.Unit;
 
@@ -73,10 +72,9 @@ public sealed class AddRabbitMqConsumeTopologyTests
         var builder = services.AddBmf();
         builder.AddRabbitMqTopology("shared", static _ => { });
 
-        var action = () => builder.AddRabbitMqTopology("shared", static _ => { });
+        var act = () => builder.AddRabbitMqTopology("shared", static _ => { });
 
-        action
-           .Should().Throw<InvalidOperationException>()
+        act.Should().Throw<InvalidOperationException>()
            .WithMessage("Topology 'shared' is already registered. Registered topologies: shared.");
     }
 
@@ -282,9 +280,10 @@ public sealed class AddRabbitMqConsumeTopologyTests
         services.RemoveAll(typeof(ValidationMessageAHandler));
         using var serviceProvider = services.BuildServiceProvider();
 
-        Action action = () => _ = serviceProvider.GetRequiredService<Topology>();
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<Topology>();
 
-        var exception = action.Should().Throw<TopologyValidationException>().Which;
+        var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Contain(
             $"Inbound handler '{typeof(ValidationMessageAHandler)}' for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' is not registered."
         );
@@ -315,9 +314,9 @@ public sealed class AddRabbitMqConsumeTopologyTests
         await using var serviceProvider = services.BuildServiceProvider();
         var topology = serviceProvider.GetRequiredService<RabbitMqTopology>();
 
-        var action = async () => await topology.CreateChannelAsync(TestContext.Current.CancellationToken);
+        var act = async () => await topology.CreateChannelAsync(TestContext.Current.CancellationToken);
 
-        var exception = await action.Should().ThrowAsync<TopologyValidationException>();
+        var exception = await act.Should().ThrowAsync<TopologyValidationException>();
         exception.Which.ValidationErrors.Should().ContainSingle().Which.Should().Be(
             "RabbitMQ topology recovery must be enabled for inbound topologies so RabbitMQ.Client can recover consumer subscriptions. Configure ConnectionFactory.TopologyRecoveryEnabled to true."
         );
@@ -390,9 +389,10 @@ public sealed class AddRabbitMqConsumeTopologyTests
             );
         using var serviceProvider = services.BuildServiceProvider();
 
-        Action action = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
 
-        var exception = action.Should().Throw<TopologyValidationException>().Which;
+        var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Contain(
             $"Inbound deserializer '{typeof(RawDeserializer)}' for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' is not registered."
         );
@@ -470,7 +470,8 @@ public sealed class AddRabbitMqConsumeTopologyTests
     {
         var services = new ServiceCollection();
 
-        Action action = () => services.AddTestCloudEvents()
+        var act = () => services
+           .AddTestCloudEvents()
            .AddRabbitMqTopology(
                 builder =>
                 {
@@ -485,7 +486,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
                 }
             );
 
-        action.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("ackMode");
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("ackMode");
     }
 
     [Fact]
@@ -577,9 +578,10 @@ public sealed class AddRabbitMqConsumeTopologyTests
             );
         using var serviceProvider = services.BuildServiceProvider();
 
-        Action action = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        var act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
 
-        action.Should().Throw<TopologyValidationException>()
+        act.Should().Throw<TopologyValidationException>()
            .Which.ValidationErrors.Should().Contain("Queue 'inbound' is configured by multiple Consume(...) calls.");
     }
 
@@ -598,9 +600,10 @@ public sealed class AddRabbitMqConsumeTopologyTests
             );
         using var serviceProvider = services.BuildServiceProvider();
 
-        Action action = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        var act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
 
-        action
+        act
            .Should().Throw<TopologyValidationException>()
            .Which.ValidationErrors.Should().Contain("Consume('inbound') declares no handlers.");
     }
@@ -715,9 +718,9 @@ public sealed class AddRabbitMqConsumeTopologyTests
            .GetRequiredService<ITopologyRegistry>()
            .GetRequiredTopology(consumerTopologyName);
 
-        Action action = () => _ = topology.GetRequiredTarget<ValidationMessageA>();
+        var act = () => _ = topology.GetRequiredTarget<ValidationMessageA>();
 
-        action.Should().Throw<OutboundTargetNotFoundException>();
+        act.Should().Throw<OutboundTargetNotFoundException>();
     }
 
     private static IncomingMessageContext CreateContext(

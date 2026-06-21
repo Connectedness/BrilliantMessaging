@@ -1,18 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Bmf.Core.Messaging;
+using Bmf.Core.Messaging.Inbound;
+using Bmf.Core.Messaging.Outbound;
+using Bmf.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
 using Testcontainers.RabbitMq;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
 using Xunit;
 
 namespace Bmf.Transport.RabbitMq.Tests.Integration;
@@ -325,6 +326,37 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
 
             await using var serviceProvider = services.BuildServiceProvider();
             var hostedServices = serviceProvider.GetServices<IHostedService>().ToArray();
+            var producerActivityCompletion = new TaskCompletionSource<Activity>(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
+            var consumerActivityCompletion = new TaskCompletionSource<Activity>(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
+            var parentTraceId = default(ActivityTraceId);
+            using var listener = new ActivityListener
+            {
+                ShouldListenTo = source => source.Name == OutboundDiagnostics.ActivitySourceName ||
+                                           source.Name == InboundDiagnostics.ActivitySourceName,
+                Sample = static (ref _) => ActivitySamplingResult.AllData,
+                ActivityStopped = activity =>
+                {
+                    if (activity.TraceId != parentTraceId)
+                    {
+                        return;
+                    }
+
+                    switch (activity.OperationName)
+                    {
+                        case "bmf.outbound.publish":
+                            producerActivityCompletion.TrySetResult(activity);
+                            break;
+                        case "bmf.inbound.process":
+                            consumerActivityCompletion.TrySetResult(activity);
+                            break;
+                    }
+                }
+            };
+            ActivitySource.AddActivityListener(listener);
 
             try
             {
@@ -335,15 +367,26 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
 
                 var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
 
-                await publisher.PublishMessageAsync(
-                    new RabbitMqPublishMessage(42, "consumed"),
-                    cancellationToken: cancellationToken
-                );
+                using (var parentActivity =
+                       new Activity("integration-parent").SetIdFormat(ActivityIdFormat.W3C).Start())
+                {
+                    parentTraceId = parentActivity.TraceId;
+                    await publisher.PublishMessageAsync(
+                        new RabbitMqPublishMessage(42, "consumed"),
+                        cancellationToken: cancellationToken
+                    );
+                }
 
                 var consumed = await sink.WaitAsync(cancellationToken);
+                var producerActivity = await producerActivityCompletion.Task.WaitAsync(cancellationToken);
+                var consumerActivity = await consumerActivityCompletion.Task.WaitAsync(cancellationToken);
 
                 consumed.Id.Should().Be(42);
                 consumed.Name.Should().Be("consumed");
+                consumerActivity.TraceId.Should().Be(producerActivity.TraceId);
+                consumerActivity.ParentSpanId.Should().Be(producerActivity.SpanId);
+                consumerActivity.GetTagItem(InboundDiagnostics.MessageTypeTagName)
+                   .Should().Be(RabbitMqCloudEventsTestFactory.PublishMessageDiscriminator);
 
                 var outboundTopology =
                     serviceProvider.GetRequiredKeyedService<RabbitMqTopology>(Topology.DefaultName);

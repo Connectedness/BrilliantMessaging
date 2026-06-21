@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using RabbitMQ.Client;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Inbound;
 using Bmf.Core.Messaging.Outbound;
-
 using Bmf.Transport.RabbitMq.Inbound;
 using Bmf.Transport.RabbitMq.Outbound;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using RabbitMQ.Client;
 
 namespace Bmf.Transport.RabbitMq;
 
@@ -62,7 +61,10 @@ public sealed class RabbitMqTopologyCompiler
     /// <param name="configuration">The topology configuration to compile.</param>
     /// <param name="connectionProvider">The connection provider the compiled topology will use.</param>
     /// <returns>The compiled topology.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configuration" /> or <paramref name="connectionProvider" /> is <see langword="null" />.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="configuration" /> or <paramref name="connectionProvider" /> is
+    /// <see langword="null" />.
+    /// </exception>
     /// <exception cref="TopologyValidationException">Thrown when the configuration fails validation.</exception>
     public RabbitMqTopology Compile(
         string topologyName,
@@ -555,9 +557,10 @@ public sealed class RabbitMqTopologyCompiler
         );
     }
 
-    private MessageDelegate BuildPipeline(RabbitMqTopologyConfiguration configuration)
+    private static MessageDelegate BuildPipeline(RabbitMqTopologyConfiguration configuration)
     {
         MessagePipelineBuilder pipeline = new ();
+        pipeline.UseMiddleware<InboundDiagnosticsMiddleware>();
         pipeline.UseMiddleware<FrameworkMessageAcknowledgementMiddleware>();
         pipeline.Use(
             next => async context =>

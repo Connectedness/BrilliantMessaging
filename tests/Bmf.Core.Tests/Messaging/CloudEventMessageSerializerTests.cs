@@ -88,14 +88,14 @@ public sealed class CloudEventMessageSerializerTests
             options
         );
 
-        var action = async () => await serializer.SerializeAsync(
+        var act = async () => await serializer.SerializeAsync(
             new EnvelopeMessage("hello"),
             in metadata,
             type,
             dataSchema: null
         );
 
-        var exception = (await action.Should().ThrowAsync<CloudEventMetadataException>()).Which;
+        var exception = (await act.Should().ThrowAsync<CloudEventMetadataException>()).Which;
         exception.AttributeName.Should().Be(expectedAttribute);
     }
 

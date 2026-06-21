@@ -1,16 +1,15 @@
 using System;
 using System.Threading.Tasks;
+using Bmf.Core.Messaging;
+using Bmf.Core.Messaging.Inbound;
+using Bmf.Core.Messaging.Outbound;
+using Bmf.Transport.RabbitMq.Outbound;
+using Bmf.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
 using Xunit;
-
-using Bmf.Transport.RabbitMq.Outbound;
 
 namespace Bmf.Transport.RabbitMq.Tests.Unit;
 
@@ -71,9 +70,9 @@ public sealed class AddRabbitMqPublishTopologyTests
         using var serviceProvider = services.BuildServiceProvider();
 
         // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
-        Action action = () => _ = serviceProvider.GetRequiredService<Topology>();
+        var act = () => _ = serviceProvider.GetRequiredService<Topology>();
 
-        var exception = action.Should().Throw<TopologyValidationException>().Which;
+        var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().ContainSingle().Which.Should().Be(
             "Outbound target 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...)."
         );
@@ -101,9 +100,9 @@ public sealed class AddRabbitMqPublishTopologyTests
         using var serviceProvider = services.BuildServiceProvider();
 
         // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
-        Action action = () => _ = serviceProvider.GetRequiredService<Topology>();
+        var act = () => _ = serviceProvider.GetRequiredService<Topology>();
 
-        var exception = action.Should().Throw<TopologyValidationException>().Which;
+        var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Contain(
             "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' references unknown exchange 'missing-exchange'."
         );
@@ -147,9 +146,9 @@ public sealed class AddRabbitMqPublishTopologyTests
         using var serviceProvider = services.BuildServiceProvider();
 
         // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
-        Action action = () => _ = serviceProvider.GetRequiredService<Topology>();
+        var act = () => _ = serviceProvider.GetRequiredService<Topology>();
 
-        var exception = action.Should().Throw<TopologyValidationException>().Which;
+        var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Equal(
             "A RabbitMQ connection factory must be configured.",
             "Channel group 'shared' is configured but no outbound target references it.",
@@ -185,9 +184,9 @@ public sealed class AddRabbitMqPublishTopologyTests
         var builder = services.AddBmf();
         builder.AddRabbitMqTopology("shared", static _ => { });
 
-        var action = () => builder.AddRabbitMqTopology("shared", static _ => { });
+        var act = () => builder.AddRabbitMqTopology("shared", static _ => { });
 
-        action.Should().Throw<InvalidOperationException>()
+        act.Should().Throw<InvalidOperationException>()
            .WithMessage("Topology 'shared' is already registered. Registered topologies: shared.");
     }
 
@@ -320,9 +319,9 @@ public sealed class AddRabbitMqPublishTopologyTests
            .GetRequiredService<ITopologyRegistry>()
            .GetRequiredTopology(Topology.DefaultName);
 
-        Action action = () => outboundTopology.GetRequiredRoutingTarget<ValidationMessageA>();
+        var act = () => outboundTopology.GetRequiredRoutingTarget<ValidationMessageA>();
 
-        action.Should().Throw<OutboundTargetNotRoutableException>();
+        act.Should().Throw<OutboundTargetNotRoutableException>();
     }
 
     [Fact]
@@ -409,9 +408,9 @@ public sealed class AddRabbitMqPublishTopologyTests
         using var serviceProvider = services.BuildServiceProvider();
 
         // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
-        Action action = () => _ = serviceProvider.GetRequiredService<Topology>();
+        var act = () => _ = serviceProvider.GetRequiredService<Topology>();
 
-        var exception = action.Should().Throw<TopologyValidationException>().Which;
+        var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().ContainSingle().Which.Should().Be(
             "RabbitMQ outbound message-contract dialect maps message type 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB', but no outbound target publishes that type on this topology."
         );
@@ -480,9 +479,9 @@ public sealed class AddRabbitMqPublishTopologyTests
         using var serviceProvider = services.BuildServiceProvider();
 
         // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
-        Action action = () => _ = serviceProvider.GetRequiredService<Topology>();
+        var act = () => _ = serviceProvider.GetRequiredService<Topology>();
 
-        var exception = action.Should().Throw<TopologyValidationException>().Which;
+        var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().BeEquivalentTo(
             "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' enables mandatory routing but its effective channel group uses fire-and-forget publishing.",
             "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'shared-best-effort' enables mandatory routing but its effective channel group uses fire-and-forget publishing."
