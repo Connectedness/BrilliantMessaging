@@ -6,7 +6,7 @@ branches:
 
 change-template: '- $TITLE (#$NUMBER) by @$AUTHOR'
 
-change-title-escapes: '\\<*_&'
+change-title-escapes: '\<*_&'
 no-changes-template: '- No changes since last release'
 
 sort-by: merged_at
