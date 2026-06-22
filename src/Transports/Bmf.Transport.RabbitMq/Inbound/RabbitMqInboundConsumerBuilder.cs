@@ -113,25 +113,14 @@ public sealed class RabbitMqInboundConsumerBuilder
 
     /// <summary>
     /// Overrides the inbound message inspector chain with <typeparamref name="TInspector" /> instead of the default
-    /// CloudEvents inspector. The inspector type is auto-registered as a singleton unless another registration
-    /// already exists.
-    /// </summary>
-    /// <typeparam name="TInspector">The inspector type to use.</typeparam>
-    /// <returns>The same builder for chaining.</returns>
-    public RabbitMqInboundConsumerBuilder UseInspector<TInspector>()
-        where TInspector : class, IInboundMessageInspector
-    {
-        return UseInspector<TInspector>(ServiceLifetime.Singleton);
-    }
-
-    /// <summary>
-    /// Overrides the inbound message inspector chain with <typeparamref name="TInspector" /> instead of the default
     /// CloudEvents inspector, using the requested auto-registration lifetime.
     /// </summary>
     /// <typeparam name="TInspector">The inspector type to use.</typeparam>
-    /// <param name="serviceLifetime">The lifetime used when the inspector type is auto-registered.</param>
+    /// <param name="serviceLifetime">The optional lifetime used when the inspector type is auto-registered.</param>
     /// <returns>The same builder for chaining.</returns>
-    public RabbitMqInboundConsumerBuilder UseInspector<TInspector>(ServiceLifetime serviceLifetime)
+    public RabbitMqInboundConsumerBuilder UseInspector<TInspector>(
+        ServiceLifetime serviceLifetime = ServiceLifetime.Singleton
+    )
         where TInspector : class, IInboundMessageInspector
     {
         _inspectorChain =
