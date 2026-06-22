@@ -270,11 +270,6 @@ public static class RabbitMqTransportModule
         ServiceInboundMessageInspectorChainEntry inspector
     )
     {
-        if (!typeof(IInboundMessageInspector).IsAssignableFrom(inspector.InspectorType))
-        {
-            return;
-        }
-
         // Auto-registration yields to any existing registration regardless of lifetime: the first registration of
         // the inspector type wins, so a user's explicit registration is never overwritten. TryAdd matches on the
         // service type only, so the configured lifetime is honoured only when no registration exists yet.
