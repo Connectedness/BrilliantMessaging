@@ -462,6 +462,35 @@ public sealed class AddRabbitMqConsumeTopologyTests
     }
 
     [Fact]
+    public void AddRabbitMqTopology_PreservesExistingInspectorRegistrationOverConfiguredLifetime()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<RawInspector>();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .UseInspectors(chain => chain.Use<RawInspector>(ServiceLifetime.Scoped))
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+
+        services
+           .Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(RawInspector)).Which
+           .Lifetime.Should().Be(ServiceLifetime.Singleton);
+        using var serviceProvider = services.BuildServiceProvider();
+
+        serviceProvider.GetRequiredService<RabbitMqTopology>().Consumers.Should().ContainSingle();
+    }
+
+    [Fact]
     public void Compile_RejectsEmptyInspectorChain()
     {
         var services = new ServiceCollection();
