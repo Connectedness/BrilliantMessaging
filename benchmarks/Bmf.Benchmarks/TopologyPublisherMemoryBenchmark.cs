@@ -24,7 +24,7 @@ public class TopologyPublisherMemoryBenchmark
     {
         MessageContractRegistryBuilder contracts = new ();
         contracts.Map<BenchmarkMessage>("benchmarks.message");
-        var registry = contracts.Build();
+        var registry = ((IBuildable<IMessageContractRegistry>) contracts).Build();
         _target = new BenchmarkTarget(registry, NamedTopology);
         _publisher = new MessagePublisher(
             new BenchmarkTopology()

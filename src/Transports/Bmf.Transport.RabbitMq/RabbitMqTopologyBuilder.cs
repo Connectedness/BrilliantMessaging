@@ -61,7 +61,7 @@ public sealed class RabbitMqTopologyBuilder
             _shutdownTimeout,
             _defaultPublisherConfirmMode,
             _defaultPublisherConfirmTimeout,
-            (MessageContractRegistry?) _messageContracts?.Build()
+            (MessageContractRegistry?) ((IBuildable<IMessageContractRegistry>?) _messageContracts)?.Build()
         );
     }
 

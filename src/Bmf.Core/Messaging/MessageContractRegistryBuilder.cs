@@ -7,36 +7,20 @@ namespace Bmf.Core.Messaging;
 /// <summary>
 /// Explicitly declares stable CloudEvents contract discriminators.
 /// </summary>
-public sealed class MessageContractRegistryBuilder
+public sealed class MessageContractRegistryBuilder : IBuildable<IMessageContractRegistry>
 {
     private readonly List<MessageContractRegistration> _registrations = [];
 
-    /// <summary>
-    /// Maps a message type for publishing and consuming. The canonical discriminator is accepted inbound.
-    /// </summary>
-    public MessageContractMapBuilder Map<T>(string discriminator)
-    {
-        return Add(typeof(T), discriminator, acceptsCanonicalInbound: true);
-    }
-
-    /// <summary>
-    /// Maps a message type for publishing only. The canonical discriminator is not registered inbound.
-    /// </summary>
-    public MessageContractMapBuilder MapOutbound<T>(string discriminator)
-    {
-        return Add(typeof(T), discriminator, acceptsCanonicalInbound: false);
-    }
-
-    /// <summary>
-    /// Validates the accumulated mappings and builds the immutable <see cref="IMessageContractRegistry" />.
-    /// </summary>
-    /// <returns>The built registry.</returns>
+    /// <inheritdoc />
+    /// <remarks>
+    /// Validates the accumulated mappings before producing the immutable <see cref="IMessageContractRegistry" />.
+    /// </remarks>
     /// <exception cref="MessageContractRegistryValidationException">
     /// Thrown when the mappings are inconsistent — for example a message type with two canonical discriminators,
     /// a discriminator that maps to two message types, or inbound aliases on a type that does not accept its
     /// canonical discriminator inbound.
     /// </exception>
-    public IMessageContractRegistry Build()
+    IMessageContractRegistry IBuildable<IMessageContractRegistry>.Build()
     {
         var validationErrors = Validate();
 
@@ -74,6 +58,22 @@ public sealed class MessageContractRegistryBuilder
             messageTypesByDiscriminator,
             dataSchemasByMessageType
         );
+    }
+
+    /// <summary>
+    /// Maps a message type for publishing and consuming. The canonical discriminator is accepted inbound.
+    /// </summary>
+    public MessageContractMapBuilder Map<T>(string discriminator)
+    {
+        return Add(typeof(T), discriminator, acceptsCanonicalInbound: true);
+    }
+
+    /// <summary>
+    /// Maps a message type for publishing only. The canonical discriminator is not registered inbound.
+    /// </summary>
+    public MessageContractMapBuilder MapOutbound<T>(string discriminator)
+    {
+        return Add(typeof(T), discriminator, acceptsCanonicalInbound: false);
     }
 
     private MessageContractMapBuilder Add(Type messageType, string discriminator, bool acceptsCanonicalInbound)

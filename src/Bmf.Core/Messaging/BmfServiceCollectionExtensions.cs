@@ -1,11 +1,11 @@
 using System;
 using System.Linq;
+using Bmf.Core.Messaging.Inbound;
+using Bmf.Core.Messaging.Outbound;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
 
 namespace Bmf.Core.Messaging;
 
@@ -51,7 +51,10 @@ public static class BmfServiceCollectionExtensions
             static serviceProvider => serviceProvider.GetRequiredService<IOptions<CloudEventsOptions>>().Value
         );
         services.TryAddSingleton<IMessageContractRegistry>(
-            static serviceProvider => serviceProvider.GetRequiredService<MessageContractRegistryBuilder>().Build()
+            static serviceProvider =>
+                ((IBuildable<IMessageContractRegistry>) serviceProvider
+                   .GetRequiredService<MessageContractRegistryBuilder>())
+               .Build()
         );
         services.TryAddSingleton<IPayloadCodec, Utf8JsonPayloadCodec>();
         services.TryAddSingleton<CloudEventMessageSerializer>();
