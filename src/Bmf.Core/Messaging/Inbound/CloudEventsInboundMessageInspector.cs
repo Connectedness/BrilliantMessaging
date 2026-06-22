@@ -34,7 +34,7 @@ public sealed class CloudEventsInboundMessageInspector : IInboundMessageInspecto
     }
 
     /// <inheritdoc />
-    public ValueTask<InboundMessageInspectionResult> InspectAsync(
+    public ValueTask<InboundMessageInspectionResult?> InspectAsync(
         TransportMessage transportMessage,
         CancellationToken cancellationToken = default
     )
@@ -44,14 +44,24 @@ public sealed class CloudEventsInboundMessageInspector : IInboundMessageInspecto
             throw new ArgumentNullException(nameof(transportMessage));
         }
 
-        var type = GetRequiredHeader(transportMessage, CloudEventAttributeNames.Type);
+        if (!TryGetHeader(transportMessage, CloudEventAttributeNames.Type, out var type))
+        {
+            return new ValueTask<InboundMessageInspectionResult?>((InboundMessageInspectionResult?) null);
+        }
 
-        if (!_messageContractRegistry.TryResolveType(type, out var messageType) || messageType is null)
+        if (string.IsNullOrWhiteSpace(type))
+        {
+            throw new InvalidOperationException($"CloudEvents attribute '{CloudEventAttributeNames.Type}' is missing.");
+        }
+
+        var cloudEventType = type!;
+
+        if (!_messageContractRegistry.TryResolveType(cloudEventType, out var messageType) || messageType is null)
         {
             throw new UnknownInboundMessageException(
                 transportMessage.Source,
-                type,
-                $"No inbound message contract is registered for CloudEvents type '{type}'."
+                cloudEventType,
+                $"No inbound message contract is registered for CloudEvents type '{cloudEventType}'."
             );
         }
 
@@ -59,7 +69,7 @@ public sealed class CloudEventsInboundMessageInspector : IInboundMessageInspecto
             GetRequiredHeader(transportMessage, CloudEventAttributeNames.SpecVersion),
             GetRequiredHeader(transportMessage, CloudEventAttributeNames.Id),
             GetRequiredHeader(transportMessage, CloudEventAttributeNames.Source),
-            type,
+            cloudEventType,
             ParseTime(GetRequiredHeader(transportMessage, CloudEventAttributeNames.Time)),
             GetOptionalHeader(transportMessage, CloudEventAttributeNames.Subject),
             transportMessage.ContentType ??
@@ -71,8 +81,8 @@ public sealed class CloudEventsInboundMessageInspector : IInboundMessageInspecto
         IncomingMessageContextItems items = new ();
         items.SetItem(CloudEventsContextKeys.Envelope, envelope);
 
-        return new ValueTask<InboundMessageInspectionResult>(
-            new InboundMessageInspectionResult(type, messageType)
+        return new ValueTask<InboundMessageInspectionResult?>(
+            new InboundMessageInspectionResult(cloudEventType, messageType)
             {
                 Items = items
             }
@@ -136,12 +146,17 @@ public sealed class CloudEventsInboundMessageInspector : IInboundMessageInspecto
 
     private static string? GetOptionalHeader(TransportMessage transportMessage, string attributeName)
     {
-        return transportMessage.TryGetHeaderString(GetHeaderName(attributeName), out var value) ? value : null;
+        return TryGetHeader(transportMessage, attributeName, out var value) ? value : null;
     }
 
     private static string GetHeaderName(string attributeName)
     {
         return $"{CloudEventsHeaderPrefix}{attributeName}";
+    }
+
+    private static bool TryGetHeader(TransportMessage transportMessage, string attributeName, out string? value)
+    {
+        return transportMessage.TryGetHeaderString(GetHeaderName(attributeName), out value);
     }
 
     private static DateTimeOffset ParseTime(string value)

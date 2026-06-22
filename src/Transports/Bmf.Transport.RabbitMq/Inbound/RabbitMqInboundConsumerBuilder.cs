@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Inbound;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Bmf.Transport.RabbitMq.Inbound;
 
@@ -17,7 +18,12 @@ public sealed class RabbitMqInboundConsumerBuilder
     private string? _channelGroupName;
     private ushort _consumerDispatchConcurrency = 1;
     private bool _copyBody = true;
-    private Type _inspectorType = typeof(CloudEventsInboundMessageInspector);
+
+    private IReadOnlyList<InboundMessageInspectorChainEntry> _inspectorChain =
+    [
+        new ServiceInboundMessageInspectorChainEntry(typeof(CloudEventsInboundMessageInspector))
+    ];
+
     private ushort _prefetchCount = 1;
 
     /// <summary>
@@ -106,15 +112,51 @@ public sealed class RabbitMqInboundConsumerBuilder
     }
 
     /// <summary>
-    /// Overrides the inbound message inspector with <typeparamref name="TInspector" /> instead of the default
-    /// CloudEvents inspector.
+    /// Overrides the inbound message inspector chain with <typeparamref name="TInspector" /> instead of the default
+    /// CloudEvents inspector. The inspector type is auto-registered as a singleton unless another registration
+    /// already exists.
     /// </summary>
     /// <typeparam name="TInspector">The inspector type to use.</typeparam>
     /// <returns>The same builder for chaining.</returns>
     public RabbitMqInboundConsumerBuilder UseInspector<TInspector>()
         where TInspector : class, IInboundMessageInspector
     {
-        _inspectorType = typeof(TInspector);
+        return UseInspector<TInspector>(ServiceLifetime.Singleton);
+    }
+
+    /// <summary>
+    /// Overrides the inbound message inspector chain with <typeparamref name="TInspector" /> instead of the default
+    /// CloudEvents inspector, using the requested auto-registration lifetime.
+    /// </summary>
+    /// <typeparam name="TInspector">The inspector type to use.</typeparam>
+    /// <param name="serviceLifetime">The lifetime used when the inspector type is auto-registered.</param>
+    /// <returns>The same builder for chaining.</returns>
+    public RabbitMqInboundConsumerBuilder UseInspector<TInspector>(ServiceLifetime serviceLifetime)
+        where TInspector : class, IInboundMessageInspector
+    {
+        _inspectorChain =
+        [
+            new ServiceInboundMessageInspectorChainEntry(typeof(TInspector), serviceLifetime)
+        ];
+        return this;
+    }
+
+    /// <summary>
+    /// Configures an ordered inbound message inspector chain for this consumer.
+    /// </summary>
+    /// <param name="configure">The callback that adds inspector and recognizer entries.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure" /> is <see langword="null" />.</exception>
+    public RabbitMqInboundConsumerBuilder UseInspectors(Action<InboundMessageInspectorChainBuilder> configure)
+    {
+        if (configure is null)
+        {
+            throw new ArgumentNullException(nameof(configure));
+        }
+
+        InboundMessageInspectorChainBuilder builder = new ();
+        configure(builder);
+        _inspectorChain = builder.Build();
         return this;
     }
 
@@ -193,7 +235,7 @@ public sealed class RabbitMqInboundConsumerBuilder
     {
         return new RabbitMqInboundConsumerDefinition(
             _queueName,
-            _inspectorType,
+            _inspectorChain,
             _channelGroupName,
             _channelCount,
             _prefetchCount,

@@ -427,28 +427,25 @@ public sealed class RabbitMqTopologyCompiler
                 explicitChannelGroupsByName,
                 channelGroups
             );
+            var endpointPlans = CreateInboundEndpointPlans(consumerDefinition, effectiveMessageContracts);
             List<RabbitMqInboundEndpoint> consumerEndpoints = [];
 
-            foreach (var handlerDefinition in OrderHandlers(consumerDefinition.Handlers))
+            foreach (var endpointPlan in endpointPlans)
             {
-                var canonicalDiscriminator = effectiveMessageContracts.GetDiscriminator(handlerDefinition.MessageType);
-                var inboundDiscriminators = effectiveMessageContracts.GetInboundDiscriminators(
-                    handlerDefinition.MessageType
-                );
-                var endpointName = handlerDefinition.EndpointName ??
-                                   $"{consumerDefinition.QueueName}:{canonicalDiscriminator}";
+                var endpointName = endpointPlan.Handler.EndpointName ??
+                                   $"{consumerDefinition.QueueName}:{endpointPlan.PrimaryDiscriminator}";
                 var endpoint = CreateEndpoint(
-                    handlerDefinition,
+                    endpointPlan.Handler,
                     topologyName,
                     endpointName,
-                    canonicalDiscriminator
+                    endpointPlan.PrimaryDiscriminator
                 );
 
                 endpoints.Add(endpoint);
                 consumerEndpoints.Add(endpoint);
                 endpointsByName.Add(endpoint.Name, endpoint);
 
-                foreach (var discriminator in inboundDiscriminators)
+                foreach (var discriminator in endpointPlan.DispatchDiscriminators)
                 {
                     var dispatchKey = new InboundEndpointSelectionKey(consumerDefinition.QueueName, discriminator);
                     dispatchIndex.Add(dispatchKey, endpoint);
@@ -458,7 +455,7 @@ public sealed class RabbitMqTopologyCompiler
             consumers.Add(
                 new RabbitMqInboundConsumer(
                     consumerDefinition.QueueName,
-                    consumerDefinition.InspectorType,
+                    CreateInspectorChain(consumerDefinition, effectiveMessageContracts),
                     consumerDefinition.CopyBody,
                     channelGroup,
                     consumerEndpoints.AsReadOnly()
@@ -467,6 +464,89 @@ public sealed class RabbitMqTopologyCompiler
         }
 
         return (channelGroups, consumers, endpoints, endpointsByName, dispatchIndex);
+    }
+
+    private static IReadOnlyList<InboundEndpointPlan> CreateInboundEndpointPlans(
+        RabbitMqInboundConsumerDefinition consumerDefinition,
+        IMessageContractRegistry effectiveMessageContracts
+    )
+    {
+        var orderedHandlers = OrderHandlers(consumerDefinition.Handlers).ToArray();
+        var recognizers = ResolveRecognizers(
+            consumerDefinition,
+            effectiveMessageContracts,
+            validationErrors: null
+        );
+        var recognizerMappings = MapRecognizersToHandlers(
+            consumerDefinition.QueueName,
+            orderedHandlers,
+            recognizers,
+            validationErrors: null
+        );
+        List<InboundEndpointPlan> endpointPlans = [];
+
+        foreach (var handlerDefinition in orderedHandlers)
+        {
+            var hasContract = TryGetMessageContractDiscriminators(
+                effectiveMessageContracts,
+                handlerDefinition.MessageType,
+                out var canonicalDiscriminator,
+                out var inboundDiscriminators
+            );
+            var recognizerDiscriminators = recognizerMappings
+               .Where(mapping => ReferenceEquals(mapping.Handler, handlerDefinition))
+               .Select(static mapping => mapping.Recognizer.Discriminator)
+               .ToArray();
+            var dispatchDiscriminators = inboundDiscriminators
+               .Concat(recognizerDiscriminators)
+               .Distinct(StringComparer.Ordinal)
+               .ToArray();
+
+            var primaryDiscriminator = hasContract && inboundDiscriminators.Count > 0 ?
+                canonicalDiscriminator! :
+                recognizerDiscriminators.First();
+
+            endpointPlans.Add(
+                new InboundEndpointPlan(
+                    handlerDefinition,
+                    primaryDiscriminator,
+                    dispatchDiscriminators
+                )
+            );
+        }
+
+        return endpointPlans;
+    }
+
+    private static RabbitMqInboundMessageInspectorChain CreateInspectorChain(
+        RabbitMqInboundConsumerDefinition consumerDefinition,
+        IMessageContractRegistry effectiveMessageContracts
+    )
+    {
+        List<RabbitMqInboundMessageInspectorChainEntry> entries = [];
+
+        foreach (var entry in consumerDefinition.InspectorChain)
+        {
+            switch (entry)
+            {
+                case ServiceInboundMessageInspectorChainEntry serviceEntry:
+                    entries.Add(new RabbitMqServiceInboundMessageInspectorChainEntry(serviceEntry.InspectorType));
+                    break;
+                case RecognizerInboundMessageInspectorChainEntry recognizerEntry:
+                    entries.Add(
+                        new RabbitMqInstanceInboundMessageInspectorChainEntry(
+                            new PredicateInboundMessageInspector(
+                                recognizerEntry.Predicate,
+                                ResolveRecognizerDiscriminator(recognizerEntry, effectiveMessageContracts),
+                                recognizerEntry.MessageType
+                            )
+                        )
+                    );
+                    break;
+            }
+        }
+
+        return new RabbitMqInboundMessageInspectorChain(entries.AsReadOnly());
     }
 
     private static IEnumerable<RabbitMqInboundChannelGroupDefinition> OrderInboundChannelGroups(
@@ -1117,22 +1197,34 @@ public sealed class RabbitMqTopologyCompiler
                 );
             }
 
-            ValidateInspectorRegistration(consumer, validationErrors);
+            ValidateInspectorChain(consumer, validationErrors);
 
-            foreach (var handler in OrderHandlers(consumer.Handlers))
+            var orderedHandlers = OrderHandlers(consumer.Handlers).ToArray();
+            var recognizers = ResolveRecognizers(consumer, effectiveMessageContracts, validationErrors);
+            var recognizerMappings = MapRecognizersToHandlers(
+                consumer.QueueName,
+                orderedHandlers,
+                recognizers,
+                validationErrors
+            );
+
+            foreach (var handler in orderedHandlers)
             {
                 ValidateServiceRegistrations(handler, validationErrors);
                 ValidateAckMode(handler, validationErrors);
 
-                IReadOnlyCollection<string> inboundDiscriminators;
-                string canonicalDiscriminator;
+                var hasContract = TryGetMessageContractDiscriminators(
+                    effectiveMessageContracts,
+                    handler.MessageType,
+                    out var canonicalDiscriminator,
+                    out var inboundDiscriminators
+                );
+                var recognizerDiscriminators = recognizerMappings
+                   .Where(mapping => ReferenceEquals(mapping.Handler, handler))
+                   .Select(static mapping => mapping.Recognizer.Discriminator)
+                   .ToArray();
 
-                try
-                {
-                    canonicalDiscriminator = effectiveMessageContracts.GetDiscriminator(handler.MessageType);
-                    inboundDiscriminators = effectiveMessageContracts.GetInboundDiscriminators(handler.MessageType);
-                }
-                catch (MessageContractNotRegisteredException)
+                if (!hasContract && recognizerDiscriminators.Length == 0)
                 {
                     validationErrors.Add(
                         $"Inbound endpoint for message '{GetTypeName(handler.MessageType)}' consumes unregistered CloudEvents message type. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...)."
@@ -1140,7 +1232,7 @@ public sealed class RabbitMqTopologyCompiler
                     continue;
                 }
 
-                if (inboundDiscriminators.Count == 0)
+                if (inboundDiscriminators.Count == 0 && recognizerDiscriminators.Length == 0)
                 {
                     validationErrors.Add(
                         $"Inbound endpoint for message '{GetTypeName(handler.MessageType)}' has no inbound CloudEvents discriminators. Use MessageContractRegistryBuilder.Map<T>(...) instead of MapOutbound<T>(...)."
@@ -1148,14 +1240,19 @@ public sealed class RabbitMqTopologyCompiler
                     continue;
                 }
 
-                var endpointName = handler.EndpointName ?? $"{consumer.QueueName}:{canonicalDiscriminator}";
+                var primaryDiscriminator = hasContract && inboundDiscriminators.Count > 0 ?
+                    canonicalDiscriminator! :
+                    recognizerDiscriminators[0];
+                var endpointName = handler.EndpointName ?? $"{consumer.QueueName}:{primaryDiscriminator}";
 
                 if (!endpointNames.TryAdd(endpointName, handler))
                 {
                     validationErrors.Add($"Inbound endpoint name '{endpointName}' is configured multiple times.");
                 }
 
-                foreach (var discriminator in inboundDiscriminators)
+                foreach (var discriminator in inboundDiscriminators
+                            .Concat(recognizerDiscriminators)
+                            .Distinct(StringComparer.Ordinal))
                 {
                     var dispatchKey = new InboundEndpointSelectionKey(consumer.QueueName, discriminator);
 
@@ -1170,22 +1267,142 @@ public sealed class RabbitMqTopologyCompiler
         }
     }
 
-    private void ValidateInspectorRegistration(
+    private void ValidateInspectorChain(
         RabbitMqInboundConsumerDefinition consumer,
         ICollection<string> validationErrors
     )
     {
-        if (!typeof(IInboundMessageInspector).IsAssignableFrom(consumer.InspectorType))
+        if (consumer.InspectorChain.Count == 0)
         {
             validationErrors.Add(
-                $"Inbound inspector '{consumer.InspectorType}' for queue '{consumer.QueueName}' does not implement '{typeof(IInboundMessageInspector)}'."
+                $"Inbound inspector chain for queue '{consumer.QueueName}' must contain at least one entry."
             );
+            return;
         }
-        else if (!_isServiceRegistered(consumer.InspectorType))
+
+        foreach (var entry in consumer.InspectorChain)
         {
-            validationErrors.Add(
-                $"Inbound inspector '{consumer.InspectorType}' for queue '{consumer.QueueName}' is not registered."
-            );
+            if (entry is not ServiceInboundMessageInspectorChainEntry serviceEntry)
+            {
+                continue;
+            }
+
+            if (!typeof(IInboundMessageInspector).IsAssignableFrom(serviceEntry.InspectorType))
+            {
+                validationErrors.Add(
+                    $"Inbound inspector '{serviceEntry.InspectorType}' for queue '{consumer.QueueName}' does not implement '{typeof(IInboundMessageInspector)}'."
+                );
+            }
+            else if (!_isServiceRegistered(serviceEntry.InspectorType))
+            {
+                validationErrors.Add(
+                    $"Inbound inspector '{serviceEntry.InspectorType}' for queue '{consumer.QueueName}' is not registered."
+                );
+            }
+        }
+    }
+
+    private static IReadOnlyList<ResolvedInboundRecognizer> ResolveRecognizers(
+        RabbitMqInboundConsumerDefinition consumer,
+        IMessageContractRegistry effectiveMessageContracts,
+        ICollection<string>? validationErrors
+    )
+    {
+        List<ResolvedInboundRecognizer> recognizers = [];
+
+        foreach (var recognizerEntry in consumer.InspectorChain.OfType<RecognizerInboundMessageInspectorChainEntry>())
+        {
+            string discriminator;
+
+            try
+            {
+                discriminator = ResolveRecognizerDiscriminator(recognizerEntry, effectiveMessageContracts);
+            }
+            catch (MessageContractNotRegisteredException) when (validationErrors is not null)
+            {
+                validationErrors.Add(
+                    $"Inbound recognizer for message '{GetTypeName(recognizerEntry.MessageType)}' on queue '{consumer.QueueName}' uses As<T>() but the type is not registered. Use As<T>(explicitDiscriminator) or register the contract with MessageContractRegistryBuilder.Map<T>(...)."
+                );
+                continue;
+            }
+
+            recognizers.Add(new ResolvedInboundRecognizer(recognizerEntry, discriminator));
+        }
+
+        return recognizers;
+    }
+
+    private static string ResolveRecognizerDiscriminator(
+        RecognizerInboundMessageInspectorChainEntry recognizerEntry,
+        IMessageContractRegistry effectiveMessageContracts
+    )
+    {
+        return recognizerEntry.ExplicitDiscriminator ??
+               effectiveMessageContracts.GetDiscriminator(recognizerEntry.MessageType);
+    }
+
+    private static IReadOnlyList<InboundRecognizerHandlerMapping> MapRecognizersToHandlers(
+        string queueName,
+        IReadOnlyList<RabbitMqInboundHandlerDefinition> handlers,
+        IReadOnlyList<ResolvedInboundRecognizer> recognizers,
+        ICollection<string>? validationErrors
+    )
+    {
+        List<InboundRecognizerHandlerMapping> mappings = [];
+
+        foreach (var recognizer in recognizers)
+        {
+            var matchingHandlers = handlers
+               .Where(handler => handler.MessageType == recognizer.Entry.MessageType)
+               .ToArray();
+
+            if (matchingHandlers.Length == 0)
+            {
+                matchingHandlers = handlers
+                   .Where(handler => handler.MessageType.IsAssignableFrom(recognizer.Entry.MessageType))
+                   .ToArray();
+            }
+
+            if (matchingHandlers.Length == 0)
+            {
+                validationErrors?.Add(
+                    $"Inbound recognizer for message '{GetTypeName(recognizer.Entry.MessageType)}' maps discriminator '{recognizer.Discriminator}' on queue '{queueName}', but no handler on that queue handles an assignable message type."
+                );
+                continue;
+            }
+
+            if (matchingHandlers.Length > 1)
+            {
+                validationErrors?.Add(
+                    $"Inbound recognizer for message '{GetTypeName(recognizer.Entry.MessageType)}' maps discriminator '{recognizer.Discriminator}' on queue '{queueName}', but multiple handlers on that queue handle an assignable message type."
+                );
+                continue;
+            }
+
+            mappings.Add(new InboundRecognizerHandlerMapping(recognizer, matchingHandlers[0]));
+        }
+
+        return mappings;
+    }
+
+    private static bool TryGetMessageContractDiscriminators(
+        IMessageContractRegistry effectiveMessageContracts,
+        Type messageType,
+        out string? canonicalDiscriminator,
+        out IReadOnlyCollection<string> inboundDiscriminators
+    )
+    {
+        try
+        {
+            canonicalDiscriminator = effectiveMessageContracts.GetDiscriminator(messageType);
+            inboundDiscriminators = effectiveMessageContracts.GetInboundDiscriminators(messageType);
+            return true;
+        }
+        catch (MessageContractNotRegisteredException)
+        {
+            canonicalDiscriminator = null;
+            inboundDiscriminators = Array.Empty<string>();
+            return false;
         }
     }
 
@@ -1377,5 +1594,57 @@ public sealed class RabbitMqTopologyCompiler
             "RabbitMQ topology '{TopologyName}' is empty: it declares no outbound targets and no inbound endpoints",
             topology.Name
         );
+    }
+
+    private sealed class InboundEndpointPlan
+    {
+        public InboundEndpointPlan(
+            RabbitMqInboundHandlerDefinition handler,
+            string primaryDiscriminator,
+            IReadOnlyList<string> dispatchDiscriminators
+        )
+        {
+            Handler = handler;
+            PrimaryDiscriminator = primaryDiscriminator;
+            DispatchDiscriminators = dispatchDiscriminators;
+        }
+
+        public RabbitMqInboundHandlerDefinition Handler { get; }
+
+        public string PrimaryDiscriminator { get; }
+
+        public IReadOnlyList<string> DispatchDiscriminators { get; }
+    }
+
+    private sealed class ResolvedInboundRecognizer
+    {
+        public ResolvedInboundRecognizer(
+            RecognizerInboundMessageInspectorChainEntry entry,
+            string discriminator
+        )
+        {
+            Entry = entry;
+            Discriminator = discriminator;
+        }
+
+        public RecognizerInboundMessageInspectorChainEntry Entry { get; }
+
+        public string Discriminator { get; }
+    }
+
+    private sealed class InboundRecognizerHandlerMapping
+    {
+        public InboundRecognizerHandlerMapping(
+            ResolvedInboundRecognizer recognizer,
+            RabbitMqInboundHandlerDefinition handler
+        )
+        {
+            Recognizer = recognizer;
+            Handler = handler;
+        }
+
+        public ResolvedInboundRecognizer Recognizer { get; }
+
+        public RabbitMqInboundHandlerDefinition Handler { get; }
     }
 }

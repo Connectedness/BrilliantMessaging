@@ -594,7 +594,7 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
 
         public int InspectionCount => Volatile.Read(ref _inspectionCount);
 
-        public ValueTask<InboundMessageInspectionResult> InspectAsync(
+        public ValueTask<InboundMessageInspectionResult?> InspectAsync(
             TransportMessage transportMessage,
             CancellationToken cancellationToken = default
         )
@@ -602,10 +602,10 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
             Interlocked.Increment(ref _inspectionCount);
             return transportMessage.Source switch
             {
-                "raw-success-queue" => new ValueTask<InboundMessageInspectionResult>(
+                "raw-success-queue" => new ValueTask<InboundMessageInspectionResult?>(
                     new InboundMessageInspectionResult(SuccessDiscriminator, typeof(RawMessage))
                 ),
-                "raw-failure-queue" => new ValueTask<InboundMessageInspectionResult>(
+                "raw-failure-queue" => new ValueTask<InboundMessageInspectionResult?>(
                     new InboundMessageInspectionResult(FailureDiscriminator, typeof(RejectedRawMessage))
                 ),
                 _ => throw new InvalidOperationException($"Unexpected raw source '{transportMessage.Source}'.")

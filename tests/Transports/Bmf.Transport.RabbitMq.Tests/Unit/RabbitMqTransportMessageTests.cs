@@ -1,16 +1,28 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Bmf.Transport.RabbitMq.Inbound;
 using FluentAssertions;
 using RabbitMQ.Client;
 using Xunit;
-
-using Bmf.Transport.RabbitMq.Inbound;
 
 namespace Bmf.Transport.RabbitMq.Tests.Unit;
 
 public sealed class RabbitMqTransportMessageTests
 {
+    public static TheoryData<object, uint> DeliveryCountValues =>
+        new ()
+        {
+            { (byte) 1, 2u },
+            { (sbyte) 2, 3u },
+            { (short) 3, 4u },
+            { (ushort) 4, 5u },
+            { 5, 6u },
+            { 6u, 7u },
+            { 7L, 8u },
+            { 8UL, 9u }
+        };
+
     [Fact]
     public void Constructor_CopiesBodyByDefault()
     {
@@ -89,6 +101,108 @@ public sealed class RabbitMqTransportMessageTests
         var message = CreateMessage(ReadOnlyMemory<byte>.Empty, redelivered: true);
 
         message.DeliveryAttempt.Should().Be(2);
+    }
+
+    [Fact]
+    public void Constructor_ProjectsRabbitMqPropertiesAndDeliveryMetadata()
+    {
+        var basicProperties = new BasicProperties
+        {
+            AppId = "app",
+            ContentEncoding = "gzip",
+            ContentType = "application/json",
+            CorrelationId = "correlation",
+            DeliveryMode = DeliveryModes.Persistent,
+            Expiration = "2500",
+            MessageId = "message",
+            Priority = 7,
+            ReplyTo = "reply",
+            Timestamp = new AmqpTimestamp(123),
+            UserId = "user"
+        };
+
+        var message = new RabbitMqTransportMessage(
+            "queue",
+            "consumer",
+            42,
+            redelivered: false,
+            "exchange",
+            "routing-key",
+            basicProperties,
+            ReadOnlyMemory<byte>.Empty
+        );
+
+        message.TransportName.Should().Be("rabbitmq");
+        message.MessagingSystem.Should().Be("rabbitmq");
+        message.Source.Should().Be("queue");
+        message.ConsumerTag.Should().Be("consumer");
+        message.DeliveryTag.Should().Be(42);
+        message.Exchange.Should().Be("exchange");
+        message.RoutingKey.Should().Be("routing-key");
+        message.DestinationRoutingKey.Should().Be("routing-key");
+        message.BasicProperties.Should().BeSameAs(basicProperties);
+        message.ContentType.Should().Be("application/json");
+        message.ContentEncoding.Should().Be("gzip");
+        message.MessageId.Should().Be("message");
+        message.CorrelationId.Should().Be("correlation");
+        message.ReplyTo.Should().Be("reply");
+        message.Timestamp.Should().Be(DateTimeOffset.FromUnixTimeSeconds(123));
+        message.Priority.Should().Be(7);
+        message.TimeToLive.Should().Be(TimeSpan.FromMilliseconds(2500));
+        message.UserId.Should().Be("user");
+        message.AppId.Should().Be("app");
+        message.DeliveryMode.Should().Be(DeliveryModes.Persistent);
+    }
+
+    [Theory]
+    [MemberData(nameof(DeliveryCountValues))]
+    public void Constructor_ConvertsSupportedDeliveryCountHeaderValues(object rawValue, uint expectedAttempt)
+    {
+        var message = CreateMessage(
+            ReadOnlyMemory<byte>.Empty,
+            new Dictionary<string, object?>
+            {
+                ["x-delivery-count"] = rawValue
+            }
+        );
+
+        message.DeliveryAttempt.Should().Be(expectedAttempt);
+    }
+
+    [Fact]
+    public void Constructor_IgnoresInvalidAttemptHeaders()
+    {
+        var message = CreateMessage(
+            ReadOnlyMemory<byte>.Empty,
+            new Dictionary<string, object?>
+            {
+                ["x-delivery-count"] = -1,
+                ["x-death"] = new List<object?>
+                {
+                    new Dictionary<string, object?> { ["count"] = -1 }
+                }
+            }
+        );
+
+        message.DeliveryAttempt.Should().Be(1);
+    }
+
+    [Fact]
+    public void Constructor_UsesFirstConvertibleDeathCount()
+    {
+        var message = CreateMessage(
+            ReadOnlyMemory<byte>.Empty,
+            new Dictionary<string, object?>
+            {
+                ["x-death"] = new List<object?>
+                {
+                    new Dictionary<string, object?> { ["count"] = -1 },
+                    new Dictionary<string, object?> { ["count"] = (ushort) 2 }
+                }
+            }
+        );
+
+        message.DeliveryAttempt.Should().Be(3);
     }
 
     private static RabbitMqTransportMessage CreateMessage(

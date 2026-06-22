@@ -8,21 +8,21 @@ The goal is to make non-CloudEvents consumption a first-class, low-ceremony, com
 
 ## Acceptance Criteria
 
-- [ ] `IInboundMessageInspector.InspectAsync` returns a nullable `InboundMessageInspectionResult?`, where `null` means "this inspector does not recognize the delivery" so inspectors can be chained.
-- [ ] `CloudEventsInboundMessageInspector` returns `null` (instead of throwing) when the delivery carries no CloudEvents `type` header, so it can sit in a chain; it still throws when CloudEvents headers are present but the `type` is unregistered.
-- [ ] When the configured inspector chain returns `null` overall (no inspector recognizes the delivery), the RabbitMQ runtime throws `UnknownInboundMessageException` (today's behavior is preserved).
-- [ ] `CompositeInboundMessageInspector` evaluates an ordered set of inner inspectors and returns the first non-`null` result, or `null` when none recognize the delivery.
-- [ ] A transport-agnostic chain builder in `Bmf.Core` composes a per-consumer inspector chain, supporting: `CloudEvents()`, `Use<TInspector>()`, `When(Func<TransportMessage,bool>)`, `WhenHeader(name)`, `WhenHeader(name, value)`, and `WhenContentType(value)`, each terminated by `As<T>()` or `As<T>(explicitDiscriminator)`.
-- [ ] `As<T>()` resolves the discriminator from `IMessageContractRegistry`; the `As<T>(string)` overload bypasses the registry for types that are not registered as contracts.
-- [ ] `CloudEvents()` and `Use<TInspector>()` register their inspector as a singleton by default, with an optional `ServiceLifetime` argument to override; recognizer inspectors are always singletons, built once at topology-compile time and reused across deliveries.
-- [ ] An inspector chain that produces no entries fails topology compilation.
-- [ ] `RabbitMqInboundConsumerBuilder` exposes `UseInspectors(Action<...> configure)` alongside the existing `UseInspector<T>()`; the configured chain is applied to the queue's consumer.
-- [ ] Topology compilation validates that every discriminator a recognizer maps to corresponds to a handler registered on the same queue and that the endpoint's message type is assignable from the recognizer's `T`, failing fast at startup otherwise.
-- [ ] Recognizers resolve the message type only; the built-in `WhenHeader`/`WhenContentType` blocks never read the body (the open `When` predicate can, but it is discouraged), and per-format framing (for example SNS's double-encoded payload) is handled by a custom `IMessageDeserializer` configured on the recognized endpoint via the existing `WithDeserializer<T>()` seam.
-- [ ] Existing CloudEvents-only consumers keep working unchanged with the default inspector.
-- [ ] The README's "Customizing the inbound pipeline" section documents the composable inspector chain and recognizer building blocks, including the recognize-here/deserialize-there pairing.
-- [ ] All newly public types and members carry XML doc comments (CS1591 is the Release gate).
-- [ ] Automated tests need to be written.
+- [x] `IInboundMessageInspector.InspectAsync` returns a nullable `InboundMessageInspectionResult?`, where `null` means "this inspector does not recognize the delivery" so inspectors can be chained.
+- [x] `CloudEventsInboundMessageInspector` returns `null` (instead of throwing) when the delivery carries no CloudEvents `type` header, so it can sit in a chain; it still throws when CloudEvents headers are present but the `type` is unregistered.
+- [x] When the configured inspector chain returns `null` overall (no inspector recognizes the delivery), the RabbitMQ runtime throws `UnknownInboundMessageException` (today's behavior is preserved).
+- [x] `CompositeInboundMessageInspector` evaluates an ordered set of inner inspectors and returns the first non-`null` result, or `null` when none recognize the delivery.
+- [x] A transport-agnostic chain builder in `Bmf.Core` composes a per-consumer inspector chain, supporting: `CloudEvents()`, `Use<TInspector>()`, `When(Func<TransportMessage,bool>)`, `WhenHeader(name)`, `WhenHeader(name, value)`, and `WhenContentType(value)`, each terminated by `As<T>()` or `As<T>(explicitDiscriminator)`.
+- [x] `As<T>()` resolves the discriminator from `IMessageContractRegistry`; the `As<T>(string)` overload bypasses the registry for types that are not registered as contracts.
+- [x] `CloudEvents()` and `Use<TInspector>()` register their inspector as a singleton by default, with an optional `ServiceLifetime` argument to override; recognizer inspectors are always singletons, built once at topology-compile time and reused across deliveries.
+- [x] An inspector chain that produces no entries fails topology compilation.
+- [x] `RabbitMqInboundConsumerBuilder` exposes `UseInspectors(Action<...> configure)` alongside the existing `UseInspector<T>()`; the configured chain is applied to the queue's consumer.
+- [x] Topology compilation validates that every discriminator a recognizer maps to corresponds to a handler registered on the same queue and that the endpoint's message type is assignable from the recognizer's `T`, failing fast at startup otherwise.
+- [x] Recognizers resolve the message type only; the built-in `WhenHeader`/`WhenContentType` blocks never read the body (the open `When` predicate can, but it is discouraged), and per-format framing (for example SNS's double-encoded payload) is handled by a custom `IMessageDeserializer` configured on the recognized endpoint via the existing `WithDeserializer<T>()` seam.
+- [x] Existing CloudEvents-only consumers keep working unchanged with the default inspector.
+- [x] The README's "Customizing the inbound pipeline" section documents the composable inspector chain and recognizer building blocks, including the recognize-here/deserialize-there pairing.
+- [x] All newly public types and members carry XML doc comments (CS1591 is the Release gate).
+- [x] Automated tests need to be written.
 
 ## Technical Details
 

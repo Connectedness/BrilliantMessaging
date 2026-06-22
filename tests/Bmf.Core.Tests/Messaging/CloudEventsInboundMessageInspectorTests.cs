@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Bmf.Core.Messaging;
 using Bmf.Core.Messaging.Inbound;
+using FluentAssertions;
 using Xunit;
 
 namespace Bmf.Core.Tests.Messaging;
@@ -32,13 +32,52 @@ public sealed class CloudEventsInboundMessageInspectorTests
 
         var result = await inspector.InspectAsync(transport, TestContext.Current.CancellationToken);
 
+        result.Should().NotBeNull();
         result.Discriminator.Should().Be(discriminator);
-        result.MessageType.Should().Be(typeof(TestMessage));
+        result.MessageType.Should().Be<TestMessage>();
         result.Message.Should().BeNull();
         result.Items.Should().NotBeNull();
         var envelope = result.Items!.GetRequiredItem(CloudEventsContextKeys.Envelope);
         envelope.Type.Should().Be(discriminator);
         envelope.Data.ToArray().Should().Equal(body);
+    }
+
+    [Fact]
+    public async Task InspectAsync_ReturnsNullWhenCloudEventsTypeHeaderIsMissing()
+    {
+        MessageContractRegistryBuilder contracts = new ();
+        contracts.Map<TestMessage>("tests.inspected");
+        CloudEventsInboundMessageInspector inspector = new (contracts.Build());
+        var transport = new TestTransportMessage(
+            ReadOnlyMemory<byte>.Empty,
+            new Dictionary<string, object?>
+            {
+                ["cloudEvents:specversion"] = "1.0"
+            }
+        );
+
+        var result = await inspector.InspectAsync(transport, TestContext.Current.CancellationToken);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task InspectAsync_ThrowsUnknownInboundMessageExceptionWhenCloudEventsTypeIsUnregistered()
+    {
+        CloudEventsInboundMessageInspector inspector = new (new MessageContractRegistryBuilder().Build());
+        var transport = new TestTransportMessage(
+            ReadOnlyMemory<byte>.Empty,
+            new Dictionary<string, object?>
+            {
+                ["cloudEvents:type"] = "tests.unknown"
+            }
+        );
+
+        var act = async () => await inspector.InspectAsync(transport, TestContext.Current.CancellationToken);
+
+        await act
+           .Should().ThrowAsync<UnknownInboundMessageException>()
+           .WithMessage("No inbound message contract is registered for CloudEvents type 'tests.unknown'.");
     }
 
     private sealed record TestMessage;

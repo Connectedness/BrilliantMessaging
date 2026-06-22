@@ -259,10 +259,19 @@ public sealed class RabbitMqTopologyRuntime : ITopologyRuntime
         var pipelineStarted = false;
         try
         {
-            var inspector = (IInboundMessageInspector) scope.ServiceProvider.GetRequiredService(
-                consumer.InspectorType
-            );
-            var inspectResult = await inspector.InspectAsync(transportMessage, cancellationToken).ConfigureAwait(false);
+            var inspectResult = await consumer
+               .InspectorChain
+               .InspectAsync(scope.ServiceProvider, transportMessage, cancellationToken)
+               .ConfigureAwait(false);
+
+            if (inspectResult is null)
+            {
+                throw new UnknownInboundMessageException(
+                    consumer.QueueName,
+                    "(unrecognized)",
+                    $"Inbound message from '{consumer.QueueName}' was not recognized by any configured inbound message inspector."
+                );
+            }
 
             if (!_topology.TryGetEndpoint(consumer.QueueName, inspectResult.Discriminator, out var endpoint))
             {

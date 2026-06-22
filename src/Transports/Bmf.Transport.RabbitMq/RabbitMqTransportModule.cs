@@ -2,17 +2,16 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Bmf.Core.Messaging;
+using Bmf.Core.Messaging.Inbound;
+using Bmf.Core.Messaging.Outbound;
+using Bmf.Transport.RabbitMq.Inbound;
+using Bmf.Transport.RabbitMq.Outbound;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Outbound;
 
 namespace Bmf.Transport.RabbitMq;
 
@@ -161,6 +160,14 @@ public static class RabbitMqTransportModule
             services.TryAddScoped(handler.HandlerType);
         }
 
+        foreach (var inspector in configuration
+                    .Consumers
+                    .SelectMany(static consumer => consumer.InspectorChain)
+                    .OfType<ServiceInboundMessageInspectorChainEntry>())
+        {
+            RegisterInspector(services, inspector);
+        }
+
         services.AddKeyedSingleton<RabbitMqTopology>(
             topologyName,
             (serviceProvider, _) =>
@@ -256,5 +263,31 @@ public static class RabbitMqTransportModule
         }
 
         return serviceProvider.GetService(serviceType) is not null;
+    }
+
+    private static void RegisterInspector(
+        IServiceCollection services,
+        ServiceInboundMessageInspectorChainEntry inspector
+    )
+    {
+        if (!typeof(IInboundMessageInspector).IsAssignableFrom(inspector.InspectorType))
+        {
+            return;
+        }
+
+        var descriptor = ServiceDescriptor.Describe(
+            inspector.InspectorType,
+            inspector.InspectorType,
+            inspector.ServiceLifetime
+        );
+
+        if (inspector.ServiceLifetime == ServiceLifetime.Singleton)
+        {
+            services.TryAdd(descriptor);
+            return;
+        }
+
+        services.RemoveAll(inspector.InspectorType);
+        services.Add(descriptor);
     }
 }

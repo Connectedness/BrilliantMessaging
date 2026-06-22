@@ -72,7 +72,7 @@ public sealed class RabbitMqTopologyCompilerValidationTests
             [
                 new RabbitMqInboundConsumerDefinition(
                     "missing-queue",
-                    typeof(string),
+                    [new ServiceInboundMessageInspectorChainEntry(typeof(string))],
                     "missing-inbound",
                     1,
                     1,

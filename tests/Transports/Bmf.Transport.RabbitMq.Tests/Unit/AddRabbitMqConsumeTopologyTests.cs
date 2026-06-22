@@ -154,7 +154,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
         topology.TryGetEndpoint("inbound", "tests.current", out var currentEndpoint).Should().BeTrue();
         topology.TryGetEndpoint("inbound", "tests.legacy", out var legacyEndpoint).Should().BeTrue();
         currentEndpoint.Should().BeSameAs(legacyEndpoint);
-        currentEndpoint!.Name.Should().Be("inbound:tests.current");
+        currentEndpoint.Name.Should().Be("inbound:tests.current");
     }
 
     [Fact]
@@ -262,6 +262,26 @@ public sealed class AddRabbitMqConsumeTopologyTests
     }
 
     [Fact]
+    public void UseInspectors_RejectsNullConfiguration()
+    {
+        var builder = new RabbitMqInboundConsumerBuilder("inbound");
+
+        var act = () => builder.UseInspectors(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("configure");
+    }
+
+    [Fact]
+    public void UseInspector_RejectsUnsupportedServiceLifetime()
+    {
+        var builder = new RabbitMqInboundConsumerBuilder("inbound");
+
+        var act = () => builder.UseInspector<RawInspector>((ServiceLifetime) 999);
+
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("serviceLifetime");
+    }
+
+    [Fact]
     public void Compile_RejectsMissingConcreteHandlerService()
     {
         var services = new ServiceCollection();
@@ -359,7 +379,10 @@ public sealed class AddRabbitMqConsumeTopologyTests
         var consumer = topology.Consumers.Should().ContainSingle().Which;
         var endpoint = consumer.Endpoints.Should().ContainSingle().Which;
 
-        consumer.InspectorType.Should().Be(typeof(RawInspector));
+        consumer
+           .InspectorChain.Entries.Should().ContainSingle().Which.Should()
+           .BeOfType<RabbitMqServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
+           .Be(typeof(RawInspector));
         endpoint.DeserializerType.Should().Be(typeof(RawDeserializer));
         endpoint.AckMode.Should().Be(MessageAckMode.Manual);
         consumer.ChannelGroup.Name.Should().Be("shared");
@@ -367,6 +390,200 @@ public sealed class AddRabbitMqConsumeTopologyTests
         consumer.ChannelGroup.PrefetchCount.Should().Be(7);
         consumer.ChannelGroup.ConsumerDispatchConcurrency.Should().Be(2);
         consumer.CopyBody.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddRabbitMqTopology_AppliesComposableInspectorChain()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .UseInspectors(
+                                chain => chain
+                                   .CloudEvents()
+                                   .WhenHeader("x-legacy-kind", "validation-a").As<ValidationMessageA>()
+                            )
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var consumer = serviceProvider
+           .GetRequiredService<RabbitMqTopology>()
+           .Consumers.Should().ContainSingle().Which;
+
+        consumer.InspectorChain.Entries.Should().HaveCount(2);
+        consumer.InspectorChain.Entries[0].Should()
+           .BeOfType<RabbitMqServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
+           .Be(typeof(CloudEventsInboundMessageInspector));
+        var recognizer = consumer.InspectorChain.Entries[1].Should()
+           .BeOfType<RabbitMqInstanceInboundMessageInspectorChainEntry>().Which.Inspector;
+        recognizer.Should().BeOfType<PredicateInboundMessageInspector>();
+    }
+
+    [Fact]
+    public void AddRabbitMqTopology_AutoRegistersCustomInspectorWithConfiguredLifetime()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .UseInspectors(chain => chain.Use<RawInspector>(ServiceLifetime.Scoped))
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+
+        services.Should().Contain(
+            descriptor => descriptor.ServiceType == typeof(RawInspector) &&
+                          descriptor.Lifetime == ServiceLifetime.Scoped
+        );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var topology = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        topology.Consumers.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Compile_RejectsEmptyInspectorChain()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .UseInspectors(static _ => { })
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should().ContainSingle().Which.Should().Be(
+                "Inbound inspector chain for queue 'inbound' must contain at least one entry."
+            );
+    }
+
+    [Fact]
+    public void Compile_AllowsExplicitRecognizerForMessageTypeWithoutContract()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .UseInspectors(
+                                chain => chain
+                                   .WhenHeader("x-legacy-kind", "upload").As<LegacyUploadMessage>("legacy.upload")
+                            )
+                           .Handle<LegacyUploadMessage, LegacyUploadMessageHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var topology = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        var endpoint = topology.Consumers.Should().ContainSingle().Which.Endpoints.Should().ContainSingle().Which;
+        endpoint.Discriminator.Should().Be("legacy.upload");
+        topology.TryGetEndpoint("inbound", "legacy.upload", out var selectedEndpoint).Should().BeTrue();
+        selectedEndpoint.Should().BeSameAs(endpoint);
+    }
+
+    [Fact]
+    public void Compile_RejectsRecognizerWithoutAssignableHandlerOnQueue()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .UseInspectors(
+                                chain => chain
+                                   .WhenHeader("x-kind", "validation-b").As<ValidationMessageB>()
+                            )
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should().Contain(
+                $"Inbound recognizer for message '{typeof(ValidationMessageB)}' maps discriminator '{RabbitMqCloudEventsTestFactory.ValidationMessageBDiscriminator}' on queue 'inbound', but no handler on that queue handles an assignable message type."
+            );
+    }
+
+    [Fact]
+    public void Compile_RejectsRecognizerAsWithoutRegisteredContract()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .UseInspectors(chain => chain.WhenHeader("x-kind").As<LegacyUploadMessage>())
+                           .Handle<LegacyUploadMessage, LegacyUploadMessageHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should().Contain(
+                $"Inbound recognizer for message '{typeof(LegacyUploadMessage)}' on queue 'inbound' uses As<T>() but the type is not registered. Use As<T>(explicitDiscriminator) or register the contract with MessageContractRegistryBuilder.Map<T>(...)."
+            );
     }
 
     [Fact]
@@ -442,7 +659,9 @@ public sealed class AddRabbitMqConsumeTopologyTests
         consumer.ChannelGroup.MaximumChannelCount.Should().Be(2);
         consumer.ChannelGroup.PrefetchCount.Should().Be(8);
         consumer.ChannelGroup.ConsumerDispatchConcurrency.Should().Be(3);
-        consumer.InspectorType.Should().Be(typeof(RawInspector));
+        consumer.InspectorChain.Entries.Should().ContainSingle().Which.Should()
+           .BeOfType<RabbitMqServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
+           .Be(typeof(RawInspector));
         topology.Pipeline.Should().NotBeNull();
     }
 
@@ -686,7 +905,9 @@ public sealed class AddRabbitMqConsumeTopologyTests
            .Consumers.Should().ContainSingle().Which;
 
         consumer.Endpoints.Should().HaveCount(2);
-        consumer.InspectorType.Should().Be(typeof(RawInspector));
+        consumer.InspectorChain.Entries.Should().ContainSingle().Which.Should()
+           .BeOfType<RabbitMqServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
+           .Be(typeof(RawInspector));
         consumer.CopyBody.Should().BeFalse();
         consumer.ChannelGroup.MaximumChannelCount.Should().Be(2);
         consumer.ChannelGroup.PrefetchCount.Should().Be(7);
@@ -1022,12 +1243,12 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
     private sealed class RawInspector : IInboundMessageInspector
     {
-        public ValueTask<InboundMessageInspectionResult> InspectAsync(
+        public ValueTask<InboundMessageInspectionResult?> InspectAsync(
             TransportMessage transportMessage,
             CancellationToken cancellationToken = default
         )
         {
-            return new ValueTask<InboundMessageInspectionResult>(
+            return new ValueTask<InboundMessageInspectionResult?>(
                 new InboundMessageInspectionResult(
                     RabbitMqCloudEventsTestFactory.ValidationMessageADiscriminator,
                     typeof(ValidationMessageA)
@@ -1044,6 +1265,21 @@ public sealed class AddRabbitMqConsumeTopologyTests
         )
         {
             return new ValueTask<object?>(new ValidationMessageA("raw"));
+        }
+    }
+
+    // ReSharper disable once NotAccessedPositionalProperty.Local -- required for serialization
+    private sealed record LegacyUploadMessage(string Value);
+
+    private sealed class LegacyUploadMessageHandler : IMessageHandler<LegacyUploadMessage>
+    {
+        public Task HandleAsync(
+            LegacyUploadMessage message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken
+        )
+        {
+            return Task.CompletedTask;
         }
     }
 

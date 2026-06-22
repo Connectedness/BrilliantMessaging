@@ -148,6 +148,129 @@ public sealed class RabbitMqTopologyRuntimeTests
     }
 
     [Fact]
+    public async Task DeliveryMatchedByRecognizer_DispatchesToEndpoint()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var channel = new TestRabbitMqChannel();
+        var connection = new TestRabbitMqConnection();
+        connection.EnqueueChannel(channel.Object);
+        RabbitMqConnectionProvider connectionProvider = new (_ => Task.FromResult(connection.Object));
+        var topologyBuilder = new RabbitMqTopologyBuilder();
+        topologyBuilder.UseConnectionFactory(static _ => new ConnectionFactory());
+        topologyBuilder.Queue("inbound");
+        topologyBuilder.Consume(
+            "inbound",
+            consumer => consumer
+               .UseInspectors(chain => chain.WhenHeader("x-kind", "validation-a").As<ValidationMessageA>())
+               .Handle<ValidationMessageA, RecordingValidationMessageAHandler>(
+                    handler => handler.WithDeserializer<RawDeserializer>()
+                )
+        );
+        RabbitMqTopologyCompiler compiler = new (
+            RabbitMqCloudEventsTestFactory.CreateRegistry(),
+            NullLoggerFactory.Instance,
+            static _ => null,
+            static _ => true
+        );
+        await using var topology = compiler.Compile(
+            Topology.DefaultName,
+            topologyBuilder.Build(),
+            connectionProvider
+        );
+        var services = new ServiceCollection();
+        HandlerInvocationSink sink = new ();
+        services.AddSingleton(sink);
+        services.AddSingleton<InboundDiagnosticsMiddleware>();
+        services.AddSingleton<FrameworkMessageAcknowledgementMiddleware>();
+        services.AddSingleton<MessageDeserializationMiddleware>();
+        services.AddSingleton<RawDeserializer>();
+        services.AddSingleton<RecordingValidationMessageAHandler>();
+        await using var serviceProvider = services.BuildServiceProvider();
+        var runtime = new RabbitMqTopologyRuntime(topology, serviceProvider.GetRequiredService<IServiceScopeFactory>());
+
+        await runtime.StartAsync(cancellationToken);
+        await channel.DeliverAsync(
+            "consumer-1",
+            42,
+            redelivered: false,
+            "events",
+            "legacy",
+            new BasicProperties
+            {
+                Headers = new Dictionary<string, object?>
+                {
+                    ["x-kind"] = "validation-a"
+                }
+            },
+            "{}"u8.ToArray(),
+            cancellationToken
+        );
+
+        sink.Invocations.Should().ContainSingle().Which.Should().Be("raw");
+        channel.BasicAckCallCount.Should().Be(1);
+        channel.BasicNackCallCount.Should().Be(0);
+
+        await runtime.StopAsync(cancellationToken);
+    }
+
+    [Fact]
+    public async Task DeliveryNotRecognizedByInspectorChain_NacksAsUnknownInboundMessage()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var channel = new TestRabbitMqChannel();
+        var connection = new TestRabbitMqConnection();
+        connection.EnqueueChannel(channel.Object);
+        RabbitMqConnectionProvider connectionProvider = new (_ => Task.FromResult(connection.Object));
+        var topologyBuilder = new RabbitMqTopologyBuilder();
+        topologyBuilder.UseConnectionFactory(static _ => new ConnectionFactory());
+        topologyBuilder.Queue("inbound");
+        topologyBuilder.Consume(
+            "inbound",
+            consumer => consumer.Handle<ValidationMessageA, ValidationMessageAHandler>()
+        );
+        RabbitMqTopologyCompiler compiler = new (
+            RabbitMqCloudEventsTestFactory.CreateRegistry(),
+            NullLoggerFactory.Instance,
+            static _ => null,
+            static _ => true
+        );
+        await using var topology = compiler.Compile(
+            Topology.DefaultName,
+            topologyBuilder.Build(),
+            connectionProvider
+        );
+        var services = new ServiceCollection();
+        services.AddSingleton(RabbitMqCloudEventsTestFactory.CreateRegistry());
+        services.AddSingleton<CloudEventsInboundMessageInspector>();
+        await using var serviceProvider = services.BuildServiceProvider();
+        var runtime = new RabbitMqTopologyRuntime(topology, serviceProvider.GetRequiredService<IServiceScopeFactory>());
+
+        await runtime.StartAsync(cancellationToken);
+        await channel.DeliverAsync(
+            "consumer-1",
+            42,
+            redelivered: false,
+            "events",
+            "unrecognized",
+            new BasicProperties
+            {
+                ContentType = "application/json",
+                Headers = new Dictionary<string, object?>
+                {
+                    ["cloudEvents:specversion"] = "1.0"
+                }
+            },
+            "{}"u8.ToArray(),
+            cancellationToken
+        );
+
+        channel.BasicNackCallCount.Should().Be(1);
+        channel.LastNackRequeue.Should().BeFalse();
+
+        await runtime.StopAsync(cancellationToken);
+    }
+
+    [Fact]
     public async Task DeliveryCancellationFromEventArgsToken_RequeuesWithoutFailureMetrics()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -239,6 +362,26 @@ public sealed class RabbitMqTopologyRuntimeTests
         }
     }
 
+    private sealed class RecordingValidationMessageAHandler : IMessageHandler<ValidationMessageA>
+    {
+        private readonly HandlerInvocationSink _sink;
+
+        public RecordingValidationMessageAHandler(HandlerInvocationSink sink)
+        {
+            _sink = sink;
+        }
+
+        public Task HandleAsync(
+            ValidationMessageA message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken
+        )
+        {
+            _sink.Invocations.Add(message.Value);
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class CancellingValidationMessageAHandler : IMessageHandler<ValidationMessageA>
     {
         public Task HandleAsync(
@@ -254,12 +397,12 @@ public sealed class RabbitMqTopologyRuntimeTests
 
     private sealed class RawInspector : IInboundMessageInspector
     {
-        public ValueTask<InboundMessageInspectionResult> InspectAsync(
+        public ValueTask<InboundMessageInspectionResult?> InspectAsync(
             TransportMessage transportMessage,
             CancellationToken cancellationToken = default
         )
         {
-            return new ValueTask<InboundMessageInspectionResult>(
+            return new ValueTask<InboundMessageInspectionResult?>(
                 new InboundMessageInspectionResult(
                     RabbitMqCloudEventsTestFactory.ValidationMessageADiscriminator,
                     typeof(ValidationMessageA)
@@ -277,5 +420,10 @@ public sealed class RabbitMqTopologyRuntimeTests
         {
             return new ValueTask<object?>(new ValidationMessageA("raw"));
         }
+    }
+
+    private sealed class HandlerInvocationSink
+    {
+        public List<string> Invocations { get; } = [];
     }
 }

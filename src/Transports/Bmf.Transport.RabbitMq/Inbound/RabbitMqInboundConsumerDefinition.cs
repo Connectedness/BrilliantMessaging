@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using Bmf.Core.Messaging.Inbound;
 
 namespace Bmf.Transport.RabbitMq.Inbound;
 
@@ -7,7 +7,7 @@ namespace Bmf.Transport.RabbitMq.Inbound;
 /// An immutable declaration of a RabbitMQ consumer on a queue, produced by <see cref="RabbitMqInboundConsumerBuilder" />.
 /// </summary>
 /// <param name="QueueName">The name of the consumed queue.</param>
-/// <param name="InspectorType">The inbound message inspector type.</param>
+/// <param name="InspectorChain">The configured inbound message inspector chain.</param>
 /// <param name="ChannelGroupName">The channel group to consume through, or <see langword="null" /> for an implicit group.</param>
 /// <param name="ChannelCount">The number of channels the consumer spreads deliveries across.</param>
 /// <param name="PrefetchCount">The per-consumer prefetch (QoS) count.</param>
@@ -16,7 +16,7 @@ namespace Bmf.Transport.RabbitMq.Inbound;
 /// <param name="Handlers">The handler registrations for the consumer.</param>
 public sealed record RabbitMqInboundConsumerDefinition(
     string QueueName,
-    Type InspectorType,
+    IReadOnlyList<InboundMessageInspectorChainEntry> InspectorChain,
     string? ChannelGroupName,
     int ChannelCount,
     ushort PrefetchCount,
