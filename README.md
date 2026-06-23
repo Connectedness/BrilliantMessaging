@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="design/hero-dark.svg" />
-    <img alt="Brilliant Messaging - Explicit Messaging. No Magic." src="design/hero-light.svg" width="420" />
+    <img alt="Brilliant Messaging - Explicit. No Magic." src="design/hero-light.svg" width="420" />
   </picture>
 </p>
 
