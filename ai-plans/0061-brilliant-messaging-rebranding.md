@@ -31,57 +31,57 @@ outside `ai-plans/`.
 
 ## Acceptance criteria
 
-- [ ] All eight projects renamed (folder + `.csproj`): `Bmf.Abstractions`, `Bmf.Core`,
+- [x] All eight projects renamed (folder + `.csproj`): `Bmf.Abstractions`, `Bmf.Core`,
       `Bmf.OpenTelemetry`, `Bmf.Transport.RabbitMq`, `Bmf.Benchmarks`, `Bmf.Core.Tests`,
       `Bmf.OpenTelemetry.Tests`, `Bmf.Transport.RabbitMq.Tests` → `BrilliantMessaging.*`. Assembly
       names and root namespaces follow from the file name (no overrides exist for those).
-- [ ] `BMF.slnx` → `BrilliantMessaging.slnx`, with every `<Project>`/`<File>` path updated, and all
+- [x] `BMF.slnx` → `BrilliantMessaging.slnx`, with every `<Project>`/`<File>` path updated, and all
       `<ProjectReference>` paths inside the `.csproj` files updated to the new folders.
-- [ ] `BMF.sln.DotSettings` → `BrilliantMessaging.sln.DotSettings` (and its reference in the
+- [x] `BMF.sln.DotSettings` → `BrilliantMessaging.sln.DotSettings` (and its reference in the
       solution file). The companion `BMF.sln.DotSettings.user` is untracked but should be renamed
       locally too so Rider keeps its settings.
-- [ ] All namespace declarations and `using` statements move from `Bmf.*` to `BrilliantMessaging.*`.
-- [ ] The redundant explicit `<PackageId>` elements in the four packable projects
+- [x] All namespace declarations and `using` statements move from `Bmf.*` to `BrilliantMessaging.*`.
+- [x] The redundant explicit `<PackageId>` elements in the four packable projects
       (`Bmf.Abstractions`/`Bmf.Core`/`Bmf.OpenTelemetry`/`Bmf.Transport.RabbitMq`) are **removed**,
       letting the package ID default to the renamed project name. Each `<Description>` reworded to
       use "Brilliant Messaging".
-- [ ] `PackageTags` in `src/Directory.Build.props`: `bmf` tag → `brilliantmessaging`, **and** the
+- [x] `PackageTags` in `src/Directory.Build.props`: `bmf` tag → `brilliantmessaging`, **and** the
       matching `expected_tags` entry in `scripts/verify-packages.sh` updated in lockstep.
-- [ ] Public API identifiers renamed: `BmfBuilder` → `BrilliantMessagingBuilder`,
+- [x] Public API identifiers renamed: `BmfBuilder` → `BrilliantMessagingBuilder`,
       `BmfServiceCollectionExtensions` → `BrilliantMessagingServiceCollectionExtensions`,
       `AddBmf()` → `AddBrilliantMessaging()`, `BmfUuid` → `BrilliantMessagingUuid`,
       `BmfInstrumentationExtensions` → `BrilliantMessagingInstrumentationExtensions`,
       `AddBmfInstrumentation()` → `AddBrilliantMessagingInstrumentation()`. Test types named after
       them (`BmfBuilderTests`, `AddBmfInstrumentationTests`) renamed accordingly.
-- [ ] Telemetry contracts renamed, with the tests that assert these literals updated in lockstep:
+- [x] Telemetry contracts renamed, with the tests that assert these literals updated in lockstep:
       - `ActivitySource`/`Meter` names `"Bmf.Outbound"`/`"Bmf.Inbound"` →
         `"BrilliantMessaging.Outbound"`/`"BrilliantMessaging.Inbound"`.
       - Activity/operation names `"bmf.outbound.publish"`, `"bmf.inbound.process"`,
         `"bmf.outbound.topology.provision"` → `brilliantmessaging.*`.
       - Metric names `"bmf.outbound.topology.provisioning.{attempts,failures,duration}"` and tag
         names `"bmf.outbound.transport.name"`, `"bmf.outbound.outcome"` → `brilliantmessaging.*`.
-- [ ] Internal infrastructure renamed: strong-name key `BMF.snk` → `BrilliantMessaging.snk` (and
+- [x] Internal infrastructure renamed: strong-name key `BMF.snk` → `BrilliantMessaging.snk` (and
       its `.gitignore` entry); `.idea/.idea.BMF/` → `.idea/.idea.BrilliantMessaging/`.
-- [ ] CI/release workflows updated: `.slnx` references in `ci.yml` and `nuget-release.yml`, and the
+- [x] CI/release workflows updated: `.slnx` references in `ci.yml` and `nuget-release.yml`, and the
       decoded key **file** name `BMF.snk` → `BrilliantMessaging.snk` in `nuget-release.yml`. The
       GitHub Actions **secret** `BMF_SNK` keeps its current name — leave the `secrets.BMF_SNK`
       reference (and the `BMF_SNK` env var) unchanged.
-- [ ] README branding (`README.md`, `README.nuget.md`): hero wordmark/alt text spells out
+- [x] README branding (`README.md`, `README.nuget.md`): hero wordmark/alt text spells out
       "Brilliant Messaging"; the `<em>The Brilliant Messaging Framework</em>` subtitle line is
       removed; package names and example code (`Bmf.Core`, `.AddBmf()`, `.AddBmfInstrumentation()`,
       `BmfUuid`, the `Bmf.Outbound`/`Bmf.Inbound` OTel source names) updated to the new names.
-- [ ] Design assets updated: `design/hero-light.svg`/`design/hero-dark.svg` wordmark text spells
+- [x] Design assets updated: `design/hero-light.svg`/`design/hero-dark.svg` wordmark text spells
       out "Brilliant Messaging"; the `design/logo/` vite project (`index.html`, `concept2.html`,
       `concept3.html`, `downloads.html`, `src/`, `package.json` `"name"`/`"description"`) updated,
       with the "BMF — The Brilliant Messaging Framework · logo exploration" footer removed. Rename
       the `design/logo/src/logos/bmf-*.svg` files and `design/bmf_wallet.png` to a
       `brilliantmessaging-*` prefix and fix references to them.
-- [ ] Documentation/prose updated: `AGENTS.md`, `tests/AGENTS.md`, and XML doc comments that name
+- [x] Documentation/prose updated: `AGENTS.md`, `tests/AGENTS.md`, and XML doc comments that name
       "BMF" use "Brilliant Messaging".
-- [ ] `ai-plans/` is **not** modified — historical plans are immutable records.
-- [ ] `dotnet build BrilliantMessaging.slnx --configuration Release` succeeds with no warnings, and
+- [x] `ai-plans/` is **not** modified — historical plans are immutable records.
+- [x] `dotnet build BrilliantMessaging.slnx --configuration Release` succeeds with no warnings, and
       all automated tests pass.
-- [ ] No `bmf` tokens remain outside `ai-plans/` **except the two intentionally retained ones** —
+- [x] No `bmf` tokens remain outside `ai-plans/` **except the two intentionally retained ones** —
       the `Connectedness/BMF` repo URL and the `BMF_SNK` CI secret:
       `git grep -inE 'bmf' -- . ':(exclude)ai-plans/*' | grep -viE 'Connectedness/BMF|BMF_SNK'`
       returns nothing (257 files currently match the unfiltered grep).
