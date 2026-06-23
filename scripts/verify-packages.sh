@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Verifies that every NuGet package in the given directory embeds the package
-# icon at its root and declares the expected tags. Symbol packages (.snupkg)
-# are ignored. Exits non-zero if any package is missing the icon or tags, so it
-# can guard the pack job without publishing anything.
+# icon and README at its root and declares the expected tags. Symbol packages
+# (.snupkg) are ignored. Exits non-zero if any package is missing the icon,
+# README, or tags, so it can guard the pack job without publishing anything.
 set -uo pipefail
 
 package_dir="${1:-artifacts/packages}"
 expected_icon='logo-128x128.png'
+expected_readme='README.md'
 expected_tags=(messaging communication rabbitmq amqp bmf cloudevents)
 
 shopt -s nullglob
@@ -23,8 +24,19 @@ for package in "${packages[@]}"; do
   name="$(basename "$package")"
   package_ok=1
 
-  if ! unzip -Z1 "$package" | grep -qx "$expected_icon"; then
+  # List the archive once into a variable rather than piping into `grep -q`.
+  # Under `pipefail`, `grep -q` closes the pipe on its first match and `unzip`
+  # then dies with SIGPIPE, whose non-zero status would propagate and spuriously
+  # report a missing file.
+  listing="$(unzip -Z1 "$package")"
+
+  if ! grep -qx "$expected_icon" <<< "$listing"; then
     echo "FAIL: $name is missing '$expected_icon' at the package root"
+    package_ok=0
+  fi
+
+  if ! grep -qx "$expected_readme" <<< "$listing"; then
+    echo "FAIL: $name is missing '$expected_readme' at the package root"
     package_ok=0
   fi
 
