@@ -1,4 +1,4 @@
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// The output of an <see cref="IPayloadCodec" />: the encoded message bytes together with the content type that

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Cross-checks outbound targets against the message-contract registry. Each transport runs this while validating

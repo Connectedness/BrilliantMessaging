@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// The default immutable <see cref="IMessageContractRegistry" />, built from the type-to-discriminator,

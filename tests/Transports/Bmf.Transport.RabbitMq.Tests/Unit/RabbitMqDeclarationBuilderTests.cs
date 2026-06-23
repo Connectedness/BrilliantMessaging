@@ -1,10 +1,10 @@
 using System;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
+using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using RabbitMQ.Client;
 using Xunit;
 
-namespace Bmf.Transport.RabbitMq.Tests.Unit;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
 
 public sealed class RabbitMqDeclarationBuilderTests
 {

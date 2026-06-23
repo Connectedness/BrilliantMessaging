@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Outbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Outbound;
 using RabbitMQ.Client;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// Configures a single RabbitMQ topology. The builder exposes the shared broker-resource surface
@@ -18,9 +18,9 @@ namespace Bmf.Transport.RabbitMq;
 /// (<see cref="Consume" />, the inbound <see cref="ChannelGroup(string,int,ushort,ushort)" /> overload,
 /// <see cref="ConfigureInboundPipeline" />, <see cref="UseDeserializationMiddleware{TMiddleware}" />, and
 /// <see cref="WithShutdownTimeout" />). The full surface is available through
-/// <see cref="RabbitMqTransportModule.AddRabbitMqTopology(BmfBuilder, Action{RabbitMqTopologyBuilder})" />;
-/// <see cref="RabbitMqTransportModule.AddRabbitMqOutboundTopology(BmfBuilder, Action{IRabbitMqOutboundTopologyBuilder})" />
-/// and <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(BmfBuilder, Action{IRabbitMqInboundTopologyBuilder})" />
+/// <see cref="RabbitMqTransportModule.AddRabbitMqTopology(BrilliantMessagingBuilder, Action{RabbitMqTopologyBuilder})" />;
+/// <see cref="RabbitMqTransportModule.AddRabbitMqOutboundTopology(BrilliantMessagingBuilder, Action{IRabbitMqOutboundTopologyBuilder})" />
+/// and <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(BrilliantMessagingBuilder, Action{IRabbitMqInboundTopologyBuilder})" />
 /// hand out this builder through the direction-specific interfaces to constrain the configuration surface
 /// at compile time.
 /// </summary>

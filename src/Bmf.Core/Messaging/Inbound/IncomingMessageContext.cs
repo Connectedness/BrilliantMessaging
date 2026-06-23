@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Carries the per-message state through the inbound pipeline: the raw transport message, the endpoint that

@@ -1,4 +1,4 @@
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// Identifies how an outbound target routes published messages to its exchange, matching the exchange type

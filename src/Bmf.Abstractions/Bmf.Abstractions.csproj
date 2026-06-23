@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <PackageId>Bmf.Abstractions</PackageId>
-    <Description>The Brilliant Messaging Framework – Shared abstractions for BMF messaging and cloud event contracts.</Description>
+    <Description>Brilliant Messaging shared abstractions for messaging and cloud event contracts.</Description>
   </PropertyGroup>
 
   <ItemGroup>

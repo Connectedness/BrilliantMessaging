@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Bmf.Transport.RabbitMq.Tests.Unit;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
 
 public sealed class RabbitMqInboundMessageInspectorChainTests
 {

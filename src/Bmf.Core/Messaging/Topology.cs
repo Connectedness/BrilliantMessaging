@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// The immutable base for a compiled transport topology. It stores outbound targets indexed by name and message

@@ -1,7 +1,7 @@
 using System;
-using Bmf.Abstractions;
+using BrilliantMessaging.Abstractions;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Carries the call-site-owned CloudEvents attributes for a publish operation.

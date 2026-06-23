@@ -2,12 +2,12 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Inbound middleware that opens the consumer-hop span and records inbound process metrics, annotated with the
 /// OpenTelemetry <c>messaging.*</c> semantic conventions (see
-/// <see cref="Bmf.Core.Messaging.MessagingSemanticConventions" />). It extracts W3C trace context from the transport
+/// <see cref="BrilliantMessaging.Core.Messaging.MessagingSemanticConventions" />). It extracts W3C trace context from the transport
 /// headers, parents the <see cref="ActivityKind.Consumer" /> activity to the producer span carried over the broker,
 /// and makes that activity current while acknowledgement, deserialization, user middleware, and the handler run.
 /// Register it outermost so handler-initiated publishes automatically become children of the consumer span and so the
@@ -24,7 +24,7 @@ namespace Bmf.Core.Messaging.Inbound;
 /// </remarks>
 public sealed class InboundDiagnosticsMiddleware : IMessageMiddleware
 {
-    private const string ProcessActivityName = "bmf.inbound.process";
+    private const string ProcessActivityName = "brilliantmessaging.inbound.process";
 
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="context" /> or <paramref name="next" /> is <see langword="null" />.</exception>

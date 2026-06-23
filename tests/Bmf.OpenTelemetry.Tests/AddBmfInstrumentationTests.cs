@@ -2,24 +2,24 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 using FluentAssertions;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Xunit;
 
-namespace Bmf.OpenTelemetry.Tests;
+namespace BrilliantMessaging.OpenTelemetry.Tests;
 
-public sealed class AddBmfInstrumentationTests
+public sealed class AddBrilliantMessagingInstrumentationTests
 {
     [Fact]
-    public void AddBmfInstrumentation_OnTracerProvider_CollectsOutboundAndInboundSpans()
+    public void AddBrilliantMessagingInstrumentation_OnTracerProvider_CollectsOutboundAndInboundSpans()
     {
         var exported = new List<Activity>();
         using var provider = Sdk.CreateTracerProviderBuilder()
-           .AddBmfInstrumentation()
+           .AddBrilliantMessagingInstrumentation()
            .AddInMemoryExporter(exported)
            .Build();
 
@@ -36,12 +36,12 @@ public sealed class AddBmfInstrumentationTests
     }
 
     [Fact]
-    public void AddBmfInstrumentation_OnMeterProvider_CollectsOutboundAndInboundInstruments()
+    public void AddBrilliantMessagingInstrumentation_OnMeterProvider_CollectsOutboundAndInboundInstruments()
     {
         var exported = new List<Metric>();
         using var provider = Sdk
            .CreateMeterProviderBuilder()
-           .AddBmfInstrumentation()
+           .AddBrilliantMessagingInstrumentation()
            .AddInMemoryExporter(exported)
            .Build();
 
@@ -58,17 +58,17 @@ public sealed class AddBmfInstrumentationTests
     }
 
     [Fact]
-    public void AddBmfInstrumentation_OnNullTracerProviderBuilder_Throws()
+    public void AddBrilliantMessagingInstrumentation_OnNullTracerProviderBuilder_Throws()
     {
-        var act = static () => ((TracerProviderBuilder) null!).AddBmfInstrumentation();
+        var act = static () => ((TracerProviderBuilder) null!).AddBrilliantMessagingInstrumentation();
 
         act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
-    public void AddBmfInstrumentation_OnNullMeterProviderBuilder_Throws()
+    public void AddBrilliantMessagingInstrumentation_OnNullMeterProviderBuilder_Throws()
     {
-        var act = static () => ((MeterProviderBuilder) null!).AddBmfInstrumentation();
+        var act = static () => ((MeterProviderBuilder) null!).AddBrilliantMessagingInstrumentation();
 
         act.Should().Throw<ArgumentNullException>();
     }

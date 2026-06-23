@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 public sealed class InboundMessageInspectorChainTests
 {

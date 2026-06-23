@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Thrown when a named outbound target exists but is typed for a different message type than the one requested.

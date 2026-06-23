@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Bmf.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
 /// The compiled, runtime form of a RabbitMQ consumer: the queue, inspector chain, channel group, body-copy behaviour,

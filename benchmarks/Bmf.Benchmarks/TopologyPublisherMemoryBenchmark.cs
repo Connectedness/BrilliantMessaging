@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
-using Bmf.Abstractions;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Abstractions;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Benchmarks;
+namespace BrilliantMessaging.Benchmarks;
 
 [MemoryDiagnoser]
 public class TopologyPublisherMemoryBenchmark
@@ -48,7 +48,7 @@ public class TopologyPublisherMemoryBenchmark
 
     private sealed record BenchmarkMessage(string Value) : ICloudEvent
     {
-        Guid ICloudEvent.Id { get; } = BmfUuid.NewId();
+        Guid ICloudEvent.Id { get; } = BrilliantMessagingUuid.NewId();
 
         DateTimeOffset ICloudEvent.Time { get; } = DateTimeOffset.UtcNow;
 

@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Describes a registered inbound endpoint: the binding of a transport source and CloudEvents discriminator to

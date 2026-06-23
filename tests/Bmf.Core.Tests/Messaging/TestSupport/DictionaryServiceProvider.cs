@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Bmf.Core.Tests.Messaging.TestSupport;
+namespace BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 
 public sealed class DictionaryServiceProvider : IServiceProvider
 {

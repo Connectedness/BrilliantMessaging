@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Core.Tests.Messaging.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 using FluentAssertions;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 /// <summary>
 /// Verifies that publish diagnostics are owned by the target layer and labelled with the OpenTelemetry
@@ -19,7 +19,7 @@ namespace Bmf.Core.Tests.Messaging;
 [Collection("Diagnostics")]
 public sealed class OutboundTargetDiagnosticsTests
 {
-    private const string PublishActivityName = "bmf.outbound.publish";
+    private const string PublishActivityName = "brilliantmessaging.outbound.publish";
 
     private const string Destination = "recording-exchange";
 

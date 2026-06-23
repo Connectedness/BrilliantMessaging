@@ -1,7 +1,7 @@
 using System;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
 
-namespace Bmf.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
 /// An immutable declaration of a single handler within a consumer, produced by <see cref="RabbitMqInboundConsumerBuilder" />.

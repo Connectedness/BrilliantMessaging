@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Handles inbound messages of type <typeparamref name="TMessage" />. This is the application-level extension

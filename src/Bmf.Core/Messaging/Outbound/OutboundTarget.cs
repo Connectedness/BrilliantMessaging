@@ -2,9 +2,9 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Abstractions;
+using BrilliantMessaging.Abstractions;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Represents a destination a message is published to (for example a RabbitMQ exchange). It is the
@@ -20,7 +20,7 @@ namespace Bmf.Core.Messaging.Outbound;
 /// </remarks>
 public abstract class OutboundTarget
 {
-    private const string PublishActivityName = "bmf.outbound.publish";
+    private const string PublishActivityName = "brilliantmessaging.outbound.publish";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OutboundTarget" /> class.

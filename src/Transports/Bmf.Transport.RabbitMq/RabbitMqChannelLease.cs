@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// A lease over a pooled RabbitMQ channel. Use <see cref="Channel" /> while the lease is held and dispose the

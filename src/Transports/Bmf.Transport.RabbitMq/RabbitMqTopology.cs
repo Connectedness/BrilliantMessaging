@@ -5,14 +5,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Outbound;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// The compiled RabbitMQ topology. It extends the Core <see cref="Topology" /> with RabbitMQ-specific runtime
@@ -21,14 +21,14 @@ namespace Bmf.Transport.RabbitMq;
 /// connection provider, and the channel source. A topology owns exactly one
 /// <see cref="RabbitMqConnectionProvider" />; register separate topology instances when separate publisher and
 /// consumer connections are wanted, preferably via
-/// <see cref="RabbitMqTransportModule.AddRabbitMqOutboundTopology(BmfBuilder, System.Action{Bmf.Transport.RabbitMq.Outbound.IRabbitMqOutboundTopologyBuilder})" />
-/// and <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(BmfBuilder, System.Action{Bmf.Transport.RabbitMq.Inbound.IRabbitMqInboundTopologyBuilder})" />.
+/// <see cref="RabbitMqTransportModule.AddRabbitMqOutboundTopology(BrilliantMessagingBuilder, System.Action{BrilliantMessaging.Transport.RabbitMq.Outbound.IRabbitMqOutboundTopologyBuilder})" />
+/// and <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(BrilliantMessagingBuilder, System.Action{BrilliantMessaging.Transport.RabbitMq.Inbound.IRabbitMqInboundTopologyBuilder})" />.
 /// </summary>
 public sealed class RabbitMqTopology : Topology, IAsyncDisposable, IDisposable
 {
     /// <summary>
     /// The default name used by
-    /// <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(BmfBuilder, Action{IRabbitMqInboundTopologyBuilder})" />.
+    /// <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(BrilliantMessagingBuilder, Action{IRabbitMqInboundTopologyBuilder})" />.
     /// It deliberately differs from <see cref="Topology.DefaultName" /> so that an outbound topology and an
     /// inbound topology registered without explicit names do not collide: publish call sites resolve the
     /// default topology by <see cref="Topology.DefaultName" />, while inbound topologies are only started via

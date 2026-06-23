@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// The default <see cref="IRabbitMqChannelPool" />. It lazily opens channels up to a bounded maximum, returns

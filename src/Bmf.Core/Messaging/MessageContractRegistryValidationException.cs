@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// Thrown when building a <see cref="MessageContractRegistry" /> fails because the accumulated mappings are

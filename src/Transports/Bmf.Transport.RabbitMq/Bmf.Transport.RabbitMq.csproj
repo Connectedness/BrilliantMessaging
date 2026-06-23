@@ -1,12 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <PackageId>Bmf.Transport.RabbitMq</PackageId>
-    <Description>The Brilliant Messaging Framework – RabbitMQ transport integration for BMF messaging.</Description>
+    <Description>Brilliant Messaging RabbitMQ transport integration.</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Bmf.Core\Bmf.Core.csproj" />
+    <ProjectReference Include="..\..\BrilliantMessaging.Core\BrilliantMessaging.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

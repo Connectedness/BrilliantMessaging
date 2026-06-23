@@ -2,9 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using Bmf.Abstractions;
+using BrilliantMessaging.Abstractions;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// The default <see cref="IMessagePublisher" />. It resolves the outbound target for a message from the topology

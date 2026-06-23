@@ -1,7 +1,7 @@
 using System;
 using RabbitMQ.Client;
 
-namespace Bmf.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
 /// A group of consumer channels that share a prefetch count and consumer dispatch concurrency. Consumers bound

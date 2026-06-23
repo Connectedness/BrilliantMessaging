@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Abstractions;
+namespace BrilliantMessaging.Abstractions;
 
 /// <summary>
 /// Provides construction-time defaults for the call-site-owned attributes of a CloudEvent.
@@ -13,10 +13,10 @@ namespace Bmf.Abstractions;
 public abstract record BaseCloudEvent : ICloudEvent
 {
     /// <summary>
-    /// Gets the identifier of the event, defaulting to a fresh time-ordered <see cref="BmfUuid.NewId" /> captured
+    /// Gets the identifier of the event, defaulting to a fresh time-ordered <see cref="BrilliantMessagingUuid.NewId" /> captured
     /// when the message is constructed. Override the initializer only to adopt an externally supplied id.
     /// </summary>
-    public Guid Id { get; init; } = BmfUuid.NewId();
+    public Guid Id { get; init; } = BrilliantMessagingUuid.NewId();
 
     /// <summary>
     /// Gets the timestamp at which the event occurred, defaulting to <see cref="DateTimeOffset.UtcNow" /> at

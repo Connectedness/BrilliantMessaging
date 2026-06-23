@@ -1,4 +1,4 @@
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// The well-known <see cref="MessageContextKey{T}" /> keys under which CloudEvents data is stored in the inbound

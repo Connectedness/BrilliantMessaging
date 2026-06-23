@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// Encodes and decodes message payloads.

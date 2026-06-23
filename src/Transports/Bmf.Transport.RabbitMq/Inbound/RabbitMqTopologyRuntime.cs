@@ -5,15 +5,15 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace Bmf.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
 /// The active consumer runtime for a RabbitMQ topology that contains inbound endpoints. It opens consumer

@@ -12,14 +12,14 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using Testcontainers.RabbitMq;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using Xunit;
 
-using Bmf.Transport.RabbitMq.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Outbound;
 
-namespace Bmf.Transport.RabbitMq.Tests.Integration;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Integration;
 
 [Collection<RabbitMqCollection>]
 public sealed class RabbitMqPublishingIntegrationTests
@@ -144,7 +144,7 @@ public sealed class RabbitMqPublishingIntegrationTests
             listener.ActivityStarted = activity =>
             {
                 // ReSharper disable once AccessToModifiedClosure -- OK in test scenario
-                if (activity.OperationName == "bmf.outbound.publish" && activity.TraceId == directParentTraceId)
+                if (activity.OperationName == "brilliantmessaging.outbound.publish" && activity.TraceId == directParentTraceId)
                 {
                     directProducerActivity = activity;
                 }
@@ -268,7 +268,7 @@ public sealed class RabbitMqPublishingIntegrationTests
             const string modern = "modern";
             var services = new ServiceCollection();
             services
-               .AddBmf()
+               .AddBrilliantMessaging()
                .UseCloudEvents(options => options.Source = "/tests/rabbitmq")
                .MapMessageContracts(
                     contracts => contracts.Map<RabbitMqPublishMessage>("tests.rabbitmq.publish.canonical")
@@ -514,7 +514,7 @@ public sealed class RabbitMqPublishingIntegrationTests
     }
 
     [Fact]
-    public async Task PublishRawAsync_PublishesCallerOwnedEnvelopeWithoutBmfSerialization()
+    public async Task PublishRawAsync_PublishesCallerOwnedEnvelopeWithoutBrilliantMessagingSerialization()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         {
@@ -554,7 +554,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                .GetRequiredService<Topology>()
                .GetRequiredTarget<RabbitMqPublishMessage>();
 
-            // A payload that is deliberately not the JSON the serializer would produce proving BMF
+            // A payload that is deliberately not the JSON the serializer would produce proving BrilliantMessaging
             // serialization is bypassed, and the envelope is owned entirely by the caller.
             SerializedMessage rawMessage = new (
                 "raw-payload"u8.ToArray(),

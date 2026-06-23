@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// Refines a single message-contract mapping produced by <see cref="MessageContractRegistryBuilder.Map{T}" />

@@ -2,9 +2,9 @@ using System;
 using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 using ImmutableArrayType =
-    System.Collections.Immutable.ImmutableArray<Bmf.Core.Messaging.Inbound.InboundMessageInspectorChainEntry>;
+    System.Collections.Immutable.ImmutableArray<BrilliantMessaging.Core.Messaging.Inbound.InboundMessageInspectorChainEntry>;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Builds an ordered inbound message inspector chain for a consumer.

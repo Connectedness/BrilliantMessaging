@@ -3,17 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 using Xunit;
 
-namespace Bmf.Transport.RabbitMq.Tests.Unit;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
 
 public sealed class RabbitMqTopologyRuntimeTests
 {

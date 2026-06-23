@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 64" fill="none">
-  <!-- BMF — the explicit route mark:  ●────◇────●  -->
+  <!-- Brilliant Messaging — the explicit route mark:  ●────◇────●  -->
   <line x1="28" y1="32" x2="60" y2="32" stroke="#1F2937" stroke-width="7" stroke-linecap="round"/>
   <line x1="100" y1="32" x2="132" y2="32" stroke="#1F2937" stroke-width="7" stroke-linecap="round"/>
   <circle cx="18" cy="32" r="11" fill="#1F2937"/>

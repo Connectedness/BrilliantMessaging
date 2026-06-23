@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 /// <summary>
 /// Groups tests that mutate process-global diagnostics registries

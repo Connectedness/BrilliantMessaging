@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 
-namespace Bmf.Core.Tests.Messaging.TestSupport;
+namespace BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 
 public sealed class EmptyTopologyRegistry : ITopologyRegistry
 {

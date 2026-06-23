@@ -2,12 +2,12 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// The default <see cref="IMessageDeserializer" />. It decodes <see cref="TransportMessage.Body" />
 /// through the configured <see cref="IPayloadCodec" /> into the context's
-/// <see cref="IncomingMessageContext.MessageType" />. Because BMF emits and reads CloudEvents in
+/// <see cref="IncomingMessageContext.MessageType" />. Because BrilliantMessaging emits and reads CloudEvents in
 /// binary content mode (the event data is the transport body), this is correct for both CloudEvents
 /// and raw deliveries, so the default inbound path needs no CloudEvents type. Endpoints that only
 /// switch wire codecs swap <see cref="IPayloadCodec" /> and keep this deserializer; genuinely

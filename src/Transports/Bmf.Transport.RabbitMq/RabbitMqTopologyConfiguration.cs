@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using RabbitMQ.Client;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
 
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Outbound;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// The compiled-from configuration of a single RabbitMQ topology. A topology owns one broker connection and can

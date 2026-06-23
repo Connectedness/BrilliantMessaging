@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Bmf.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
 /// The compiled inspector chain for a RabbitMQ inbound consumer.

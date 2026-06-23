@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// Compares <see cref="ReadOnlyMemory{T}" /> of <see cref="byte" /> by content rather than by reference, so two

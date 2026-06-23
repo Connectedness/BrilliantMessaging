@@ -1,4 +1,4 @@
-namespace Bmf.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
 /// An immutable declaration of an inbound channel group, produced by the topology builder.

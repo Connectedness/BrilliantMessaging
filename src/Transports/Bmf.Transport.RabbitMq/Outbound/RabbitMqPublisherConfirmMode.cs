@@ -1,4 +1,4 @@
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// Configures RabbitMQ publisher confirmations for every channel in a channel group.
@@ -19,7 +19,7 @@ public enum RabbitMqPublisherConfirmMode
 
     /// <summary>
     /// Waits for a broker confirmation for each publish, surfacing nacks and unroutable returns as a
-    /// <see cref="Bmf.Core.Messaging.Outbound.MessageDeliveryException" />. Required for mandatory routing.
+    /// <see cref="BrilliantMessaging.Core.Messaging.Outbound.MessageDeliveryException" />. Required for mandatory routing.
     /// </summary>
     Confirms = 1
 }

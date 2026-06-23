@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 using RabbitMQ.Client;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// Fluent builder for a RabbitMQ exchange declaration. It collects the exchange name, type, declare mode,

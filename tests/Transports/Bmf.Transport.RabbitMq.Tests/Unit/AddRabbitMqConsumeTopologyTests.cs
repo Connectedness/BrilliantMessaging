@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RabbitMQ.Client;
 using Xunit;
 
-namespace Bmf.Transport.RabbitMq.Tests.Unit;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
 
 public sealed class AddRabbitMqConsumeTopologyTests
 {
@@ -69,7 +69,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
     public void AddRabbitMqTopology_RejectsDuplicateInboundTopologyNames()
     {
         var services = new ServiceCollection();
-        var builder = services.AddBmf();
+        var builder = services.AddBrilliantMessaging();
         builder.AddRabbitMqTopology("shared", static _ => { });
 
         var act = () => builder.AddRabbitMqTopology("shared", static _ => { });
@@ -131,7 +131,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
     {
         var services = new ServiceCollection();
         services
-           .AddBmf()
+           .AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests/rabbitmq")
            .MapMessageContracts(
                 contracts => contracts.Map<ValidationMessageA>("tests.current").WithInboundAlias("tests.legacy")
@@ -305,7 +305,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
         var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Contain(
-            $"Inbound handler '{typeof(ValidationMessageAHandler)}' for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' is not registered."
+            $"Inbound handler '{typeof(ValidationMessageAHandler)}' for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' is not registered."
         );
     }
 
@@ -757,7 +757,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
         var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Contain(
-            $"Inbound deserializer '{typeof(RawDeserializer)}' for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' is not registered."
+            $"Inbound deserializer '{typeof(RawDeserializer)}' for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' is not registered."
         );
     }
 
@@ -795,7 +795,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
     {
         var services = new ServiceCollection();
         services
-           .AddBmf()
+           .AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests/rabbitmq")
            .MapMessageContracts(contracts => contracts.MapOutbound<ValidationMessageA>("tests.outbound-only"))
            .AddRabbitMqTopology(
@@ -816,7 +816,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
         act.Should().Throw<TopologyValidationException>()
            .Which.ValidationErrors.Should().Contain(
-                "Inbound endpoint for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' has no inbound CloudEvents discriminators. Use MessageContractRegistryBuilder.Map<T>(...) instead of MapOutbound<T>(...)."
+                "Inbound endpoint for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' has no inbound CloudEvents discriminators. Use MessageContractRegistryBuilder.Map<T>(...) instead of MapOutbound<T>(...)."
             );
     }
 

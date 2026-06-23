@@ -1,4 +1,4 @@
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// Represents the abstraction of the Build method on a fluent builder.

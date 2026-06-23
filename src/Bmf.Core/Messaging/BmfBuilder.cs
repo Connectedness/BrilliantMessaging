@@ -1,30 +1,30 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
-/// The fluent entry point for configuring BMF after <see cref="BmfServiceCollectionExtensions.AddBmf" />. It
+/// The fluent entry point for configuring BrilliantMessaging after <see cref="BrilliantMessagingServiceCollectionExtensions.AddBrilliantMessaging" />. It
 /// exposes the service collection, the message-contract registry builder, and the topology catalog so that the
 /// core and the transport packages can layer their registrations onto a single shared configuration.
 /// </summary>
 /// <remarks>
-/// The builder is returned by <see cref="BmfServiceCollectionExtensions.AddBmf" /> and threaded through the
+/// The builder is returned by <see cref="BrilliantMessagingServiceCollectionExtensions.AddBrilliantMessaging" /> and threaded through the
 /// transport-specific extension methods (for example the RabbitMQ topology configuration). Calling
-/// <see cref="BmfServiceCollectionExtensions.AddBmf" /> more than once returns a builder over the same underlying registry and catalog, so
+/// <see cref="BrilliantMessagingServiceCollectionExtensions.AddBrilliantMessaging" /> more than once returns a builder over the same underlying registry and catalog, so
 /// configuration accumulates rather than being replaced.
 /// </remarks>
-public sealed class BmfBuilder
+public sealed class BrilliantMessagingBuilder
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="BmfBuilder" /> class.
+    /// Initializes a new instance of the <see cref="BrilliantMessagingBuilder" /> class.
     /// </summary>
-    /// <param name="services">The service collection BMF registers its services into.</param>
+    /// <param name="services">The service collection BrilliantMessaging registers its services into.</param>
     /// <param name="messageContracts">The shared message-contract registry builder.</param>
     /// <param name="topologies">The shared catalog of topology registrations.</param>
     /// <exception cref="ArgumentNullException">Thrown when any argument is <see langword="null" />.</exception>
-    public BmfBuilder(
+    public BrilliantMessagingBuilder(
         IServiceCollection services,
         MessageContractRegistryBuilder messageContracts,
         TopologyRegistrationCatalog topologies
@@ -36,7 +36,7 @@ public sealed class BmfBuilder
     }
 
     /// <summary>
-    /// Gets the service collection BMF registers its services into.
+    /// Gets the service collection BrilliantMessaging registers its services into.
     /// </summary>
     public IServiceCollection Services { get; }
 
@@ -54,9 +54,9 @@ public sealed class BmfBuilder
     /// Maps the message contracts (type-to-discriminator mappings) used by the framework.
     /// </summary>
     /// <param name="configure">A callback that adds mappings to the shared <see cref="MessageContracts" /> builder.</param>
-    /// <returns>The same <see cref="BmfBuilder" /> instance for chaining.</returns>
+    /// <returns>The same <see cref="BrilliantMessagingBuilder" /> instance for chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure" /> is <see langword="null" />.</exception>
-    public BmfBuilder MapMessageContracts(Action<MessageContractRegistryBuilder> configure)
+    public BrilliantMessagingBuilder MapMessageContracts(Action<MessageContractRegistryBuilder> configure)
     {
         if (configure is null)
         {
@@ -72,9 +72,9 @@ public sealed class BmfBuilder
     /// importantly the <see cref="CloudEventsOptions.Source" />).
     /// </summary>
     /// <param name="configure">A callback that configures the options.</param>
-    /// <returns>The same <see cref="BmfBuilder" /> instance for chaining.</returns>
+    /// <returns>The same <see cref="BrilliantMessagingBuilder" /> instance for chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure" /> is <see langword="null" />.</exception>
-    public BmfBuilder UseCloudEvents(Action<CloudEventsOptions> configure)
+    public BrilliantMessagingBuilder UseCloudEvents(Action<CloudEventsOptions> configure)
     {
         if (configure is null)
         {

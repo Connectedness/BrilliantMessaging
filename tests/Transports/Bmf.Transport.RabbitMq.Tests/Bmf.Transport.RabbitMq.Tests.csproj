@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Bmf.Core\Bmf.Core.csproj" />
-    <ProjectReference Include="..\..\..\src\Transports\Bmf.Transport.RabbitMq\Bmf.Transport.RabbitMq.csproj" />
+    <ProjectReference Include="..\..\..\src\BrilliantMessaging.Core\BrilliantMessaging.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Transports\BrilliantMessaging.Transport.RabbitMq\BrilliantMessaging.Transport.RabbitMq.csproj" />
   </ItemGroup>
 
   <ItemGroup>

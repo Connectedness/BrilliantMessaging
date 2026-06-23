@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Bmf.Core\Bmf.Core.csproj" />
+    <ProjectReference Include="..\..\src\BrilliantMessaging.Core\BrilliantMessaging.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

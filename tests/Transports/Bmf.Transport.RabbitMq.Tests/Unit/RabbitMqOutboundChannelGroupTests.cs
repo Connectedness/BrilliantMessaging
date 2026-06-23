@@ -5,12 +5,12 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Outbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,7 +19,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
 using Xunit;
 
-namespace Bmf.Transport.RabbitMq.Tests.Unit;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
 
 public sealed class RabbitMqOutboundChannelGroupTests
 {
@@ -826,7 +826,7 @@ public sealed class RabbitMqOutboundChannelGroupTests
         listener.Sample = static (ref _) => ActivitySamplingResult.AllData;
         listener.ActivityStarted = activity =>
         {
-            if (activity.OperationName == "bmf.outbound.publish" &&
+            if (activity.OperationName == "brilliantmessaging.outbound.publish" &&
                 // ReSharper disable AccessToDisposedClosure -- activity is listend to before disposal
                 activity.TraceId == parentActivity.TraceId &&
                 activity.ParentSpanId == parentActivity.SpanId)
@@ -1043,7 +1043,7 @@ public sealed class RabbitMqOutboundChannelGroupTests
         );
         var services = new ServiceCollection();
         services
-           .AddBmf()
+           .AddBrilliantMessaging()
            .AddRabbitMqTopology(
                 t =>
                 {

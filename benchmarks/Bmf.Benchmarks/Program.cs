@@ -1,6 +1,6 @@
 using BenchmarkDotNet.Running;
 
-namespace Bmf.Benchmarks;
+namespace BrilliantMessaging.Benchmarks;
 
 public static class Program
 {

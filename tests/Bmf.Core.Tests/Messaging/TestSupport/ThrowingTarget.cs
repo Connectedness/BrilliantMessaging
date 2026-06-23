@@ -1,10 +1,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Core.Tests.Messaging.TestSupport;
+namespace BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 
 public sealed class ThrowingTarget<TMessage> : OutboundTarget<TMessage>
 {

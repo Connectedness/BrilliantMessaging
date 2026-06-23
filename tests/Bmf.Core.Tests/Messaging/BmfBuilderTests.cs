@@ -1,27 +1,27 @@
 using System;
 using System.Linq;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Core.Tests.Messaging.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
-public sealed class BmfBuilderTests
+public sealed class BrilliantMessagingBuilderTests
 {
     [Fact]
-    public void AddBmf_ReturnsBuilderOverSharedConfigurationAndRegistersCoreServicesIdempotently()
+    public void AddBrilliantMessaging_ReturnsBuilderOverSharedConfigurationAndRegistersCoreServicesIdempotently()
     {
         ServiceCollection services = new ();
 
-        var first = services.AddBmf()
+        var first = services.AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests/core")
            .MapMessageContracts(contracts => contracts.Map<SampleMessage>("tests.sample"));
-        var second = services.AddBmf();
+        var second = services.AddBrilliantMessaging();
 
         second.Services.Should().BeSameAs(services);
         second.MessageContracts.Should().BeSameAs(first.MessageContracts);
@@ -46,9 +46,9 @@ public sealed class BmfBuilderTests
     }
 
     [Fact]
-    public void AddBmf_RejectsNullServices()
+    public void AddBrilliantMessaging_RejectsNullServices()
     {
-        var act = () => BmfServiceCollectionExtensions.AddBmf(null!);
+        var act = () => BrilliantMessagingServiceCollectionExtensions.AddBrilliantMessaging(null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("services");
     }
@@ -59,11 +59,11 @@ public sealed class BmfBuilderTests
         ServiceCollection services = new ();
         MessageContractRegistryBuilder contracts = new ();
         TopologyRegistrationCatalog topologies = new ();
-        BmfBuilder builder = new (services, contracts, topologies);
+        BrilliantMessagingBuilder builder = new (services, contracts, topologies);
 
-        var nullServices = () => new BmfBuilder(null!, contracts, topologies);
-        var nullContracts = () => new BmfBuilder(services, null!, topologies);
-        var nullTopologies = () => new BmfBuilder(services, contracts, null!);
+        var nullServices = () => new BrilliantMessagingBuilder(null!, contracts, topologies);
+        var nullContracts = () => new BrilliantMessagingBuilder(services, null!, topologies);
+        var nullTopologies = () => new BrilliantMessagingBuilder(services, contracts, null!);
         var nullMap = () => builder.MapMessageContracts(null!);
         var nullCloudEvents = () => builder.UseCloudEvents(null!);
 

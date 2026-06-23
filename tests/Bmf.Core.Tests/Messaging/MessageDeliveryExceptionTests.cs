@@ -1,9 +1,9 @@
 using System;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 using FluentAssertions;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 public sealed class MessageDeliveryExceptionTests
 {

@@ -1,4 +1,4 @@
-namespace Bmf.Transport.RabbitMq.Tests.TestSupport;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 
 public static class DockerImages
 {

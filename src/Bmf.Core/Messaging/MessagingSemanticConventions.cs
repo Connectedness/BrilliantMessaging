@@ -1,10 +1,10 @@
 using System;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
-/// The OpenTelemetry messaging semantic-convention attribute names and well-known values that BMF stamps onto
+/// The OpenTelemetry messaging semantic-convention attribute names and well-known values that BrilliantMessaging stamps onto
 /// every messaging span and metric, together with the helpers that map a delivery outcome to the bounded
 /// <see cref="ErrorType" /> vocabulary. Transports reuse these constants so the producer and consumer paths label
 /// their telemetry identically and generic tooling (Jaeger, Tempo, Grafana, Datadog, Azure Monitor) classifies the
@@ -23,9 +23,9 @@ namespace Bmf.Core.Messaging;
 /// <see href="https://github.com/open-telemetry/semantic-conventions/tree/v1.42.0/docs/messaging" />.
 /// </para>
 /// <para>
-/// Only the standardized attribute <em>names</em> are adopted; <c>Bmf.Core</c> takes no dependency on any
-/// OpenTelemetry package. The optional <c>Bmf.OpenTelemetry</c> integration package wires the <c>Bmf.Outbound</c>
-/// and <c>Bmf.Inbound</c> sources and meters into a <c>TracerProvider</c>/<c>MeterProvider</c>.
+/// Only the standardized attribute <em>names</em> are adopted; <c>BrilliantMessaging.Core</c> takes no dependency on any
+/// OpenTelemetry package. The optional <c>BrilliantMessaging.OpenTelemetry</c> integration package wires the <c>BrilliantMessaging.Outbound</c>
+/// and <c>BrilliantMessaging.Inbound</c> sources and meters into a <c>TracerProvider</c>/<c>MeterProvider</c>.
 /// </para>
 /// </remarks>
 public static class MessagingSemanticConventions

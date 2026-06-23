@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// An immutable outbound target declaration for a fanout exchange (broadcast to all bound queues).

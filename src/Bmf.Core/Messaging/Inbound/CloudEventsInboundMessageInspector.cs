@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Abstractions;
+using BrilliantMessaging.Abstractions;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// The default <see cref="IInboundMessageInspector" />. It reads the CloudEvents binary-content-mode header set

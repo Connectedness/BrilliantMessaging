@@ -1,6 +1,6 @@
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 
-namespace Bmf.Transport.RabbitMq.Tests.TestSupport;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 
 /// <summary>
 /// Test-only convenience for compiling a builder through <see cref="IBuildable{TResult}" />.

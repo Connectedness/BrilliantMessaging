@@ -1,18 +1,18 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// The shared <see cref="System.Diagnostics" /> primitives for the inbound path: the activity source, the meter,
 /// and the process instruments. Subscribe to <see cref="ActivitySourceName" /> and <see cref="MeterName" /> to
 /// observe the framework's inbound consumer-hop telemetry, and use
-/// <see cref="Bmf.Core.Messaging.Outbound.OutboundDiagnostics" /> for the corresponding producer-hop telemetry.
+/// <see cref="BrilliantMessaging.Core.Messaging.Outbound.OutboundDiagnostics" /> for the corresponding producer-hop telemetry.
 /// </summary>
 /// <remarks>
 /// The consumer span is annotated with the OpenTelemetry <c>messaging.*</c> semantic conventions defined in
-/// <see cref="Bmf.Core.Messaging.MessagingSemanticConventions" /> (pinned to
-/// <see cref="Bmf.Core.Messaging.MessagingSemanticConventions.SemanticConventionsVersion" />):
+/// <see cref="BrilliantMessaging.Core.Messaging.MessagingSemanticConventions" /> (pinned to
+/// <see cref="BrilliantMessaging.Core.Messaging.MessagingSemanticConventions.SemanticConventionsVersion" />):
 /// <c>messaging.system</c>, <c>messaging.operation.type</c>=<c>process</c> (and <c>messaging.operation.name</c>),
 /// <c>messaging.destination.name</c> (the consumed source), <c>messaging.rabbitmq.destination.routing_key</c> when
 /// present, <c>messaging.message.id</c>, <c>messaging.message.body.size</c>, and <c>error.type</c> on failure. The
@@ -25,14 +25,14 @@ public static class InboundDiagnostics
     /// <summary>
     /// The name of the activity source for inbound telemetry.
     /// </summary>
-    public const string ActivitySourceName = "Bmf.Inbound";
+    public const string ActivitySourceName = "BrilliantMessaging.Inbound";
 
     /// <summary>
     /// The name of the meter for inbound telemetry. It currently equals <see cref="ActivitySourceName" />, but is a
     /// separate constant so the meter name can diverge later without touching subscribers (such as the
-    /// <c>Bmf.OpenTelemetry</c> registration package).
+    /// <c>BrilliantMessaging.OpenTelemetry</c> registration package).
     /// </summary>
-    public const string MeterName = "Bmf.Inbound";
+    public const string MeterName = "BrilliantMessaging.Inbound";
 
     /// <summary>
     /// The activity source that emits inbound consumer activities.

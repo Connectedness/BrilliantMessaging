@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// A registry that exposes exactly one topology under <see cref="Topology.DefaultName" />. It is primarily useful

@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// The immutable base for routing-key-based outbound target declarations (direct and topic exchanges), adding a

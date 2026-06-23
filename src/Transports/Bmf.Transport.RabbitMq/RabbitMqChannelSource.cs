@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// Opens channels on a topology's connection and validates, once, that the topology's worst-case channel count

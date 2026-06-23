@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 using FluentAssertions;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 public sealed class MessageContractRegistryTests
 {
@@ -53,9 +53,9 @@ public sealed class MessageContractRegistryTests
 
         var exception = act.Should().Throw<MessageContractRegistryValidationException>().Which;
         exception.ValidationErrors.Should().Equal(
-            "CloudEvents discriminator 'registry.shared' maps to multiple message types: 'Bmf.Core.Tests.Messaging.MessageContractRegistryTests+OtherRegistryMessage', 'Bmf.Core.Tests.Messaging.MessageContractRegistryTests+RegistryMessage'.",
-            "Message type 'Bmf.Core.Tests.Messaging.MessageContractRegistryTests+OutboundRegistryMessage' registers inbound CloudEvents discriminators but does not accept its canonical discriminator 'registry.outbound' inbound.",
-            "Message type 'Bmf.Core.Tests.Messaging.MessageContractRegistryTests+RegistryMessage' has multiple canonical CloudEvents discriminators: 'registry.second', 'registry.shared'."
+            "CloudEvents discriminator 'registry.shared' maps to multiple message types: 'BrilliantMessaging.Core.Tests.Messaging.MessageContractRegistryTests+OtherRegistryMessage', 'BrilliantMessaging.Core.Tests.Messaging.MessageContractRegistryTests+RegistryMessage'.",
+            "Message type 'BrilliantMessaging.Core.Tests.Messaging.MessageContractRegistryTests+OutboundRegistryMessage' registers inbound CloudEvents discriminators but does not accept its canonical discriminator 'registry.outbound' inbound.",
+            "Message type 'BrilliantMessaging.Core.Tests.Messaging.MessageContractRegistryTests+RegistryMessage' has multiple canonical CloudEvents discriminators: 'registry.second', 'registry.shared'."
         );
     }
 
@@ -71,7 +71,7 @@ public sealed class MessageContractRegistryTests
         exception.ValidationErrors.Should().ContainSingle()
            .Which.Should()
            .Be(
-                "Inbound CloudEvents discriminator 'registry.current' is registered multiple times for message type 'Bmf.Core.Tests.Messaging.MessageContractRegistryTests+RegistryMessage'."
+                "Inbound CloudEvents discriminator 'registry.current' is registered multiple times for message type 'BrilliantMessaging.Core.Tests.Messaging.MessageContractRegistryTests+RegistryMessage'."
             );
     }
 

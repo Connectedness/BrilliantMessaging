@@ -3,10 +3,10 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentAssertions;
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 public sealed class Utf8JsonPayloadCodecTests
 {
@@ -115,7 +115,7 @@ public sealed class Utf8JsonPayloadCodecTests
         act.Should()
            .Throw<InvalidOperationException>()
            .WithMessage(
-                "*JsonTypeInfo metadata for type 'Bmf.Core.Tests.Messaging.SerializerDerivedMessage'*"
+                "*JsonTypeInfo metadata for type 'BrilliantMessaging.Core.Tests.Messaging.SerializerDerivedMessage'*"
             );
     }
 

@@ -1,9 +1,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Abstractions;
+using BrilliantMessaging.Abstractions;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// A lightweight publisher bound to a single topology, returned by <see cref="MessagePublisher.ForTopology" />.

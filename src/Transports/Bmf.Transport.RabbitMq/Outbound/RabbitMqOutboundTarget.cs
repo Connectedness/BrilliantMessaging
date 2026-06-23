@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Abstractions;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Abstractions;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
 
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// The RabbitMQ base for a typed outbound target. It extends the Core <see cref="OutboundTarget{TMessage}" />

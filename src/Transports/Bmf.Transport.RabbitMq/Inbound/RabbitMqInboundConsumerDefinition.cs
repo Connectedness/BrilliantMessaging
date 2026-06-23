@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
 
-namespace Bmf.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
 /// An immutable declaration of a RabbitMQ consumer on a queue, produced by <see cref="RabbitMqInboundConsumerBuilder" />.

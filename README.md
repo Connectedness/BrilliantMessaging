@@ -1,30 +1,28 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="design/hero-dark.svg" />
-    <img alt="BMF — Explicit Messaging. No Magic." src="design/hero-light.svg" width="420" />
+    <img alt="Brilliant Messaging - Explicit Messaging. No Magic." src="design/hero-light.svg" width="420" />
   </picture>
 </p>
-
-<p align="center"><em>The Brilliant Messaging Framework</em></p>
 
 <div align="center">
 
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](https://github.com/Connectedness/BMF/blob/main/LICENSE)
-[![NuGet](https://img.shields.io/nuget/v/Bmf.Core?style=for-the-badge&color=blue)](https://www.nuget.org/packages/Bmf.Core)
+[![NuGet](https://img.shields.io/nuget/v/BrilliantMessaging.Core?style=for-the-badge&color=blue)](https://www.nuget.org/packages/BrilliantMessaging.Core)
 [![Documentation](https://img.shields.io/badge/Docs-Changelog-yellowgreen.svg?style=for-the-badge)](https://github.com/Connectedness/BMF/releases)
 
 </div>
 
-BMF is the messaging framework that lets you keep control! No automatic, obscure generation of broker resources, no hidden dependencies, no magic. Define your topologies, publish messages, and subscribe to them. Promotes CloudEvents. That's it!
+Brilliant Messaging is the messaging framework that lets you keep control! No automatic, obscure generation of broker resources, no hidden dependencies, no magic. Define your topologies, publish messages, and subscribe to them. Promotes CloudEvents. That's it!
 
-## Why BMF?
+## Why Brilliant Messaging?
 
-Most messaging libraries try to be helpful by guessing what broker resources you want and conjuring them into existence at startup. That convenience becomes a liability the first time a typo silently provisions a phantom queue in production. BMF takes the opposite stance:
+Most messaging libraries try to be helpful by guessing what broker resources you want and conjuring them into existence at startup. That convenience becomes a liability the first time a typo silently provisions a phantom queue in production. Brilliant Messaging takes the opposite stance:
 
-- **You declare, BMF provisions — nothing more.** Every exchange, queue, and binding is something you wrote down. There are no surprise resources on your broker.
+- **You declare, Brilliant Messaging provisions — nothing more.** Every exchange, queue, and binding is something you wrote down. There are no surprise resources on your broker.
 - **CloudEvents are first-class, not bolted on.** Messages travel as [CloudEvents v1.0](https://cloudevents.io/) in *binary* content mode over AMQP 0.9.1. Interop is the default, not a serializer you have to remember to configure.
-- **It lives inside the .NET host.** Configuration is a fluent chain off `IServiceCollection`; the runtime is driven by hosted services. If you know `Microsoft.Extensions.DependencyInjection` and `IHost`, you already know where BMF fits.
-- **The whole API is yours.** BMF prefers `public` over `internal` — the extension points it uses internally are the same ones you can reach for. ([Public types, hidden in plain sight.](https://blog.ploeh.dk/2015/09/21/public-types-hidden-in-plain-sight/))
+- **It lives inside the .NET host.** Configuration is a fluent chain off `IServiceCollection`; the runtime is driven by hosted services. If you know `Microsoft.Extensions.DependencyInjection` and `IHost`, you already know where Brilliant Messaging fits.
+- **The whole API is yours.** Brilliant Messaging prefers `public` over `internal` — the extension points it uses internally are the same ones you can reach for. ([Public types, hidden in plain sight.](https://blog.ploeh.dk/2015/09/21/public-types-hidden-in-plain-sight/))
 
 ## Packages
 
@@ -32,24 +30,24 @@ All packages target `netstandard2.0`, so they happily light up on modern .NET as
 
 | Package | What it gives you |
 | --- | --- |
-| `Bmf.Abstractions` | The CloudEvents contracts: `ICloudEvent` and `BaseCloudEvent`. |
-| `Bmf.Core` | Publishing, consuming, message contracts, the topology model, and DI wiring. |
-| `Bmf.Transport.RabbitMq` | The RabbitMQ transport — exchanges, queues, bindings, publishers, and consumers. |
-| `Bmf.OpenTelemetry` | One-line registration of BMF's tracing and metrics with the OpenTelemetry SDK. |
+| `BrilliantMessaging.Abstractions` | The CloudEvents contracts: `ICloudEvent` and `BaseCloudEvent`. |
+| `BrilliantMessaging.Core` | Publishing, consuming, message contracts, the topology model, and DI wiring. |
+| `BrilliantMessaging.Transport.RabbitMq` | The RabbitMQ transport — exchanges, queues, bindings, publishers, and consumers. |
+| `BrilliantMessaging.OpenTelemetry` | One-line registration of Brilliant Messaging tracing and metrics with the OpenTelemetry SDK. |
 
 ## Installation
 
 RabbitMQ is the only transport today, and it transitively references the other two packages. So a single reference is all you need:
 
 ```bash
-dotnet add package Bmf.Transport.RabbitMq
+dotnet add package BrilliantMessaging.Transport.RabbitMq
 ```
 
 Want distributed traces and metrics? Add the optional observability integration
 alongside it — see [Observability](#observability):
 
 ```bash
-dotnet add package Bmf.OpenTelemetry
+dotnet add package BrilliantMessaging.OpenTelemetry
 ```
 
 ## Quick start
@@ -62,25 +60,25 @@ A message *is* a CloudEvent. Inherit `BaseCloudEvent` and you get a retry-stable
 `Id` (a time-ordered UUID) and `Time` for free:
 
 ```csharp
-using Bmf.Abstractions;
+using BrilliantMessaging.Abstractions;
 
 public sealed record OrderPlaced(string OrderId, decimal Total) : BaseCloudEvent;
 ```
 
-### 2. Register BMF and declare a topology
+### 2. Register Brilliant Messaging and declare a topology
 
 Map each message type to a CloudEvents `type` discriminator, then declare exactly
-the broker resources you want. BMF will provision these — and only these — when the
+the broker resources you want. Brilliant Messaging will provision these — and only these — when the
 host starts.
 
 ```csharp
-using Bmf.Core.Messaging;
-using Bmf.Transport.RabbitMq;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Transport.RabbitMq;
 using RabbitMQ.Client;
 
 builder
     .Services
-    .AddBmf()
+    .AddBrilliantMessaging()
     .UseCloudEvents(options => options.Source = "/shop/orders")
     .MapMessageContracts(contracts =>
         contracts.Map<OrderPlaced>("shop.order.placed"))
@@ -105,7 +103,7 @@ builder
     });
 ```
 
-`AddBmf` wires up two hosted services that run when your `IHost` starts — no extra
+`AddBrilliantMessaging` wires up two hosted services that run when your `IHost` starts — no extra
 `StartAsync` calls on your part:
 
 - a **provisioning** service that declares your exchanges, queues, and bindings on
@@ -115,12 +113,12 @@ builder
 
 ### 3. Publish
 
-Inject `IMessagePublisher` and send. With no explicit target, BMF resolves one from
+Inject `IMessagePublisher` and send. With no explicit target, Brilliant Messaging resolves one from
 the topology by message type, and fills in the CloudEvents envelope (`id`, `time`,
 `source`, `type`) from the message and your configured defaults.
 
 ```csharp
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
 public sealed class Checkout(IMessagePublisher publisher)
 {
@@ -135,7 +133,7 @@ A handler implements `IMessageHandler<T>` and is resolved from a fresh DI scope 
 delivery — so injecting scoped dependencies (a `DbContext`, say) just works.
 
 ```csharp
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
 
 public sealed class OrderPlacedHandler : IMessageHandler<OrderPlaced>
 {
@@ -157,12 +155,12 @@ actually doing.
 
 ### Messages and CloudEvents
 
-BMF publishes every message as a CloudEvent v1.0 in **binary** content mode: the
+Brilliant Messaging publishes every message as a CloudEvent v1.0 in **binary** content mode: the
 CloudEvents attributes ride in the AMQP headers and your payload is the raw body.
 The two attributes the *call site* owns — `Id` and `Time` — are captured when the
 message object is constructed and must stay stable across retries; regenerating them
 mid-flight would turn a retry into a brand-new event. `BaseCloudEvent` enforces this
-for you (`Id` defaults to a time-ordered `BmfUuid`, `Time` to `DateTimeOffset.UtcNow`),
+for you (`Id` defaults to a time-ordered `BrilliantMessagingUuid`, `Time` to `DateTimeOffset.UtcNow`),
 but you can implement `ICloudEvent` directly when you need full control. The
 application-wide `source` is set once via `UseCloudEvents`, and is validated at
 startup so a missing or malformed `Source` fails fast rather than at first publish.
@@ -170,7 +168,7 @@ startup so a missing or malformed `Source` fails fast rather than at first publi
 ### Message contracts
 
 A *message contract* maps a .NET type to the CloudEvents `type` discriminator that
-identifies it on the wire. This is the one piece of bookkeeping BMF asks of you, and
+identifies it on the wire. This is the one piece of bookkeeping Brilliant Messaging asks of you, and
 it pays off in evolution-friendliness:
 
 ```csharp
@@ -186,17 +184,17 @@ to a new one — schema evolution without breaking changes.
 
 ### Topologies
 
-A **topology** is the heart of BMF. It is a named bundle of broker resources
+A **topology** is the heart of Brilliant Messaging. It is a named bundle of broker resources
 (exchanges, queues, bindings), publishing targets, and consumers — and it owns
 **exactly one connection to the broker**. Everything declared inside a topology
 shares that connection's lifetime.
 
-That one-connection rule is the lever behind BMF's most important production advice.
+That one-connection rule is the lever behind Brilliant Messaging's most important production advice.
 The [RabbitMQ production checklist](https://www.rabbitmq.com/docs/production-checklist#apps-connection-management)
 recommends separating publishing and consuming onto different connections: when a
 publishing connection gets throttled by broker flow control, a *shared* connection
 would stall consumer acknowledgements at exactly the moment the broker needs
-consumers to drain queues. BMF gives you three entry points to honour this:
+consumers to drain queues. Brilliant Messaging gives you three entry points to honour this:
 
 - `AddRabbitMqTopology` — one topology carrying both publishers and consumers over a
   single shared connection. Ideal for low-traffic services and tests.
@@ -211,7 +209,7 @@ declared, you'll know immediately — not three deploys later.
 ### Publishing
 
 `IMessagePublisher` is your outbound surface. The common call is
-`PublishMessageAsync(message)`: BMF looks up the message type's outbound target in the
+`PublishMessageAsync(message)`: Brilliant Messaging looks up the message type's outbound target in the
 topology, builds the CloudEvent envelope, serializes the payload, and hands it to the
 transport. You can supply per-call CloudEvents metadata when a single send needs to
 override the defaults, or name an explicit target when a type has more than one.
@@ -316,7 +314,7 @@ caller-supplied key.
 ### Consuming
 
 Consumers are configured per queue with `Consume`, and a single queue can dispatch to
-several typed handlers — BMF inspects each delivery's `type`, resolves the matching
+several typed handlers — Brilliant Messaging inspects each delivery's `type`, resolves the matching
 `IMessageHandler<T>` from a per-delivery DI scope, and invokes it:
 
 ```csharp
@@ -336,7 +334,7 @@ yourself beforehand if you want a different lifetime.
 ### Customizing the inbound pipeline
 
 The journey from a raw delivery to your handler runs through three swappable stages, so
-you can adapt BMF to non-CloudEvents producers or weave in cross-cutting concerns:
+you can adapt Brilliant Messaging to non-CloudEvents producers or weave in cross-cutting concerns:
 
 - **Inspector** — resolves a wire message to a known contract. The default reads the
   CloudEvents `type` attribute to pick the discriminator and message type. Use
@@ -398,7 +396,7 @@ handler.
 
 ### Acknowledgements
 
-By default (`MessageAckMode.Auto`) BMF acknowledges a message once the handler
+By default (`MessageAckMode.Auto`) Brilliant Messaging acknowledges a message once the handler
 returns and negatively acknowledges it if the handler throws — the right behaviour for
 most work. When you need the acknowledgement to hinge on something the handler does —
 deferring it until downstream work has committed, for instance — switch a handler to
@@ -416,7 +414,7 @@ How sure do you need to be that a publish landed? That's the question
   unroutable returns as a `MessageDeliveryException`.
 
 Marking a target `Mandatory()` asks the broker to reject a message it can't route to
-any queue. Because that rejection comes back asynchronously, BMF needs publisher
+any queue. Because that rejection comes back asynchronously, Brilliant Messaging needs publisher
 confirms to correlate it — so a mandatory target on a `FireAndForget` group is
 rejected at build time with a `TopologyValidationException` rather than failing
 mysteriously at runtime. Confirmation tracking serializes outstanding publishes per
@@ -426,14 +424,14 @@ you'll trade strict ordering for throughput.
 ### Channel pooling and channel groups
 
 Channels are not connections, but they aren't free either, and RabbitMQ frowns on
-sharing one channel across threads. BMF manages a pool of channels over the topology's
+sharing one channel across threads. Brilliant Messaging manages a pool of channels over the topology's
 single connection so your code never touches a raw `IChannel`. **Channel groups** are
 how you tune that pool: each group has a maximum channel count and, on the outbound
 side, its own publisher-confirm settings. Point a target at a named group with
 `UseChannelGroup` to give a hot path its own dedicated, independently-tuned channels —
 or just lean on the implicit defaults until a benchmark tells you otherwise.
 
-Every channel counts against the broker's negotiated `channel_max`, so BMF sums its
+Every channel counts against the broker's negotiated `channel_max`, so Brilliant Messaging sums its
 worst-case channel budget across all groups and checks it against the limit the broker
 advertises on the initial connection — an over-provisioned pool fails fast at startup
 rather than starving for channels under load. Keep `channel_max` consistent across the
@@ -443,7 +441,7 @@ nodes of a RabbitMQ cluster so that check holds wherever a connection lands.
 
 The RabbitMQ transport requires RabbitMQ.Client's automatic connection recovery
 (`ConnectionFactory.AutomaticRecoveryEnabled = true`) and validates it at startup.
-RabbitMQ.Client owns reconnection; BMF keeps using the same auto-recovering connection
+RabbitMQ.Client owns reconnection; Brilliant Messaging keeps using the same auto-recovering connection
 for the topology's lifetime. Topology recovery (`TopologyRecoveryEnabled`, on by
 default) restores exchanges, queues, and bindings — required for inbound topologies so
 consumer subscriptions come back after a blip, and safe to disable when you provision
@@ -456,9 +454,9 @@ in front of them.
 
 ### Observability
 
-BMF instruments both hops of every message out of the box, using the BCL-native
+Brilliant Messaging instruments both hops of every message out of the box, using the BCL-native
 `ActivitySource` and `Meter` primitives that OpenTelemetry consumes directly — there is
-nothing to switch on in `Bmf.Core`. A publish opens a `Producer` span and a delivery
+nothing to switch on in `BrilliantMessaging.Core`. A publish opens a `Producer` span and a delivery
 opens a `Consumer` span parented to it across the broker, so a single trace follows a
 message from publisher to handler. Spans and metrics are labeled with the
 [OpenTelemetry `messaging.*` semantic conventions](https://opentelemetry.io/docs/specs/semconv/messaging/),
@@ -475,23 +473,23 @@ inflate your error-rate panels. The metric instruments are
 `messaging.client.sent.messages`, `messaging.client.consumed.messages`, and
 `messaging.client.operation.duration` (in seconds).
 
-To collect any of this, point your `TracerProvider`/`MeterProvider` at BMF's sources.
-The `Bmf.OpenTelemetry` package is the one-line way to do it:
+To collect any of this, point your `TracerProvider`/`MeterProvider` at Brilliant Messaging sources.
+The `BrilliantMessaging.OpenTelemetry` package is the one-line way to do it:
 
 ```csharp
-using Bmf.OpenTelemetry;
+using BrilliantMessaging.OpenTelemetry;
 
 services
     .AddOpenTelemetry()
-    .WithTracing(tracing => tracing.AddBmfInstrumentation())
-    .WithMetrics(metrics => metrics.AddBmfInstrumentation());
+    .WithTracing(tracing => tracing.AddBrilliantMessagingInstrumentation())
+    .WithMetrics(metrics => metrics.AddBrilliantMessagingInstrumentation());
 ```
 
-`AddBmfInstrumentation` registers the `Bmf.Outbound` and `Bmf.Inbound` activity sources
+`AddBrilliantMessagingInstrumentation` registers the `BrilliantMessaging.Outbound` and `BrilliantMessaging.Inbound` activity sources
 and meters. It references only `OpenTelemetry.Api`, so it forces no SDK choice on you,
-and `Bmf.Core` and the transports take no OpenTelemetry package reference at all. Without
+and `BrilliantMessaging.Core` and the transports take no OpenTelemetry package reference at all. Without
 the package you can subscribe to the same names directly with
-`AddSource("Bmf.Outbound", "Bmf.Inbound")` and `AddMeter("Bmf.Outbound", "Bmf.Inbound")`;
+`AddSource("BrilliantMessaging.Outbound", "BrilliantMessaging.Inbound")` and `AddMeter("BrilliantMessaging.Outbound", "BrilliantMessaging.Inbound")`;
 the package is just the discoverable, named convenience.
 
 ### Builders and `IBuildable<T>`
@@ -499,7 +497,7 @@ the package is just the discoverable, named convenience.
 Everything you configure — a topology, a consumer, an outbound target, an inspector
 chain — is a fluent builder you receive inside a callback. Each builder ends in a single
 terminal step that compiles your configuration into an immutable definition. That step is
-the framework's job, not yours: you describe the topology, and BMF compiles it once when
+the framework's job, not yours: you describe the topology, and Brilliant Messaging compiles it once when
 the `Add…Topology` extension method returns. So the terminal `Build()` is deliberately
 kept off the configuration surface — it isn't a public method on the builder and won't
 show up in IntelliSense while you're configuring, which means you can't call it by
@@ -536,12 +534,12 @@ public and discoverable, while the terminal `Build()` stays hidden in plain sigh
 
 ## License
 
-BMF is licensed under the [MIT License](LICENSE).
+Brilliant Messaging is licensed under the [MIT License](LICENSE).
 
 -----------------------------------------------------------------------------------------
 
 <p align="center">
   <picture>
-    <img alt="BMF Wallet" src="design/bmf_wallet.png" width="900" />
+    <img alt="Brilliant Messaging Wallet" src="design/brilliantmessaging_wallet.png" width="900" />
   </picture>
 </p>

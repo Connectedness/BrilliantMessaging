@@ -1,10 +1,10 @@
 using System;
 using System.Diagnostics;
 using FluentAssertions;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 /// <summary>
 /// Documents the static-initialization recursion that motivated exposing
@@ -80,8 +80,8 @@ public sealed class OutboundDiagnosticsStaticInitializationTests
     [Fact]
     public void OutboundDiagnostics_ActivitySourceNameMatchesActivitySourceAndMeter()
     {
-        OutboundDiagnostics.ActivitySourceName.Should().Be("Bmf.Outbound");
-        OutboundDiagnostics.MeterName.Should().Be("Bmf.Outbound");
+        OutboundDiagnostics.ActivitySourceName.Should().Be("BrilliantMessaging.Outbound");
+        OutboundDiagnostics.MeterName.Should().Be("BrilliantMessaging.Outbound");
         OutboundDiagnostics.ActivitySource.Name.Should().Be(OutboundDiagnostics.ActivitySourceName);
         OutboundDiagnostics.Meter.Name.Should().Be(OutboundDiagnostics.MeterName);
     }
@@ -92,7 +92,7 @@ public sealed class OutboundDiagnosticsStaticInitializationTests
     /// </summary>
     private static class RecursiveDiagnostics
     {
-        public static readonly ActivitySource ActivitySource = new ("Bmf.Tests.RecursiveDiagnostics");
+        public static readonly ActivitySource ActivitySource = new ("BrilliantMessaging.Tests.RecursiveDiagnostics");
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public sealed class OutboundDiagnosticsStaticInitializationTests
     /// </summary>
     private static class ConstNameDiagnostics
     {
-        public const string ActivitySourceName = "Bmf.Tests.ConstNameDiagnostics";
+        public const string ActivitySourceName = "BrilliantMessaging.Tests.ConstNameDiagnostics";
 
         public static readonly ActivitySource ActivitySource = new (ActivitySourceName);
     }

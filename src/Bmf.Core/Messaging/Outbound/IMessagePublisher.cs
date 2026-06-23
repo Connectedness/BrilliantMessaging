@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Abstractions;
+using BrilliantMessaging.Abstractions;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Publishes messages to outbound targets. This is the application-facing publish surface; the framework

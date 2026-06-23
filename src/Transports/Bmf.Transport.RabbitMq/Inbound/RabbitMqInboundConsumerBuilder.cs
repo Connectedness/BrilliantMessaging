@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Immutable;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Bmf.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
 /// Fluent builder for a RabbitMQ consumer on a single queue. It configures the prefetch, concurrency, channel

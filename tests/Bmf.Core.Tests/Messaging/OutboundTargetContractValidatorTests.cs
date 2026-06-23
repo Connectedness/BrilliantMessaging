@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Core.Tests.Messaging.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 using FluentAssertions;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 public sealed class OutboundTargetContractValidatorTests
 {
@@ -28,8 +28,8 @@ public sealed class OutboundTargetContractValidatorTests
         OutboundTargetContractValidator.CollectValidationErrors(registry, typedTargets, validationErrors);
 
         validationErrors.Should().Equal(
-            "Outbound target 'first' publishes unregistered CloudEvents message type 'Bmf.Core.Tests.Messaging.TestSupport.SampleMessage'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
-            "Outbound target 'second' publishes unregistered CloudEvents message type 'Bmf.Core.Tests.Messaging.TestSupport.SampleMessage'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...)."
+            "Outbound target 'first' publishes unregistered CloudEvents message type 'BrilliantMessaging.Core.Tests.Messaging.TestSupport.SampleMessage'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
+            "Outbound target 'second' publishes unregistered CloudEvents message type 'BrilliantMessaging.Core.Tests.Messaging.TestSupport.SampleMessage'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...)."
         );
     }
 

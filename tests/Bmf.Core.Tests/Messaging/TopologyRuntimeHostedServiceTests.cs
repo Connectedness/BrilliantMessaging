@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 public sealed class TopologyRuntimeHostedServiceTests
 {
@@ -29,10 +29,10 @@ public sealed class TopologyRuntimeHostedServiceTests
     }
 
     [Fact]
-    public void AddBmf_RegistersProvisioningHostedServiceBeforeRuntimeHostedService()
+    public void AddBrilliantMessaging_RegistersProvisioningHostedServiceBeforeRuntimeHostedService()
     {
         var services = new ServiceCollection();
-        services.AddBmf();
+        services.AddBrilliantMessaging();
 
         var hostedServiceImplementations = services
            .Where(static descriptor => descriptor.ServiceType == typeof(IHostedService))
@@ -47,11 +47,11 @@ public sealed class TopologyRuntimeHostedServiceTests
     }
 
     [Fact]
-    public void AddBmf_RegistersInboundDiagnosticsMiddleware()
+    public void AddBrilliantMessaging_RegistersInboundDiagnosticsMiddleware()
     {
         var services = new ServiceCollection();
 
-        services.AddBmf();
+        services.AddBrilliantMessaging();
 
         services.Should().Contain(
             descriptor => descriptor.ServiceType == typeof(InboundDiagnosticsMiddleware) &&

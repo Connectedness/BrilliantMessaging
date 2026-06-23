@@ -1,4 +1,4 @@
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Configures application-level CloudEvents attributes.

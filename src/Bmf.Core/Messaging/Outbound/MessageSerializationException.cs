@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Thrown when serializing an outbound message fails. The underlying error is preserved as the inner exception.

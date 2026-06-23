@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
 
-namespace Bmf.Transport.RabbitMq.Tests.TestSupport;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 
 public sealed class InboundDiagnosticsRecorder : IDisposable
 {

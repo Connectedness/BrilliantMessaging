@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// A unit of behaviour in the inbound message pipeline. Implementations inspect or augment the

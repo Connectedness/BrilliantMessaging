@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// The immutable base for a RabbitMQ outbound target declaration produced by

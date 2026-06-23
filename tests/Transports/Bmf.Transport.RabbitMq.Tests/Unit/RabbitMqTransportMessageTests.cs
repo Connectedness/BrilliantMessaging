@@ -1,12 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Bmf.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
 using FluentAssertions;
 using RabbitMQ.Client;
 using Xunit;
 
-namespace Bmf.Transport.RabbitMq.Tests.Unit;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
 
 public sealed class RabbitMqTransportMessageTests
 {

@@ -1,9 +1,9 @@
 using System;
 using FluentAssertions;
-using Bmf.Abstractions;
+using BrilliantMessaging.Abstractions;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 public sealed class BaseCloudEventTests
 {
@@ -23,7 +23,7 @@ public sealed class BaseCloudEventTests
     [Fact]
     public void NewId_CreatesDistinctIdentifiers()
     {
-        BmfUuid.NewId().Should().NotBe(BmfUuid.NewId());
+        BrilliantMessagingUuid.NewId().Should().NotBe(BrilliantMessagingUuid.NewId());
     }
 
     private sealed record TestCloudEvent : BaseCloudEvent;

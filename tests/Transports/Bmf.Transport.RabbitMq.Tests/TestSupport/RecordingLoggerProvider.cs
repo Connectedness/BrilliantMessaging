@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 
-namespace Bmf.Transport.RabbitMq.Tests.TestSupport;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 
 public sealed class RecordingLoggerProvider : ILoggerProvider
 {

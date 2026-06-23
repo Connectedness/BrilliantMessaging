@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Abstractions;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Abstractions;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Core.Tests.Messaging.TestSupport;
+namespace BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 
 public sealed class RecordingTarget<TMessage> : OutboundTarget<TMessage>, IOutboundRoutableTarget<TMessage>
 {

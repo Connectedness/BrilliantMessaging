@@ -10,27 +10,27 @@
         <File Path="LICENSE" />
         <File Path="README.md" />
         <File Path="renovate.json" />
-        <File Path="BMF.sln.DotSettings" />
+        <File Path="BrilliantMessaging.sln.DotSettings" />
     </Folder>
     <Folder Name="/src/">
         <File Path="src/Directory.Build.props" />
-        <Project Path="src/Bmf.Abstractions/Bmf.Abstractions.csproj" />
-        <Project Path="src/Bmf.Core/Bmf.Core.csproj" />
-        <Project Path="src/Bmf.OpenTelemetry/Bmf.OpenTelemetry.csproj" />
+        <Project Path="src/BrilliantMessaging.Abstractions/BrilliantMessaging.Abstractions.csproj" />
+        <Project Path="src/BrilliantMessaging.Core/BrilliantMessaging.Core.csproj" />
+        <Project Path="src/BrilliantMessaging.OpenTelemetry/BrilliantMessaging.OpenTelemetry.csproj" />
     </Folder>
     <Folder Name="/benchmarks/">
-        <Project Path="benchmarks/Bmf.Benchmarks/Bmf.Benchmarks.csproj" />
+        <Project Path="benchmarks/BrilliantMessaging.Benchmarks/BrilliantMessaging.Benchmarks.csproj" />
     </Folder>
     <Folder Name="/src/Transports/">
-        <Project Path="src/Transports/Bmf.Transport.RabbitMq/Bmf.Transport.RabbitMq.csproj" />
+        <Project Path="src/Transports/BrilliantMessaging.Transport.RabbitMq/BrilliantMessaging.Transport.RabbitMq.csproj" />
     </Folder>
     <Folder Name="/tests/">
         <File Path="tests/AGENTS.md" />
         <File Path="tests/Directory.Build.props" />
-        <Project Path="tests/Bmf.Core.Tests/Bmf.Core.Tests.csproj" />
-        <Project Path="tests/Bmf.OpenTelemetry.Tests/Bmf.OpenTelemetry.Tests.csproj" />
+        <Project Path="tests/BrilliantMessaging.Core.Tests/BrilliantMessaging.Core.Tests.csproj" />
+        <Project Path="tests/BrilliantMessaging.OpenTelemetry.Tests/BrilliantMessaging.OpenTelemetry.Tests.csproj" />
     </Folder>
     <Folder Name="/tests/Transports/">
-        <Project Path="tests/Transports/Bmf.Transport.RabbitMq.Tests/Bmf.Transport.RabbitMq.Tests.csproj" />
+        <Project Path="tests/Transports/BrilliantMessaging.Transport.RabbitMq.Tests/BrilliantMessaging.Transport.RabbitMq.Tests.csproj" />
     </Folder>
 </Solution>

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// The shared <see cref="System.Diagnostics" /> primitives for the outbound path: the activity source, the meter,
@@ -18,7 +18,7 @@ namespace Bmf.Core.Messaging.Outbound;
 /// <see cref="SentMessages" />/<see cref="OperationDuration" /> instruments use only the low-cardinality metric
 /// dimensions: <c>messaging.system</c>, <c>messaging.operation.name</c>, <c>messaging.destination.name</c>, and
 /// <c>error.type</c> on failure. The topology-provisioning instruments are intentionally outside the messaging conventions and keep their
-/// <c>bmf.outbound.topology.provisioning.*</c> names. Use <see cref="Bmf.Core.Messaging.Inbound.InboundDiagnostics" />
+/// <c>brilliantmessaging.outbound.topology.provisioning.*</c> names. Use <see cref="BrilliantMessaging.Core.Messaging.Inbound.InboundDiagnostics" />
 /// for the corresponding consumer-hop telemetry.
 /// </remarks>
 public static class OutboundDiagnostics
@@ -26,14 +26,14 @@ public static class OutboundDiagnostics
     /// <summary>
     /// The name of the activity source for outbound telemetry.
     /// </summary>
-    public const string ActivitySourceName = "Bmf.Outbound";
+    public const string ActivitySourceName = "BrilliantMessaging.Outbound";
 
     /// <summary>
     /// The name of the meter for outbound telemetry. It currently equals <see cref="ActivitySourceName" />, but is a
     /// separate constant so the meter name can diverge later without touching subscribers (such as the
-    /// <c>Bmf.OpenTelemetry</c> registration package).
+    /// <c>BrilliantMessaging.OpenTelemetry</c> registration package).
     /// </summary>
-    public const string MeterName = "Bmf.Outbound";
+    public const string MeterName = "BrilliantMessaging.Outbound";
 
     /// <summary>
     /// The activity source that emits outbound publish activities.
@@ -62,24 +62,24 @@ public static class OutboundDiagnostics
 
     /// <summary>
     /// Counts topology-provisioning attempts. Provisioning is not a messaging operation, so this instrument keeps the
-    /// <c>bmf.outbound.*</c> scheme and is outside the <c>messaging.*</c> conventions.
+    /// <c>brilliantmessaging.outbound.*</c> scheme and is outside the <c>messaging.*</c> conventions.
     /// </summary>
     public static readonly Counter<long> TopologyProvisioningAttempts =
-        Meter.CreateCounter<long>("bmf.outbound.topology.provisioning.attempts");
+        Meter.CreateCounter<long>("brilliantmessaging.outbound.topology.provisioning.attempts");
 
     /// <summary>
     /// Counts topology-provisioning failures. Provisioning is not a messaging operation, so this instrument keeps the
-    /// <c>bmf.outbound.*</c> scheme and is outside the <c>messaging.*</c> conventions.
+    /// <c>brilliantmessaging.outbound.*</c> scheme and is outside the <c>messaging.*</c> conventions.
     /// </summary>
     public static readonly Counter<long> TopologyProvisioningFailures =
-        Meter.CreateCounter<long>("bmf.outbound.topology.provisioning.failures");
+        Meter.CreateCounter<long>("brilliantmessaging.outbound.topology.provisioning.failures");
 
     /// <summary>
     /// Records topology-provisioning durations in milliseconds. Provisioning is not a messaging operation, so this
-    /// instrument keeps the <c>bmf.outbound.*</c> scheme and is outside the <c>messaging.*</c> conventions.
+    /// instrument keeps the <c>brilliantmessaging.outbound.*</c> scheme and is outside the <c>messaging.*</c> conventions.
     /// </summary>
     public static readonly Histogram<double> TopologyProvisioningDuration = Meter.CreateHistogram<double>(
-        "bmf.outbound.topology.provisioning.duration",
+        "brilliantmessaging.outbound.topology.provisioning.duration",
         unit: "ms"
     );
 }

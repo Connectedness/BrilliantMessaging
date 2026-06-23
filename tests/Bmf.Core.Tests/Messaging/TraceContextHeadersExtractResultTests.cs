@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 using FluentAssertions;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 public sealed class TraceContextHeadersExtractResultTests
 {

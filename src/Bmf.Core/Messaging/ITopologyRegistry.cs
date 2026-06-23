@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// Resolves registered topology instances by name. Both publishing topologies and consuming-only topologies are

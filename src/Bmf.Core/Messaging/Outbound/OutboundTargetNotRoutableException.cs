@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Thrown when a routing-key publish is requested against an outbound target that does not support per-publish

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Transport.RabbitMq.Tests.TestSupport;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 
 public static class RabbitMqCloudEventsTestFactory
 {
@@ -11,10 +11,10 @@ public static class RabbitMqCloudEventsTestFactory
     public const string ValidationMessageADiscriminator = "tests.rabbitmq.validation-a";
     public const string ValidationMessageBDiscriminator = "tests.rabbitmq.validation-b";
 
-    public static BmfBuilder AddTestCloudEvents(this IServiceCollection services)
+    public static BrilliantMessagingBuilder AddTestCloudEvents(this IServiceCollection services)
     {
         return services
-           .AddBmf()
+           .AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests/rabbitmq")
            .MapMessageContracts(
                 contracts =>

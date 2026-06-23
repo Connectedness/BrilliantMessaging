@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// Thrown when a message type has no registered canonical CloudEvents discriminator.

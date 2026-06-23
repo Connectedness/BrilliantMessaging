@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// A RabbitMQ outbound target for a headers exchange. It attaches the configured headers to every published

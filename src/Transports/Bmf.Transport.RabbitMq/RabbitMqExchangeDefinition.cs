@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// An immutable exchange declaration produced by <see cref="RabbitMqExchangeBuilder" />.

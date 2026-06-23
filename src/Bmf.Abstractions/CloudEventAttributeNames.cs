@@ -1,4 +1,4 @@
-namespace Bmf.Abstractions;
+namespace BrilliantMessaging.Abstractions;
 
 /// <summary>
 /// Defines the transport-neutral CloudEvents v1.0 attribute names.

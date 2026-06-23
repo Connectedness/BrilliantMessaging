@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Abstractions;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Core.Tests.Messaging.TestSupport;
+using BrilliantMessaging.Abstractions;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 using FluentAssertions;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 // Direct target publishes now emit outbound publish metrics, so this class joins the serialized
 // Diagnostics collection to avoid contaminating listener-based diagnostics tests.

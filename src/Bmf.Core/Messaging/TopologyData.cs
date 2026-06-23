@@ -3,10 +3,10 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// The compiled, lookup-ready data backing a <see cref="Topology" />: outbound targets indexed by message type

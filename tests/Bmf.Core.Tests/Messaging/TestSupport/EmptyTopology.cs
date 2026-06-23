@@ -1,6 +1,6 @@
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 
-namespace Bmf.Core.Tests.Messaging.TestSupport;
+namespace BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 
 /// <summary>
 /// Builds an empty <see cref="Topology" /> for tests that need a topology with no outbound targets and

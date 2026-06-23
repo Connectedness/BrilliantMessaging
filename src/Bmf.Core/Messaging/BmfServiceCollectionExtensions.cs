@@ -1,25 +1,25 @@
 using System;
 using System.Linq;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
-/// Provides the <see cref="AddBmf" /> extension method that registers the BMF core services into a dependency
+/// Provides the <see cref="AddBrilliantMessaging" /> extension method that registers the BrilliantMessaging core services into a dependency
 /// injection container.
 /// </summary>
-public static class BmfServiceCollectionExtensions
+public static class BrilliantMessagingServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the BMF core services and returns a <see cref="BmfBuilder" /> for further configuration.
+    /// Registers the BrilliantMessaging core services and returns a <see cref="BrilliantMessagingBuilder" /> for further configuration.
     /// </summary>
-    /// <param name="services">The service collection to add BMF to.</param>
-    /// <returns>A <see cref="BmfBuilder" /> over the shared message-contract registry and topology catalog.</returns>
+    /// <param name="services">The service collection to add BrilliantMessaging to.</param>
+    /// <returns>A <see cref="BrilliantMessagingBuilder" /> over the shared message-contract registry and topology catalog.</returns>
     /// <remarks>
     /// Registers — idempotently, via <c>TryAdd</c> and shared get-or-add builders so repeated calls accumulate
     /// rather than duplicate — the serialization stack (<see cref="IPayloadCodec" />, <see cref="IMessageSerializer" />,
@@ -31,7 +31,7 @@ public static class BmfServiceCollectionExtensions
     /// inbound runtime.
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="services" /> is <see langword="null" />.</exception>
-    public static BmfBuilder AddBmf(this IServiceCollection services)
+    public static BrilliantMessagingBuilder AddBrilliantMessaging(this IServiceCollection services)
     {
         if (services is null)
         {
@@ -83,7 +83,7 @@ public static class BmfServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, TopologyProvisioningHostedService>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, TopologyRuntimeHostedService>());
 
-        return new BmfBuilder(services, messageContracts, topologies);
+        return new BrilliantMessagingBuilder(services, messageContracts, topologies);
     }
 
     private static MessageContractRegistryBuilder GetOrAddMessageContracts(IServiceCollection services)

@@ -1,4 +1,4 @@
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Identifies why a message could not be delivered, reported through <see cref="MessageDeliveryException" />.

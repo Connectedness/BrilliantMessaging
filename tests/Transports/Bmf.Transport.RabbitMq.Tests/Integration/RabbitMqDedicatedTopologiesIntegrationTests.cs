@@ -5,10 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -16,7 +16,7 @@ using RabbitMQ.Client;
 using Testcontainers.RabbitMq;
 using Xunit;
 
-namespace Bmf.Transport.RabbitMq.Tests.Integration;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Integration;
 
 [Collection<RabbitMqCollection>]
 public sealed class RabbitMqDedicatedTopologiesIntegrationTests
@@ -170,7 +170,7 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
             services.AddSingleton(deserializer);
             services.AddSingleton<ThrowingRawMessageDeserializer>();
             services
-               .AddBmf()
+               .AddBrilliantMessaging()
                .UseCloudEvents(options => options.Source = "/tests/raw")
                .MapMessageContracts(
                     contracts =>
@@ -347,10 +347,10 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
 
                     switch (activity.OperationName)
                     {
-                        case "bmf.outbound.publish":
+                        case "brilliantmessaging.outbound.publish":
                             producerActivityCompletion.TrySetResult(activity);
                             break;
-                        case "bmf.inbound.process":
+                        case "brilliantmessaging.inbound.process":
                             consumerActivityCompletion.TrySetResult(activity);
                             break;
                     }

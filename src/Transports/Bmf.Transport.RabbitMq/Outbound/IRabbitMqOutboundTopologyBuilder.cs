@@ -1,14 +1,14 @@
 using System;
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// Configures a publish-only RabbitMQ topology. In addition to the shared surface of
 /// <see cref="IRabbitMqTopologyBuilder{TSelf}" />, this builder exposes outbound targets,
 /// publisher channel groups, and publisher-confirm defaults — but no consumer configuration, so a topology
 /// configured through this interface cannot accidentally share its connection with consumers. Used by
-/// <see cref="RabbitMqTransportModule.AddRabbitMqOutboundTopology(BmfBuilder, System.Action{Bmf.Transport.RabbitMq.Outbound.IRabbitMqOutboundTopologyBuilder})" />
+/// <see cref="RabbitMqTransportModule.AddRabbitMqOutboundTopology(BrilliantMessagingBuilder, System.Action{BrilliantMessaging.Transport.RabbitMq.Outbound.IRabbitMqOutboundTopologyBuilder})" />
 /// .
 /// </summary>
 public interface IRabbitMqOutboundTopologyBuilder : IRabbitMqTopologyBuilder<IRabbitMqOutboundTopologyBuilder>

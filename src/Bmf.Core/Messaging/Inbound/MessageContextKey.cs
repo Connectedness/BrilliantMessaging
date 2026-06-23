@@ -1,4 +1,4 @@
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// A strongly typed key for a value of type <typeparamref name="T" /> stored in

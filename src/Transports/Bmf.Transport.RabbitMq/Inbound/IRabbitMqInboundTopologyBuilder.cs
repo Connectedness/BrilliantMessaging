@@ -1,15 +1,15 @@
 using System;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
 
-namespace Bmf.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
 /// Configures a consume-only RabbitMQ topology. In addition to the shared surface of
 /// <see cref="IRabbitMqTopologyBuilder{TSelf}" />, this builder exposes consumers, consumer channel groups,
 /// the inbound pipeline, and the shutdown timeout — but no publishing configuration, so a topology
 /// configured through this interface cannot accidentally share its connection with publishers. Used by
-/// <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(BmfBuilder, System.Action{Bmf.Transport.RabbitMq.Inbound.IRabbitMqInboundTopologyBuilder})" />
+/// <see cref="RabbitMqTransportModule.AddRabbitMqInboundTopology(BrilliantMessagingBuilder, System.Action{BrilliantMessaging.Transport.RabbitMq.Inbound.IRabbitMqInboundTopologyBuilder})" />
 /// .
 /// </summary>
 public interface IRabbitMqInboundTopologyBuilder : IRabbitMqTopologyBuilder<IRabbitMqInboundTopologyBuilder>

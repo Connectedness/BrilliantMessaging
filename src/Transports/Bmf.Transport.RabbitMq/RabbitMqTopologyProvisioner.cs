@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
 using RabbitMQ.Client;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// Provisions the broker resources (exchanges, queues, and bindings) of a single <see cref="RabbitMqTopology" />.
@@ -17,10 +17,10 @@ namespace Bmf.Transport.RabbitMq;
 public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
 {
     // Topology provisioning is not a messaging operation, so it stays outside the OpenTelemetry messaging
-    // conventions and keeps the bmf.* tag scheme alongside its bmf.outbound.topology.provisioning.* instruments.
-    private const string TransportNameTagName = "bmf.outbound.transport.name";
+    // conventions and keeps the brilliantmessaging.* tag scheme alongside its brilliantmessaging.outbound.topology.provisioning.* instruments.
+    private const string TransportNameTagName = "brilliantmessaging.outbound.transport.name";
 
-    private const string OutcomeTagName = "bmf.outbound.outcome";
+    private const string OutcomeTagName = "brilliantmessaging.outbound.outcome";
 
     private readonly RabbitMqTopology _topology;
 
@@ -38,7 +38,7 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
     public async Task ProvisionAsync(CancellationToken cancellationToken = default)
     {
         var outcome = "success";
-        var activity = OutboundDiagnostics.ActivitySource.StartActivity("bmf.outbound.topology.provision");
+        var activity = OutboundDiagnostics.ActivitySource.StartActivity("brilliantmessaging.outbound.topology.provision");
         var startedTimestamp = Stopwatch.GetTimestamp();
         KeyValuePair<string, object?>[] attemptTags =
         [

@@ -2,22 +2,22 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Outbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Outbound;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// Provides the <c>AddRabbitMq*Topology</c> extension methods that register RabbitMQ topologies (unified,
-/// publish-only, or consume-only) onto a <see cref="BmfBuilder" />.
+/// publish-only, or consume-only) onto a <see cref="BrilliantMessagingBuilder" />.
 /// </summary>
 public static class RabbitMqTransportModule
 {
@@ -28,21 +28,21 @@ public static class RabbitMqTransportModule
     /// connections for publishing and consuming — when a publishing connection is throttled by broker flow
     /// control, a shared connection also stalls consumer acknowledgements, precisely when the broker needs
     /// consumers to drain queues. Prefer
-    /// <see cref="AddRabbitMqOutboundTopology(BmfBuilder, Action{IRabbitMqOutboundTopologyBuilder})" /> plus
-    /// <see cref="AddRabbitMqInboundTopology(BmfBuilder, Action{IRabbitMqInboundTopologyBuilder})" /> for
+    /// <see cref="AddRabbitMqOutboundTopology(BrilliantMessagingBuilder, Action{IRabbitMqOutboundTopologyBuilder})" /> plus
+    /// <see cref="AddRabbitMqInboundTopology(BrilliantMessagingBuilder, Action{IRabbitMqInboundTopologyBuilder})" /> for
     /// production services; a single shared connection is appropriate for low-traffic services and tests.
     /// </summary>
-    public static BmfBuilder AddRabbitMqTopology(
-        this BmfBuilder builder,
+    public static BrilliantMessagingBuilder AddRabbitMqTopology(
+        this BrilliantMessagingBuilder builder,
         Action<RabbitMqTopologyBuilder> configure
     )
     {
         return builder.AddRabbitMqTopology(Topology.DefaultName, configure);
     }
 
-    /// <inheritdoc cref="AddRabbitMqTopology(BmfBuilder, Action{RabbitMqTopologyBuilder})" />
-    public static BmfBuilder AddRabbitMqTopology(
-        this BmfBuilder builder,
+    /// <inheritdoc cref="AddRabbitMqTopology(BrilliantMessagingBuilder, Action{RabbitMqTopologyBuilder})" />
+    public static BrilliantMessagingBuilder AddRabbitMqTopology(
+        this BrilliantMessagingBuilder builder,
         string topologyName,
         Action<RabbitMqTopologyBuilder> configure
     )
@@ -72,23 +72,23 @@ public static class RabbitMqTransportModule
     /// (https://www.rabbitmq.com/docs/production-checklist#apps-connection-management): when a publishing
     /// connection is throttled by broker flow control, a shared connection would also stall consumer
     /// acknowledgements. Pair it with
-    /// <see cref="AddRabbitMqInboundTopology(BmfBuilder, Action{IRabbitMqInboundTopologyBuilder})" /> for the
+    /// <see cref="AddRabbitMqInboundTopology(BrilliantMessagingBuilder, Action{IRabbitMqInboundTopologyBuilder})" /> for the
     /// consuming side; both default names (<see cref="Topology.DefaultName" /> and
     /// <see cref="RabbitMqTopology.DefaultInboundName" />) coexist without a collision. Use
-    /// <see cref="AddRabbitMqTopology(BmfBuilder, Action{RabbitMqTopologyBuilder})" /> instead when a single
+    /// <see cref="AddRabbitMqTopology(BrilliantMessagingBuilder, Action{RabbitMqTopologyBuilder})" /> instead when a single
     /// shared connection is appropriate (low-traffic services, tests).
     /// </summary>
-    public static BmfBuilder AddRabbitMqOutboundTopology(
-        this BmfBuilder builder,
+    public static BrilliantMessagingBuilder AddRabbitMqOutboundTopology(
+        this BrilliantMessagingBuilder builder,
         Action<IRabbitMqOutboundTopologyBuilder> configure
     )
     {
         return builder.AddRabbitMqOutboundTopology(Topology.DefaultName, configure);
     }
 
-    /// <inheritdoc cref="AddRabbitMqOutboundTopology(BmfBuilder, Action{IRabbitMqOutboundTopologyBuilder})" />
-    public static BmfBuilder AddRabbitMqOutboundTopology(
-        this BmfBuilder builder,
+    /// <inheritdoc cref="AddRabbitMqOutboundTopology(BrilliantMessagingBuilder, Action{IRabbitMqOutboundTopologyBuilder})" />
+    public static BrilliantMessagingBuilder AddRabbitMqOutboundTopology(
+        this BrilliantMessagingBuilder builder,
         string topologyName,
         Action<IRabbitMqOutboundTopologyBuilder> configure
     )
@@ -119,22 +119,22 @@ public static class RabbitMqTransportModule
     /// connection is throttled by broker flow control, a shared connection would also stall consumer
     /// acknowledgements. The topology name defaults to <see cref="RabbitMqTopology.DefaultInboundName" /> so
     /// that it can be paired with
-    /// <see cref="AddRabbitMqOutboundTopology(BmfBuilder, Action{IRabbitMqOutboundTopologyBuilder})" /> (which
+    /// <see cref="AddRabbitMqOutboundTopology(BrilliantMessagingBuilder, Action{IRabbitMqOutboundTopologyBuilder})" /> (which
     /// defaults to <see cref="Topology.DefaultName" />) without a collision. Use
-    /// <see cref="AddRabbitMqTopology(BmfBuilder, Action{RabbitMqTopologyBuilder})" /> instead when a single
+    /// <see cref="AddRabbitMqTopology(BrilliantMessagingBuilder, Action{RabbitMqTopologyBuilder})" /> instead when a single
     /// shared connection is appropriate (low-traffic services, tests).
     /// </summary>
-    public static BmfBuilder AddRabbitMqInboundTopology(
-        this BmfBuilder builder,
+    public static BrilliantMessagingBuilder AddRabbitMqInboundTopology(
+        this BrilliantMessagingBuilder builder,
         Action<IRabbitMqInboundTopologyBuilder> configure
     )
     {
         return builder.AddRabbitMqInboundTopology(RabbitMqTopology.DefaultInboundName, configure);
     }
 
-    /// <inheritdoc cref="AddRabbitMqInboundTopology(BmfBuilder, Action{IRabbitMqInboundTopologyBuilder})" />
-    public static BmfBuilder AddRabbitMqInboundTopology(
-        this BmfBuilder builder,
+    /// <inheritdoc cref="AddRabbitMqInboundTopology(BrilliantMessagingBuilder, Action{IRabbitMqInboundTopologyBuilder})" />
+    public static BrilliantMessagingBuilder AddRabbitMqInboundTopology(
+        this BrilliantMessagingBuilder builder,
         string topologyName,
         Action<IRabbitMqInboundTopologyBuilder> configure
     )
@@ -158,8 +158,8 @@ public static class RabbitMqTransportModule
         );
     }
 
-    private static BmfBuilder AddRabbitMqTopologyCore(
-        BmfBuilder builder,
+    private static BrilliantMessagingBuilder AddRabbitMqTopologyCore(
+        BrilliantMessagingBuilder builder,
         string topologyName,
         RabbitMqTopologyConfiguration configuration
     )

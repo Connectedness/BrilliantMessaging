@@ -4,13 +4,13 @@ using System.Diagnostics.Metrics;
 using System.Text;
 using System.Threading.Tasks;
 using FluentAssertions;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Core.Tests.Messaging.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 [Collection("Diagnostics")]
 public sealed class MessagePublisherTests

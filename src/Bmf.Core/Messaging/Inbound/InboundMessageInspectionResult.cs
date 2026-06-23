@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// The outcome of inspecting an inbound transport message: the resolved CloudEvents discriminator and the

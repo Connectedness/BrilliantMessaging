@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Bmf.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Inbound;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// Injects and extracts distributed trace context in transport headers.
@@ -64,7 +64,7 @@ public static class TraceContextHeaders
     /// the OpenTelemetry messaging convention. They are distinct from, and must not be confused with,
     /// <c>cloudEvents:*</c> attributes. Extraction honours <see cref="DistributedContextPropagator.Current" />, so
     /// applications that replace the process-wide propagator affect both framework consumption and raw-consume
-    /// callers. Raw-consume callers should use this method when they need trace context before the BMF inbound
+    /// callers. Raw-consume callers should use this method when they need trace context before the BrilliantMessaging inbound
     /// pipeline runs.
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="transportMessage" /> is <see langword="null" />.</exception>

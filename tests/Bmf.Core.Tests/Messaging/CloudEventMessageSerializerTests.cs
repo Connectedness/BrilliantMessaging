@@ -1,12 +1,12 @@
 using System;
 using System.Threading.Tasks;
 using FluentAssertions;
-using Bmf.Abstractions;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Abstractions;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 public sealed class CloudEventMessageSerializerTests
 {

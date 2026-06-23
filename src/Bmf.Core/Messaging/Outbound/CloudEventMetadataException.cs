@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Thrown when a required CloudEvents attribute is missing or invalid when publishing a message — for example a

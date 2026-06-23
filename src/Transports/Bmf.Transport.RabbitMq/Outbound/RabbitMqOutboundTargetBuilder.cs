@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Outbound;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
 
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// Fluent builder for a RabbitMQ outbound target for messages of type <typeparamref name="TMessage" />. It
@@ -193,7 +193,7 @@ public sealed class RabbitMqOutboundTargetBuilder<TMessage> : IBuildable<RabbitM
     /// Mandatory routing requires publisher confirmations on the target's effective channel group so the
     /// returned message can be correlated with its publish. A mandatory target whose effective group uses
     /// <see cref="RabbitMqPublisherConfirmMode.FireAndForget" /> is rejected at compile time
-    /// through <see cref="Bmf.Core.Messaging.TopologyValidationException" />; select
+    /// through <see cref="BrilliantMessaging.Core.Messaging.TopologyValidationException" />; select
     /// <see cref="RabbitMqPublisherConfirmMode.Confirms" /> on the group (see
     /// <c>RabbitMqTopologyBuilder.ChannelGroup</c>) or leave the topology-level default
     /// (<c>WithDefaultPublisherConfirmMode</c>) on confirms. Confirmation tracking serializes outstanding

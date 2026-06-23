@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Thrown when an inbound message carries a CloudEvents discriminator that is not registered, so no message

@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// A pool of reusable RabbitMQ channels. Callers acquire a <see cref="RabbitMqChannelLease" />, use the channel,

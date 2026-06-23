@@ -1,6 +1,6 @@
-using Bmf.Core.Messaging;
+using BrilliantMessaging.Core.Messaging;
 
-namespace Bmf.Core.Tests;
+namespace BrilliantMessaging.Core.Tests;
 
 /// <summary>
 /// Test-only convenience for compiling a builder through <see cref="IBuildable{TResult}" />.

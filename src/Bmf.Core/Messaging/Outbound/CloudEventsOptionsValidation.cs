@@ -1,7 +1,7 @@
 using System;
-using Bmf.Abstractions;
+using BrilliantMessaging.Abstractions;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// Validates the CloudEvents <c>source</c> attribute, used both by the options <c>ValidateOnStart</c> guard and

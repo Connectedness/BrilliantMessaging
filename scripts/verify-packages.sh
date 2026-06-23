@@ -8,7 +8,7 @@ set -uo pipefail
 package_dir="${1:-artifacts/packages}"
 expected_icon='logo-128x128.png'
 expected_readme='README.md'
-expected_tags=(messaging communication rabbitmq amqp bmf cloudevents)
+expected_tags=(messaging communication rabbitmq amqp brilliantmessaging cloudevents)
 
 shopt -s nullglob
 packages=("$package_dir"/*.nupkg)

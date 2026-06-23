@@ -81,19 +81,19 @@ jobs:
       - name: Decode signing key
         env:
           BMF_SNK: ${{ secrets.BMF_SNK }}
-        run: printf '%s' "$BMF_SNK" | base64 --decode > BMF.snk
+        run: printf '%s' "$BMF_SNK" | base64 --decode > BrilliantMessaging.snk
 
       - name: Restore
-        run: dotnet restore BMF.slnx /p:ContinuousIntegrationBuild=true
+        run: dotnet restore BrilliantMessaging.slnx /p:ContinuousIntegrationBuild=true
 
       - name: Pack
         run: >
-          dotnet pack ./BMF.slnx
+          dotnet pack ./BrilliantMessaging.slnx
           --configuration Release
           --no-restore
           --output "${{ env.PACKAGE_OUTPUT }}"
           /p:SignAssembly=true
-          /p:AssemblyOriginatorKeyFile=${{ github.workspace }}/BMF.snk
+          /p:AssemblyOriginatorKeyFile=${{ github.workspace }}/BrilliantMessaging.snk
           /p:ContinuousIntegrationBuild=true
           /p:IncludeSymbols=true
           /p:PackageRequireLicenseAcceptance=false
@@ -112,7 +112,7 @@ jobs:
 
       - name: Remove signing key
         if: always()
-        run: rm -f BMF.snk
+        run: rm -f BrilliantMessaging.snk
 
   publish:
     name: Publish NuGet packages

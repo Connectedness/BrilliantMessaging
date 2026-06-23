@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// An immutable binding from a source exchange to a queue, produced by <see cref="RabbitMqQueueBindingBuilder" />.

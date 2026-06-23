@@ -1,4 +1,4 @@
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// The key used to select an inbound endpoint for a delivery: the combination of the transport source and the

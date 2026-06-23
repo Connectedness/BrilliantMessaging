@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Thrown when decoding an inbound message body into its resolved message type fails. The underlying error is

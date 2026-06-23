@@ -1,27 +1,27 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Outbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using Xunit;
 
-namespace Bmf.Transport.RabbitMq.Tests.Unit;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
 
 public sealed class AddRabbitMqPublishTopologyTests
 {
     [Fact]
-    public void AddBmf_WiresRegistryPayloadCodecSerializerAndDeserializer()
+    public void AddBrilliantMessaging_WiresRegistryPayloadCodecSerializerAndDeserializer()
     {
         var services = new ServiceCollection();
         services
-           .AddBmf()
+           .AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests")
            .MapMessageContracts(contracts => contracts.Map<ValidationMessageA>("tests.validation-a"));
         using var serviceProvider = services.BuildServiceProvider();
@@ -37,10 +37,10 @@ public sealed class AddRabbitMqPublishTopologyTests
     }
 
     [Fact]
-    public void AddBmf_ValidatesSourceWhenOptionsAreResolved()
+    public void AddBrilliantMessaging_ValidatesSourceWhenOptionsAreResolved()
     {
         var services = new ServiceCollection();
-        services.AddBmf().UseCloudEvents(options => options.Source = "   ");
+        services.AddBrilliantMessaging().UseCloudEvents(options => options.Source = "   ");
         using var serviceProvider = services.BuildServiceProvider();
 
         // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
@@ -54,7 +54,7 @@ public sealed class AddRabbitMqPublishTopologyTests
     {
         var services = new ServiceCollection();
         services
-           .AddBmf()
+           .AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests")
            .AddRabbitMqTopology(
                 builder =>
@@ -75,7 +75,7 @@ public sealed class AddRabbitMqPublishTopologyTests
 
         var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().ContainSingle().Which.Should().Be(
-            "Outbound target 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...)."
+            "Outbound target 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...)."
         );
     }
 
@@ -84,7 +84,7 @@ public sealed class AddRabbitMqPublishTopologyTests
     {
         var services = new ServiceCollection();
         services
-           .AddBmf()
+           .AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests")
            .AddRabbitMqTopology(
                 builder =>
@@ -105,10 +105,10 @@ public sealed class AddRabbitMqPublishTopologyTests
 
         var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().Contain(
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' references unknown exchange 'missing-exchange'."
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' references unknown exchange 'missing-exchange'."
         );
         exception.ValidationErrors.Should().Contain(
-            "Outbound target 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...)."
+            "Outbound target 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...)."
         );
     }
 
@@ -116,7 +116,7 @@ public sealed class AddRabbitMqPublishTopologyTests
     public void AddRabbitMqTopology_ReportsDeterministicValidationErrors()
     {
         var services = new ServiceCollection();
-        services.AddBmf().AddRabbitMqTopology(
+        services.AddBrilliantMessaging().AddRabbitMqTopology(
             builder =>
             {
                 builder.Exchange("exchange-a", ExchangeType.Direct);
@@ -158,20 +158,20 @@ public sealed class AddRabbitMqPublishTopologyTests
             "Duplicate target 'duplicate-target' is configured.",
             "Exchange 'internal-a' uses unsupported exchange type 'internal'.",
             "Exchange binding from exchange 'exchange-a' to exchange 'missing-destination' references unknown destination exchange 'missing-destination'.",
-            "Message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' configures multiple default RabbitMQ outbound targets.",
-            "Outbound target 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
-            "Outbound target 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
-            "Outbound target 'duplicate-target' publishes unregistered CloudEvents message type 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
-            "Outbound target 'duplicate-target' publishes unregistered CloudEvents message type 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'duplicate-target' must configure a serializer.",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'duplicate-target' references unknown channel group 'missing-group'.",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'duplicate-target' targets exchange 'exchange-a' of type 'direct', but requires 'headers'.",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' must configure a serializer.",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' must configure a serializer.",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' references unknown exchange 'missing-exchange'.",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' targets exchange 'exchange-a' of type 'direct', but requires 'fanout'.",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB' and target 'duplicate-target' must configure a serializer.",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB' and target 'duplicate-target' targets exchange 'exchange-a' of type 'direct', but requires 'topic'.",
+            "Message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' configures multiple default RabbitMQ outbound targets.",
+            "Outbound target 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
+            "Outbound target 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' publishes unregistered CloudEvents message type 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
+            "Outbound target 'duplicate-target' publishes unregistered CloudEvents message type 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
+            "Outbound target 'duplicate-target' publishes unregistered CloudEvents message type 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB'. Register its canonical discriminator with MessageContractRegistryBuilder.Map<T>(...) or MapOutbound<T>(...).",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'duplicate-target' must configure a serializer.",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'duplicate-target' references unknown channel group 'missing-group'.",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'duplicate-target' targets exchange 'exchange-a' of type 'direct', but requires 'headers'.",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' must configure a serializer.",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' must configure a serializer.",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' references unknown exchange 'missing-exchange'.",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' targets exchange 'exchange-a' of type 'direct', but requires 'fanout'.",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB' and target 'duplicate-target' must configure a serializer.",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB' and target 'duplicate-target' targets exchange 'exchange-a' of type 'direct', but requires 'topic'.",
             "Queue binding from exchange 'missing-exchange' to queue 'missing-queue' references unknown queue 'missing-queue'.",
             "Queue binding from exchange 'missing-exchange' to queue 'missing-queue' references unknown source exchange 'missing-exchange'.",
             "Queue binding from exchange 'missing-exchange' to queue 'missing-queue' uses unsupported binding mode '99'."
@@ -182,7 +182,7 @@ public sealed class AddRabbitMqPublishTopologyTests
     public void AddRabbitMqTopology_RejectsDuplicateTopologyNames()
     {
         var services = new ServiceCollection();
-        var builder = services.AddBmf();
+        var builder = services.AddBrilliantMessaging();
         builder.AddRabbitMqTopology("shared", static _ => { });
 
         var act = () => builder.AddRabbitMqTopology("shared", static _ => { });
@@ -514,7 +514,7 @@ public sealed class AddRabbitMqPublishTopologyTests
 
         var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().ContainSingle().Which.Should().Be(
-            "RabbitMQ outbound message-contract dialect maps message type 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB', but no outbound target publishes that type on this topology."
+            "RabbitMQ outbound message-contract dialect maps message type 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageB', but no outbound target publishes that type on this topology."
         );
     }
 
@@ -523,7 +523,7 @@ public sealed class AddRabbitMqPublishTopologyTests
     {
         var services = new ServiceCollection();
         services
-           .AddBmf()
+           .AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests/rabbitmq")
            .MapMessageContracts(contracts => contracts.Map<ValidationMessageA>("tests.validation-a"))
            .AddRabbitMqTopology(
@@ -585,8 +585,8 @@ public sealed class AddRabbitMqPublishTopologyTests
 
         var exception = act.Should().Throw<TopologyValidationException>().Which;
         exception.ValidationErrors.Should().BeEquivalentTo(
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' enables mandatory routing but its effective channel group uses fire-and-forget publishing.",
-            "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'shared-best-effort' enables mandatory routing but its effective channel group uses fire-and-forget publishing."
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' enables mandatory routing but its effective channel group uses fire-and-forget publishing.",
+            "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'shared-best-effort' enables mandatory routing but its effective channel group uses fire-and-forget publishing."
         );
     }
 }

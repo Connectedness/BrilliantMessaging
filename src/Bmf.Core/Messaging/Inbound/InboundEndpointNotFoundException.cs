@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Thrown when no inbound endpoint is registered under a requested name.

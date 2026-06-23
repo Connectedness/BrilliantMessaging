@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 
-namespace Bmf.Core.Messaging;
+namespace BrilliantMessaging.Core.Messaging;
 
 /// <summary>
 /// The default <see cref="IPayloadCodec" />, encoding and decoding message payloads as UTF-8 JSON with

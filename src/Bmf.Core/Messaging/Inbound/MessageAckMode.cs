@@ -1,4 +1,4 @@
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Controls when an inbound message is acknowledged to the transport.

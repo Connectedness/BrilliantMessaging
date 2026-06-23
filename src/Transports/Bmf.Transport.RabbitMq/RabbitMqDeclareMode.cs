@@ -1,4 +1,4 @@
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// Controls whether and how an exchange or queue is declared when a topology is provisioned.

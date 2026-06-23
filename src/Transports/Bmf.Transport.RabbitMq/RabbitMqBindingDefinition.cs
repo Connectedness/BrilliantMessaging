@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Bmf.Transport.RabbitMq;
+namespace BrilliantMessaging.Transport.RabbitMq;
 
 /// <summary>
 /// The immutable base for a RabbitMQ binding declaration. Concrete bindings are

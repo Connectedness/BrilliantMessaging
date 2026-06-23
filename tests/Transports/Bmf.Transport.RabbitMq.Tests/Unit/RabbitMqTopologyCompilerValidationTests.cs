@@ -2,18 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Messaging.Outbound;
-using Bmf.Transport.RabbitMq.Inbound;
-using Bmf.Transport.RabbitMq.Outbound;
-using Bmf.Transport.RabbitMq.Tests.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Inbound;
+using BrilliantMessaging.Transport.RabbitMq.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 using Xunit;
 
-namespace Bmf.Transport.RabbitMq.Tests.Unit;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
 
 public sealed class RabbitMqTopologyCompilerValidationTests
 {
@@ -119,8 +119,8 @@ public sealed class RabbitMqTopologyCompilerValidationTests
                 "Channel group '$implicit:bad-outbound' uses unsupported publisher confirm mode '999'.",
                 "Channel group '$implicit:bad-outbound' publisher confirm timeout must be finite and greater than zero.",
                 "Channel group '$implicit:bad-outbound' is configured but no outbound target references it.",
-                "Outbound target for message 'Bmf.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'invalid-serializer' references unknown channel group 'missing-outbound'.",
-                $"Serializer '{typeof(string)}' for outbound target for message 'bmf.transport.rabbitmq.tests.testsupport.validationmessagea' and target 'invalid-serializer' does not implement '{typeof(IMessageSerializer)}'.",
+                "Outbound target for message 'BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport.ValidationMessageA' and target 'invalid-serializer' references unknown channel group 'missing-outbound'.",
+                $"Serializer '{typeof(string)}' for outbound target for message 'brilliantmessaging.transport.rabbitmq.tests.testsupport.validationmessagea' and target 'invalid-serializer' does not implement '{typeof(IMessageSerializer)}'.",
                 "RabbitMQ outbound topology uses unsupported default publisher confirm mode '999'.",
                 "RabbitMQ outbound topology publisher confirm timeout must be finite and greater than zero.",
                 "Channel group '$implicit:bad-inbound' maximum channel count must be greater than zero.",

@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Represents a single stage of the inbound message pipeline: it processes an

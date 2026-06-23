@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Bmf.OpenTelemetry\Bmf.OpenTelemetry.csproj" />
+    <ProjectReference Include="..\..\src\BrilliantMessaging.OpenTelemetry\BrilliantMessaging.OpenTelemetry.csproj" />
   </ItemGroup>
 
   <ItemGroup>

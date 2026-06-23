@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Core.Messaging.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Completes a predicate-based inbound message recognizer by mapping matches to a message type.

@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// An immutable declaration of an outbound channel group, produced by the topology builder.

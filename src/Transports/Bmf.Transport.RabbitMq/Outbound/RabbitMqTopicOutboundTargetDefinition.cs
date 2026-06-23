@@ -1,6 +1,6 @@
 using System;
 
-namespace Bmf.Transport.RabbitMq.Outbound;
+namespace BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 /// <summary>
 /// An immutable outbound target declaration for a topic exchange (pattern routing-key match).

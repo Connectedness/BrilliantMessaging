@@ -4,18 +4,18 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Bmf.Core.Messaging;
-using Bmf.Core.Messaging.Inbound;
-using Bmf.Core.Tests.Messaging.TestSupport;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Tests.Messaging.TestSupport;
 using FluentAssertions;
 using Xunit;
 
-namespace Bmf.Core.Tests.Messaging;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
 [Collection("Diagnostics")]
 public sealed class InboundDiagnosticsMiddlewareTests
 {
-    private const string ProcessActivityName = "bmf.inbound.process";
+    private const string ProcessActivityName = "brilliantmessaging.inbound.process";
 
     [Fact]
     public async Task InvokeAsync_ParentsConsumerActivityToExtractedTraceContext()

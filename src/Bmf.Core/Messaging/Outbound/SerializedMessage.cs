@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Bmf.Core.Messaging.Outbound;
+namespace BrilliantMessaging.Core.Messaging.Outbound;
 
 /// <summary>
 /// A transport-neutral, ready-to-publish message: the serialized body together with the metadata a transport

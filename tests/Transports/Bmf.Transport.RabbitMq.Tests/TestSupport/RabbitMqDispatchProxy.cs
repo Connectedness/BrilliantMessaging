@@ -1,7 +1,7 @@
 using System;
 using System.Reflection;
 
-namespace Bmf.Transport.RabbitMq.Tests.TestSupport;
+namespace BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 
 public class RabbitMqDispatchProxy<T> : DispatchProxy where T : class
 {

@@ -1,11 +1,11 @@
 using System;
 
-namespace Bmf.Abstractions;
+namespace BrilliantMessaging.Abstractions;
 
 /// <summary>
-/// Creates time-ordered identifiers for BMF messages.
+/// Creates time-ordered identifiers for BrilliantMessaging messages.
 /// </summary>
-public static class BmfUuid
+public static class BrilliantMessagingUuid
 {
     /// <summary>
     /// Creates a ULID projected to a <see cref="Guid" />.
