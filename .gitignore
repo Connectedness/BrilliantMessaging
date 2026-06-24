@@ -1,13 +1,13 @@
 .vs/
 .vscode/
 .idea/**
-!.idea/.idea.BMF/
-!.idea/.idea.BMF/.idea/
-!.idea/.idea.BMF/.idea/indexLayout.xml
+!.idea/.idea.BrilliantMessaging/
+!.idea/.idea.BrilliantMessaging/.idea/
+!.idea/.idea.BrilliantMessaging/.idea/indexLayout.xml
 bin/
 obj/
 *.suo
 *.user
 /tmp/
-/BMF.snk
+/BrilliantMessaging.snk
 /artifacts/

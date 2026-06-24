@@ -104,7 +104,7 @@ function triggerDownload(blob, filename) {
 }
 
 const baseName = (variant, size, transparent) =>
-  `bmf-reuleaux-${variant.id}-${size}px${transparent ? '-transparent' : ''}`;
+  `brilliantmessaging-reuleaux-${variant.id}-${size}px${transparent ? '-transparent' : ''}`;
 
 function downloadSvg(variant, size, transparent) {
   const blob = new Blob([exportSvg(variant, size, transparent)], {
@@ -187,7 +187,7 @@ async function downloadFavicon(transparent) {
   );
   triggerDownload(
     new Blob([buildIco(pngs)], { type: 'image/x-icon' }),
-    `bmf-reuleaux-favicon${transparent ? '-transparent' : ''}.ico`
+    `brilliantmessaging-reuleaux-favicon${transparent ? '-transparent' : ''}.ico`
   );
 }
 
@@ -196,7 +196,7 @@ async function downloadAppleTouch() {
   // transparency black — so these are always exported on the paper background.
   triggerDownload(
     await rasterize(colorVariant, 180, false),
-    'bmf-reuleaux-apple-touch-icon-180px.png'
+    'brilliantmessaging-reuleaux-apple-touch-icon-180px.png'
   );
 }
 

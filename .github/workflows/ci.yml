@@ -70,17 +70,17 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PAT }}
 
       - name: Restore
-        run: dotnet restore BMF.slnx /p:ContinuousIntegrationBuild=true
+        run: dotnet restore BrilliantMessaging.slnx /p:ContinuousIntegrationBuild=true
 
       - name: Build
-        run: dotnet build BMF.slnx --configuration Release --no-restore /p:ContinuousIntegrationBuild=true
+        run: dotnet build BrilliantMessaging.slnx --configuration Release --no-restore /p:ContinuousIntegrationBuild=true
 
       - name: Install ReportGenerator
         run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.10
 
       - name: Test
         run: >
-          dotnet test BMF.slnx
+          dotnet test BrilliantMessaging.slnx
           --configuration Release
           --no-build
           --no-restore

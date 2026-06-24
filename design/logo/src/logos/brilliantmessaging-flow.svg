@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 84" fill="none">
+  <!--
+    Brilliant Messaging — Concept 2: The Controlled Flow.
+    A single continuous trace, drawn like a printed-circuit path. The message
+    enters at the left pad, is routed through a structured junction (the diamond
+    exchange) via clean right-angle bends, and exits at the right pad.
+    Enter -> topology routes -> exit. Nothing wanders; every turn is deliberate.
+  -->
+  <!-- the continuous trace -->
+  <path d="M18 66 H56 V44 H100 V22 H150"
+        stroke="#1F2937" stroke-width="8"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the routing junction / exchange -->
+  <rect x="70" y="36" width="16" height="16" rx="2" transform="rotate(45 78 44)" fill="#14B8A6"/>
+  <!-- entry and exit pads -->
+  <rect x="11" y="59" width="14" height="14" rx="3" fill="#1F2937"/>
+  <rect x="143" y="15" width="14" height="14" rx="3" fill="#1F2937"/>
+</svg>

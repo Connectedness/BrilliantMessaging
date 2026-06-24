@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 80" fill="none">
+  <!--
+    Brilliant Messaging — Concept 1: The Explicit Route, realized as an "M" monogram.
+    The route enters at the left endpoint, climbs, is routed through the
+    central diamond (the exchange / routing decision), then descends to
+    the right endpoint. Endpoints = circles. Exchange = diamond.
+    Nothing hidden: every node and connection is drawn explicitly.
+  -->
+  <!-- the route / topology -->
+  <path d="M18 64 V16 L48 32 L78 16 V64"
+        stroke="#1F2937" stroke-width="8"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the routing exchange -->
+  <rect x="36" y="32" width="24" height="24" rx="3" transform="rotate(45 48 44)" fill="#14B8A6"/>
+  <!-- the two explicit endpoints -->
+  <circle cx="18" cy="64" r="8" fill="#1F2937"/>
+  <circle cx="78" cy="64" r="8" fill="#1F2937"/>
+</svg>

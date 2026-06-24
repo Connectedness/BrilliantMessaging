@@ -1,0 +1,120 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using BenchmarkDotNet.Attributes;
+using BrilliantMessaging.Abstractions;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
+
+namespace BrilliantMessaging.Benchmarks;
+
+[MemoryDiagnoser]
+public class TopologyPublisherMemoryBenchmark
+{
+    private const string NamedTopology = "benchmark";
+
+    private BenchmarkMessage _message = null!;
+    private MessagePublisher _publisher = null!;
+    private BenchmarkTarget _target = null!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        MessageContractRegistryBuilder contracts = new ();
+        contracts.Map<BenchmarkMessage>("benchmarks.message");
+        var registry = ((IBuildable<IMessageContractRegistry>) contracts).Build();
+        _target = new BenchmarkTarget(registry, NamedTopology);
+        _publisher = new MessagePublisher(
+            new BenchmarkTopology()
+        );
+        _message = new BenchmarkMessage("value");
+    }
+
+    [Benchmark(Baseline = true)]
+    public Task DefaultPublish()
+    {
+        return _publisher.PublishMessageAsync(_message, _target, cancellationToken: CancellationToken.None);
+    }
+
+    [Benchmark]
+    public Task TopologyPublisherPublish()
+    {
+        return _publisher
+           .ForTopology(NamedTopology)
+           .PublishMessageAsync(_message, _target, cancellationToken: CancellationToken.None);
+    }
+
+    private sealed record BenchmarkMessage(string Value) : ICloudEvent
+    {
+        Guid ICloudEvent.Id { get; } = BrilliantMessagingUuid.NewId();
+
+        DateTimeOffset ICloudEvent.Time { get; } = DateTimeOffset.UtcNow;
+
+        string? ICloudEvent.Subject => null;
+    }
+
+    private sealed class BenchmarkTarget : OutboundTarget<BenchmarkMessage>
+    {
+        public BenchmarkTarget(IMessageContractRegistry messageContractRegistry, string topologyName)
+            : base("benchmark", "benchmark", new BenchmarkSerializer(), messageContractRegistry, topologyName) { }
+
+        protected override Task PublishSerializedCoreAsync(
+            SerializedMessage message,
+            CancellationToken cancellationToken
+        )
+        {
+            return Task.CompletedTask;
+        }
+
+        protected override Task PublishTypedCloudEventAsync(
+            BenchmarkMessage message,
+            CloudEventEnvelope envelope,
+            string? routingKey,
+            CancellationToken cancellationToken
+        )
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class BenchmarkTopology : Topology
+    {
+        public BenchmarkTopology() : base(
+            DefaultName,
+            TopologyData.PrepareTopologyDataStructures(
+                new Dictionary<Type, OutboundTarget>(),
+                new Dictionary<string, OutboundTarget>(StringComparer.Ordinal),
+                new Dictionary<string, InboundEndpoint>(StringComparer.Ordinal)
+            )
+        ) { }
+    }
+
+    private sealed class BenchmarkSerializer : IMessageSerializer
+    {
+        private static readonly byte[] Body = "body"u8.ToArray();
+
+        public ValueTask<CloudEventEnvelope> SerializeAsync<T>(
+            T message,
+            in CloudEventMetadata metadata,
+            string? type,
+            string? dataSchema,
+            CancellationToken cancellationToken = default
+        )
+        {
+            CloudEventEnvelope envelope = new (
+                "1.0",
+                metadata.Id.ToString("D"),
+                "/benchmarks",
+                type!,
+                metadata.Time,
+                metadata.Subject,
+                "application/json",
+                dataSchema,
+                Body
+            );
+            return new ValueTask<CloudEventEnvelope>(envelope);
+        }
+    }
+}

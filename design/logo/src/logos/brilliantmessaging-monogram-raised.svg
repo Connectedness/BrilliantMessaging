@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 80" fill="none">
+  <!--
+    Brilliant Messaging — Concept 1, variant C: "Raised exchange".
+    Variant B with the diamond lifted up (center moved from y=44 to y=38) so it
+    is no longer centered between the two vertical strokes of the "M". The
+    diagonals connect higher on the upper edges, so they drop less and the M's
+    middle lines read flatter / less steep.
+  -->
+  <!-- the route / topology -->
+  <path d="M18 64 V16 L39.5 29.5 M56.5 29.5 L78 16 V64"
+        stroke="#1F2937" stroke-width="8"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- the raised routing exchange -->
+  <rect x="36" y="26" width="24" height="24" rx="3" transform="rotate(45 48 38)" fill="#14B8A6"/>
+  <!-- the two explicit endpoints -->
+  <circle cx="18" cy="64" r="8" fill="#1F2937"/>
+  <circle cx="78" cy="64" r="8" fill="#1F2937"/>
+</svg>

@@ -1,9 +1,9 @@
 {
-  "name": "bmf-logo",
+  "name": "brilliantmessaging-logo",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Logo exploration for BMF (Brilliant Messaging Framework) — Concept 1: The Explicit Route",
+  "description": "Logo exploration for Brilliant Messaging — Concept 1: The Explicit Route",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

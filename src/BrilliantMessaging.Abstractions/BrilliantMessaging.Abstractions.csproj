@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Description>Brilliant Messaging shared abstractions for messaging and cloud event contracts.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Polyfill" PrivateAssets="all" />
+    <PackageReference Include="System.Memory" />
+    <PackageReference Include="Ulid" />
+  </ItemGroup>
+</Project>
