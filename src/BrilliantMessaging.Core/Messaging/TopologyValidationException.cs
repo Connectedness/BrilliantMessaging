@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace BrilliantMessaging.Core.Messaging;
 
@@ -19,7 +20,7 @@ public sealed class TopologyValidationException : Exception
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="validationErrors" /> is <see langword="null" />.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="validationErrors" /> is empty.</exception>
     public TopologyValidationException(IReadOnlyList<string> validationErrors)
-        : base("Topology validation failed.")
+        : base(BuildMessage(validationErrors))
     {
         if (validationErrors is null)
         {
@@ -40,4 +41,21 @@ public sealed class TopologyValidationException : Exception
     /// Gets the validation error messages, ordered for stable reporting.
     /// </summary>
     public IReadOnlyList<string> ValidationErrors { get; }
+
+    private static string BuildMessage(IReadOnlyList<string>? validationErrors)
+    {
+        if (validationErrors is null || validationErrors.Count == 0)
+        {
+            return "Topology validation failed.";
+        }
+
+        StringBuilder builder = new ("Topology validation failed:");
+        for (int i = 0; i < validationErrors.Count; i++)
+        {
+            builder.AppendLine();
+            builder.Append("- ");
+            builder.Append(validationErrors[i]);
+        }
+        return builder.ToString();
+    }
 }
