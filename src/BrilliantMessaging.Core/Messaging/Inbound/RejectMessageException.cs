@@ -10,22 +10,11 @@ public sealed class RejectMessageException : Exception
     /// <summary>
     /// Initializes a new instance of the <see cref="RejectMessageException" /> class.
     /// </summary>
-    public RejectMessageException()
-        : base("The inbound message was explicitly rejected.") { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="RejectMessageException" /> class with a custom message.
-    /// </summary>
-    /// <param name="message">The exception message.</param>
-    public RejectMessageException(string message)
-        : base(message) { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="RejectMessageException" /> class with a custom message and
-    /// inner exception.
-    /// </summary>
     /// <param name="message">The exception message.</param>
     /// <param name="innerException">The exception that caused this rejection.</param>
-    public RejectMessageException(string message, Exception innerException)
+    public RejectMessageException(
+        string message = "The inbound message was explicitly rejected.",
+        Exception? innerException = null
+    )
         : base(message, innerException) { }
 }
