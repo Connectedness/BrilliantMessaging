@@ -24,3 +24,5 @@ Read ./tests/AGENTS.md for details on how to write tests.
 ## Here is Your Space
 
 If you encounter something worth noting while you are working on this code base, write it down here in this section. Once you are finished, I will discuss it with you and we can decide where to put your notes.
+
+- RabbitMQ 4.3 quorum delivery-limit counted `basic.reject` redeliveries in the Docker integration test, but did not dead-letter after repeated `basic.nack` requeues. The RabbitMQ transport now implements the single-message `IMessageAcknowledgement.NackAsync` path with `BasicRejectAsync` so broker-bounded redelivery works.

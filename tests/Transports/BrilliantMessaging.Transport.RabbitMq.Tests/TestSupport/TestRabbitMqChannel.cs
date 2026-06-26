@@ -34,9 +34,13 @@ public sealed class TestRabbitMqChannel
 
     public int BasicNackCallCount { get; private set; }
 
+    public int BasicRejectCallCount { get; private set; }
+
     public IList<string> ConsumedQueues { get; } = new List<string>();
 
     public bool? LastNackRequeue { get; private set; }
+
+    public bool? LastRejectRequeue { get; private set; }
 
     public ushort? LastPrefetchCount { get; private set; }
 
@@ -167,6 +171,10 @@ public sealed class TestRabbitMqChannel
             case "BasicNackAsync":
                 BasicNackCallCount++;
                 LastNackRequeue = (bool) arguments![2]!;
+                return default(ValueTask);
+            case "BasicRejectAsync":
+                BasicRejectCallCount++;
+                LastRejectRequeue = (bool) arguments![1]!;
                 return default(ValueTask);
             case "BasicCancelAsync":
                 return Task.CompletedTask;

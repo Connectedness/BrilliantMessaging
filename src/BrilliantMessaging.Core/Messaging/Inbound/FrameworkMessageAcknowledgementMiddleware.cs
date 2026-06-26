@@ -6,8 +6,9 @@ namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
 /// Inbound middleware that implements <see cref="MessageAckMode.Auto" />: it acknowledges the message after the
-/// handler succeeds, requeues it on cancellation, and rejects it (without requeue) on any other failure. Under
-/// <see cref="MessageAckMode.Manual" /> it leaves acknowledgement entirely to the handler.
+/// handler succeeds, requeues it on cancellation, and classifies other failures through the endpoint's
+/// <see cref="RedeliveryClassifier" />. Under <see cref="MessageAckMode.Manual" /> it leaves acknowledgement
+/// entirely to the handler.
 /// </summary>
 public sealed class FrameworkMessageAcknowledgementMiddleware : IMessageMiddleware
 {
@@ -43,11 +44,12 @@ public sealed class FrameworkMessageAcknowledgementMiddleware : IMessageMiddlewa
 
             throw;
         }
-        catch
+        catch (Exception exception)
         {
             if (context.Endpoint.AckMode == MessageAckMode.Auto)
             {
-                await context.Acknowledgement.NackAsync(requeue: false, CancellationToken.None).ConfigureAwait(false);
+                var shouldRetry = context.Endpoint.RedeliveryClassifier.ShouldRetry(exception);
+                await context.Acknowledgement.NackAsync(shouldRetry, CancellationToken.None).ConfigureAwait(false);
             }
 
             throw;

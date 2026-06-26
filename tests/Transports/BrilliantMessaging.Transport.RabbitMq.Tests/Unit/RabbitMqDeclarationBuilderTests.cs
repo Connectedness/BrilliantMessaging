@@ -25,6 +25,7 @@ public sealed class RabbitMqDeclarationBuilderTests
            .WithMaxLengthBytes(4096)
            .WithQueueType("classic")
            .AsQuorumQueue()
+           .AsClassicQueue()
            .SingleActiveConsumer()
            .Build();
 
@@ -40,8 +41,28 @@ public sealed class RabbitMqDeclarationBuilderTests
         definition.Arguments.Should().Contain("x-expires", 60000L);
         definition.Arguments.Should().Contain("x-max-length", 100L);
         definition.Arguments.Should().Contain("x-max-length-bytes", 4096L);
-        definition.Arguments.Should().Contain("x-queue-type", "quorum");
+        definition.Arguments.Should().Contain("x-queue-type", "classic");
         definition.Arguments.Should().Contain("x-single-active-consumer", true);
+    }
+
+    [Fact]
+    public void QueueBuilder_DefaultsToQuorumQueue()
+    {
+        var definition = new RabbitMqQueueBuilder("work").Build();
+
+        definition.Durable.Should().BeTrue();
+        definition.Arguments.Should().Contain("x-queue-type", "quorum");
+    }
+
+    [Fact]
+    public void QueueBuilder_AsQuorumQueueIsIdempotent()
+    {
+        var definition = new RabbitMqQueueBuilder("work")
+           .AsQuorumQueue()
+           .AsQuorumQueue()
+           .Build();
+
+        definition.Arguments.Should().Contain("x-queue-type", "quorum");
     }
 
     [Fact]

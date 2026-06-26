@@ -24,6 +24,7 @@ public sealed class RabbitMqQueueBuilder : IBuildable<RabbitMqQueueDefinition>
         Name = RequireText(name, nameof(name));
         DeclareMode = RabbitMqDeclareMode.Active;
         Durable = true;
+        _arguments["x-queue-type"] = "quorum";
     }
 
     /// <summary>
@@ -221,6 +222,16 @@ public sealed class RabbitMqQueueBuilder : IBuildable<RabbitMqQueueDefinition>
     public RabbitMqQueueBuilder AsQuorumQueue()
     {
         _arguments["x-queue-type"] = "quorum";
+        return this;
+    }
+
+    /// <summary>
+    /// Declares the queue as a classic queue (<c>x-queue-type = classic</c>).
+    /// </summary>
+    /// <returns>The same builder for chaining.</returns>
+    public RabbitMqQueueBuilder AsClassicQueue()
+    {
+        _arguments["x-queue-type"] = "classic";
         return this;
     }
 

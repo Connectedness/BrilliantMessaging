@@ -141,8 +141,8 @@ public sealed class RabbitMqTopologyRuntimeTests
             )
         );
         recorder.Durations.Should().BeEmpty();
-        channel.BasicNackCallCount.Should().Be(1);
-        channel.LastNackRequeue.Should().BeFalse();
+        channel.BasicRejectCallCount.Should().Be(1);
+        channel.LastRejectRequeue.Should().BeFalse();
 
         await runtime.StopAsync(cancellationToken);
     }
@@ -208,7 +208,7 @@ public sealed class RabbitMqTopologyRuntimeTests
 
         sink.Invocations.Should().ContainSingle().Which.Should().Be("raw");
         channel.BasicAckCallCount.Should().Be(1);
-        channel.BasicNackCallCount.Should().Be(0);
+        channel.BasicRejectCallCount.Should().Be(0);
 
         await runtime.StopAsync(cancellationToken);
     }
@@ -306,7 +306,7 @@ public sealed class RabbitMqTopologyRuntimeTests
 
         sink.Invocations.Should().BeEquivalentTo("cloud-event-a", "recognized-b");
         channel.BasicAckCallCount.Should().Be(2);
-        channel.BasicNackCallCount.Should().Be(0);
+        channel.BasicRejectCallCount.Should().Be(0);
 
         await runtime.StopAsync(cancellationToken);
     }
@@ -362,8 +362,8 @@ public sealed class RabbitMqTopologyRuntimeTests
             cancellationToken
         );
 
-        channel.BasicNackCallCount.Should().Be(1);
-        channel.LastNackRequeue.Should().BeFalse();
+        channel.BasicRejectCallCount.Should().Be(1);
+        channel.LastRejectRequeue.Should().BeFalse();
 
         await runtime.StopAsync(cancellationToken);
     }
@@ -413,8 +413,8 @@ public sealed class RabbitMqTopologyRuntimeTests
             cancellationToken
         );
 
-        channel.BasicNackCallCount.Should().Be(1);
-        channel.LastNackRequeue.Should().BeFalse();
+        channel.BasicRejectCallCount.Should().Be(1);
+        channel.LastRejectRequeue.Should().BeFalse();
 
         await runtime.StopAsync(cancellationToken);
     }
@@ -464,8 +464,8 @@ public sealed class RabbitMqTopologyRuntimeTests
             cancellationToken
         );
 
-        channel.BasicNackCallCount.Should().Be(1);
-        channel.LastNackRequeue.Should().BeFalse();
+        channel.BasicRejectCallCount.Should().Be(1);
+        channel.LastRejectRequeue.Should().BeFalse();
 
         await runtime.StopAsync(cancellationToken);
     }
@@ -527,8 +527,8 @@ public sealed class RabbitMqTopologyRuntimeTests
             deliveryCancellationTokenSource.Token
         );
 
-        channel.BasicNackCallCount.Should().Be(1);
-        channel.LastNackRequeue.Should().BeTrue();
+        channel.BasicRejectCallCount.Should().Be(1);
+        channel.LastRejectRequeue.Should().BeTrue();
         // A graceful-shutdown cancellation is an ordinary consumed-message increment with error.type absent.
         recorder.ConsumedMessages.Should().ContainSingle().Which.Should()
            .NotContain(tag => tag.Key == MessagingSemanticConventions.ErrorType);

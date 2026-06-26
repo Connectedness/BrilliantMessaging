@@ -206,6 +206,61 @@ different so they coexist without colliding), and provisioning happens once at
 startup through a hosted service. If what's on the broker doesn't match what you
 declared, you'll know immediately — not three deploys later.
 
+### Resilience and redelivery
+
+RabbitMQ queues are declared as quorum queues by default:
+
+```csharp
+rabbit.Queue("orders-processing"); // x-queue-type = quorum
+rabbit.Queue("ephemeral-work", queue => queue.AsClassicQueue());
+```
+
+This is a pre-1.0 breaking change. An existing classic queue cannot be redeclared as
+quorum; RabbitMQ fails provisioning with `406 PRECONDITION_FAILED`. Either opt that
+queue back into classic with `AsClassicQueue()` or migrate it intentionally (drain,
+delete, redeclare).
+
+Inbound handler failures are classified through `RedeliveryClassifier`. Quorum queues
+default to retry-unless-poison: handler exceptions are settled with `requeue: true`,
+while `MessageDeserializationException` and `RejectMessageException` are rejected
+without requeue. `RetryMessageException` forces retry on quorum. You can narrow the
+decision consumer-wide or per handler:
+
+```csharp
+rabbit.Consume("orders-processing", consumer => consumer
+    .WithRedelivery(redelivery =>
+        redelivery.ShouldRetry(ex => ex is TimeoutException))
+    .Handle<OrderPlaced, OrderPlacedHandler>(handler => handler
+        .WithRedelivery(redelivery =>
+            redelivery.ShouldRetry(ex => ex is DbUpdateConcurrencyException))));
+```
+
+Brilliant Messaging only classifies. It does not count attempts, delay, or set
+`x-delivery-limit` / `x-delayed-retry-*`. Redelivery is immediate and bounded by the
+broker's quorum delivery limit (RabbitMQ's default is about 20 deliveries); delayed
+retry, delivery-limit tuning, and dead-letter routing belong in RabbitMQ policies or
+operator-managed topology outside this API.
+
+The compiler auto-detects a consumer's queue type from actively declared
+`x-queue-type`. For passive or externally declared queues, use
+`QueueType(RabbitMqQueueType.Quorum)` only when the real broker queue is quorum:
+
+```csharp
+rabbit.Queue("orders-processing", queue => queue.WithDeclareMode(RabbitMqDeclareMode.Passive));
+rabbit.Consume("orders-processing", consumer => consumer
+    .QueueType(RabbitMqQueueType.Quorum)
+    .WithRedelivery(redelivery => redelivery.ShouldRetry(_ => true))
+    .Handle<OrderPlaced, OrderPlacedHandler>());
+```
+
+Classic and unknown queues default to reject-all, preserving the old one-and-done
+behavior. Configuring `WithRedelivery(...)` on classic or unknown queues is a
+compile-time topology error because the client cannot prove there is a broker
+backstop for `requeue: true`; on these endpoints `RetryMessageException` is a no-op.
+Asserting `QueueType(RabbitMqQueueType.Quorum)` for a queue that is actually classic
+removes that guard and can create an unbounded redelivery loop, so use it only to
+describe externally managed quorum queues accurately.
+
 ### Publishing
 
 `IMessagePublisher` is your outbound surface. The common call is

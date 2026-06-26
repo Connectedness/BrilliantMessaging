@@ -272,6 +272,29 @@ public sealed class AddRabbitMqConsumeTopologyTests
     }
 
     [Fact]
+    public void WithRedelivery_RejectsNullConfiguration()
+    {
+        var consumerBuilder = new RabbitMqInboundConsumerBuilder("inbound");
+        RabbitMqInboundHandlerBuilder handlerBuilder = new ();
+
+        var consumerAction = () => consumerBuilder.WithRedelivery(null!);
+        var handlerAction = () => handlerBuilder.WithRedelivery(null!);
+
+        consumerAction.Should().Throw<ArgumentNullException>().WithParameterName("configure");
+        handlerAction.Should().Throw<ArgumentNullException>().WithParameterName("configure");
+    }
+
+    [Fact]
+    public void QueueType_RejectsUndefinedQueueType()
+    {
+        var builder = new RabbitMqInboundConsumerBuilder("inbound");
+
+        var act = () => builder.QueueType((RabbitMqQueueType) 999);
+
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("queueType");
+    }
+
+    [Fact]
     public void UseInspector_RejectsUnsupportedServiceLifetime()
     {
         var builder = new RabbitMqInboundConsumerBuilder("inbound");
@@ -672,6 +695,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
                     builder.Queue(
                         "inbound",
                         queue => queue
+                           .AsClassicQueue()
                            .DurableQueue(false)
                            .ExclusiveQueue()
                            .AutoDeleteQueue()
@@ -916,6 +940,211 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
         endpoint.DeserializerType.Should().Be(typeof(PayloadCodecMessageDeserializer));
         endpoint.AckMode.Should().Be(MessageAckMode.Auto);
+    }
+
+    [Fact]
+    public void Compile_UsesQueueTypeResolvedRedeliveryDefaults()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("quorum");
+                    builder.Queue("classic", queue => queue.AsClassicQueue());
+                    builder.Consume(
+                        "quorum",
+                        consumer => consumer.Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                    builder.Consume(
+                        "classic",
+                        consumer => consumer.Handle<ValidationMessageB, ValidationMessageBHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var topology = serviceProvider.GetRequiredService<RabbitMqTopology>();
+        var quorumEndpoint = topology.Consumers.Single(static consumer => consumer.QueueName == "quorum")
+           .Endpoints.Should().ContainSingle().Which;
+        var classicEndpoint = topology.Consumers.Single(static consumer => consumer.QueueName == "classic")
+           .Endpoints.Should().ContainSingle().Which;
+
+        quorumEndpoint.RedeliveryClassifier.ShouldRetry(new InvalidOperationException()).Should().BeTrue();
+        quorumEndpoint.RedeliveryClassifier
+           .ShouldRetry(new MessageDeserializationException(typeof(ValidationMessageA), new FormatException()))
+           .Should().BeFalse();
+        classicEndpoint.RedeliveryClassifier.ShouldRetry(new InvalidOperationException()).Should().BeFalse();
+        classicEndpoint.RedeliveryClassifier.ShouldRetry(new RetryMessageException()).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Compile_ReconcilesConsumerAndHandlerRedeliveryClassifiers()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .WithRedelivery(
+                                redelivery => redelivery.ShouldRetry(static failure => failure is TimeoutException)
+                            )
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                           .Handle<ValidationMessageB, ValidationMessageBHandler>(
+                                handler => handler.WithRedelivery(
+                                    redelivery =>
+                                        redelivery.ShouldRetry(static failure => failure is ApplicationException)
+                                )
+                            )
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var endpoints = serviceProvider.GetRequiredService<RabbitMqTopology>()
+           .Consumers.Should().ContainSingle().Which.Endpoints;
+        var consumerDefaultEndpoint = endpoints.Single(
+            static endpoint => endpoint.MessageType == typeof(ValidationMessageA)
+        );
+        var handlerOverrideEndpoint = endpoints.Single(
+            static endpoint => endpoint.MessageType == typeof(ValidationMessageB)
+        );
+
+        consumerDefaultEndpoint.RedeliveryClassifier.ShouldRetry(new TimeoutException()).Should().BeTrue();
+        consumerDefaultEndpoint.RedeliveryClassifier.ShouldRetry(new ApplicationException()).Should().BeFalse();
+        handlerOverrideEndpoint.RedeliveryClassifier.ShouldRetry(new TimeoutException()).Should().BeFalse();
+        handlerOverrideEndpoint.RedeliveryClassifier.ShouldRetry(new ApplicationException()).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Compile_RejectsExplicitRedeliveryOnClassicOrUnknownQueues()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("classic", queue => queue.AsClassicQueue());
+                    builder.Queue("passive", queue => queue.WithDeclareMode(RabbitMqDeclareMode.Passive));
+                    builder.Consume(
+                        "classic",
+                        consumer => consumer
+                           .WithRedelivery(static _ => { })
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                    builder.Consume(
+                        "passive",
+                        consumer => consumer.Handle<ValidationMessageB, ValidationMessageBHandler>(
+                            handler => handler.WithRedelivery(static _ => { })
+                        )
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        var exception = act.Should().Throw<TopologyValidationException>().Which;
+        exception.ValidationErrors.Should().Contain(
+            "Inbound consumer for queue 'classic' configures redelivery, but the effective queue type is 'classic'. Redelivery classifiers require a quorum queue with a broker delivery limit; call AsQuorumQueue() on the queue declaration or QueueType(RabbitMqQueueType.Quorum) on the consumer."
+        );
+        exception.ValidationErrors.Should().Contain(
+            "Inbound consumer for queue 'passive' configures redelivery, but the effective queue type is 'unknown'. Redelivery classifiers require a quorum queue with a broker delivery limit; call AsQuorumQueue() on the queue declaration or QueueType(RabbitMqQueueType.Quorum) on the consumer."
+        );
+    }
+
+    [Fact]
+    public void Compile_UsesQueueTypeAssertionForPassiveQueueRedelivery()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("passive", queue => queue.WithDeclareMode(RabbitMqDeclareMode.Passive));
+                    builder.Consume(
+                        "passive",
+                        consumer => consumer
+                           .QueueType(RabbitMqQueueType.Quorum)
+                           .WithRedelivery(static _ => { })
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var endpoint = serviceProvider.GetRequiredService<RabbitMqTopology>()
+           .Consumers.Should().ContainSingle().Which
+           .Endpoints.Should().ContainSingle().Which;
+
+        endpoint.RedeliveryClassifier.ShouldRetry(new InvalidOperationException()).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Compile_RejectsQueueTypeAssertionThatContradictsActiveQueueDeclaration()
+    {
+        var services = new ServiceCollection();
+        services.AddTestCloudEvents()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue("inbound", queue => queue.AsClassicQueue());
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .QueueType(RabbitMqQueueType.Quorum)
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should().ContainSingle().Which.Should().Be(
+                "Inbound consumer for queue 'inbound' asserts queue type 'quorum', but active queue declaration 'inbound' sets x-queue-type 'classic'."
+            );
+    }
+
+    [Fact]
+    public void Compile_RejectsClassicOnlyFlagsOnQuorumQueue()
+    {
+        var services = new ServiceCollection();
+        services.AddBrilliantMessaging()
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.Queue(
+                        "inbound",
+                        queue => queue
+                           .DurableQueue(false)
+                           .ExclusiveQueue()
+                           .AutoDeleteQueue()
+                    );
+                }
+            );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure -- act is called before disposal
+        Action act = () => _ = serviceProvider.GetRequiredService<RabbitMqTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should().Contain(
+                "Queue 'inbound' is configured as a quorum queue but sets classic-only flags (durable=false, exclusive=true, autoDelete=true). Quorum queues must be durable, non-exclusive, and non-auto-delete; call AsClassicQueue() to use those flags."
+            );
     }
 
     [Fact]
