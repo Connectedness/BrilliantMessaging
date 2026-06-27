@@ -24,8 +24,15 @@ public abstract class InboundEndpoint
     /// <param name="discriminator">The CloudEvents discriminator the endpoint is bound to.</param>
     /// <param name="handlerInvocation">The composed pipeline delegate that dispatches the message to the handler.</param>
     /// <param name="ackMode">The acknowledgement mode for the endpoint.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="messageType" />, <paramref name="handlerType" />, <paramref name="deserializerType" />, or <paramref name="handlerInvocation" /> is <see langword="null" />.</exception>
-    /// <exception cref="ArgumentException">Thrown when a string argument is null or whitespace, or when <paramref name="deserializerType" /> does not implement <see cref="IMessageDeserializer" />.</exception>
+    /// <param name="redeliveryClassifier">The redelivery classifier for handler failures; defaults to <see cref="RedeliveryClassifier.RejectAll" />.</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="messageType" />, <paramref name="handlerType" />,
+    /// <paramref name="deserializerType" />, or <paramref name="handlerInvocation" /> is <see langword="null" />.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when a string argument is null or whitespace, or when <paramref name="deserializerType" /> does not
+    /// implement <see cref="IMessageDeserializer" />.
+    /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="ackMode" /> is not a defined value.</exception>
     protected InboundEndpoint(
         string name,
@@ -36,7 +43,8 @@ public abstract class InboundEndpoint
         Type deserializerType,
         string discriminator,
         MessageDelegate handlerInvocation,
-        MessageAckMode ackMode
+        MessageAckMode ackMode,
+        RedeliveryClassifier? redeliveryClassifier = null
     )
     {
         Name = RequireText(name, nameof(name));
@@ -62,6 +70,7 @@ public abstract class InboundEndpoint
         }
 
         AckMode = ackMode;
+        RedeliveryClassifier = redeliveryClassifier ?? RedeliveryClassifier.RejectAll;
     }
 
     /// <summary>
@@ -103,6 +112,11 @@ public abstract class InboundEndpoint
     /// Gets the acknowledgement mode for the endpoint.
     /// </summary>
     public MessageAckMode AckMode { get; }
+
+    /// <summary>
+    /// Gets the classifier used to decide whether a handler failure should be retried through broker redelivery.
+    /// </summary>
+    public RedeliveryClassifier RedeliveryClassifier { get; }
 
     /// <summary>
     /// Invokes the endpoint's pipeline to dispatch an already-deserialized message to its handler.
@@ -155,6 +169,7 @@ public class InboundEndpoint<TMessage> : InboundEndpoint
     /// <param name="discriminator">The CloudEvents discriminator the endpoint is bound to.</param>
     /// <param name="handlerInvocation">The composed pipeline delegate that dispatches the message to the handler.</param>
     /// <param name="ackMode">The acknowledgement mode for the endpoint; defaults to <see cref="MessageAckMode.Auto" />.</param>
+    /// <param name="redeliveryClassifier">The redelivery classifier for handler failures; defaults to <see cref="RedeliveryClassifier.RejectAll" />.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="handlerType" /> does not implement <see cref="IMessageHandler{TMessage}" />.</exception>
     public InboundEndpoint(
         string name,
@@ -164,7 +179,8 @@ public class InboundEndpoint<TMessage> : InboundEndpoint
         Type deserializerType,
         string discriminator,
         MessageDelegate handlerInvocation,
-        MessageAckMode ackMode = MessageAckMode.Auto
+        MessageAckMode ackMode = MessageAckMode.Auto,
+        RedeliveryClassifier? redeliveryClassifier = null
     )
         : base(
             name,
@@ -175,7 +191,8 @@ public class InboundEndpoint<TMessage> : InboundEndpoint
             deserializerType,
             discriminator,
             handlerInvocation,
-            ackMode
+            ackMode,
+            redeliveryClassifier
         )
     {
         if (!typeof(IMessageHandler<TMessage>).IsAssignableFrom(handlerType))

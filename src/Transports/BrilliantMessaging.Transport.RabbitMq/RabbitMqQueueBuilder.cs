@@ -24,6 +24,7 @@ public sealed class RabbitMqQueueBuilder : IBuildable<RabbitMqQueueDefinition>
         Name = RequireText(name, nameof(name));
         DeclareMode = RabbitMqDeclareMode.Active;
         Durable = true;
+        _arguments["x-queue-type"] = "quorum";
     }
 
     /// <summary>
@@ -221,6 +222,33 @@ public sealed class RabbitMqQueueBuilder : IBuildable<RabbitMqQueueDefinition>
     public RabbitMqQueueBuilder AsQuorumQueue()
     {
         _arguments["x-queue-type"] = "quorum";
+        return this;
+    }
+
+    /// <summary>
+    /// Declares the queue as a classic queue (<c>x-queue-type = classic</c>).
+    /// </summary>
+    /// <returns>The same builder for chaining.</returns>
+    public RabbitMqQueueBuilder AsClassicQueue()
+    {
+        _arguments["x-queue-type"] = "classic";
+        return this;
+    }
+
+    /// <summary>
+    /// Declares the queue using the broker's configured default queue type
+    /// (<c>x-queue-type</c> is not set).
+    /// </summary>
+    /// <returns>The same builder for chaining.</returns>
+    /// <remarks>
+    /// Because the queue type is not declared, the topology compiler cannot detect it, so not all
+    /// queue features and configurations (such as quorum-queue redelivery handling) are available.
+    /// Only use this method when relying on the broker's default is required; otherwise prefer
+    /// explicitly calling <see cref="AsQuorumQueue" /> or <see cref="AsClassicQueue" />.
+    /// </remarks>
+    public RabbitMqQueueBuilder UseDefaultQueueType()
+    {
+        _arguments.Remove("x-queue-type");
         return this;
     }
 

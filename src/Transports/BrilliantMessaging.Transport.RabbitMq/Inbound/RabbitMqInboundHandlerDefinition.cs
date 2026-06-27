@@ -12,11 +12,16 @@ namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 /// <param name="HandlerInvocation">The pipeline delegate that dispatches a message to the handler.</param>
 /// <param name="DeserializerType">The deserializer type for the handler.</param>
 /// <param name="AckMode">The acknowledgement mode for the handler.</param>
+/// <param name="RedeliveryClassifier">
+/// The explicit redelivery classifier for the handler, or <see langword="null" /> to inherit from the consumer or
+/// queue type.
+/// </param>
 public sealed record RabbitMqInboundHandlerDefinition(
     string? EndpointName,
     Type MessageType,
     Type HandlerType,
     MessageDelegate HandlerInvocation,
     Type DeserializerType,
-    MessageAckMode AckMode
+    MessageAckMode AckMode,
+    RedeliveryClassifier? RedeliveryClassifier = null
 );

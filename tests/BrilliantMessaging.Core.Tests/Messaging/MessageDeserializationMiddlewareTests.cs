@@ -54,6 +54,35 @@ public sealed class MessageDeserializationMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WrapsDeserializerFailure()
+    {
+        var failure = new FormatException("bad payload");
+        var services = new DictionaryServiceProvider().Add(new RecordingDeserializer(failure));
+        var context = CreateContext(services);
+        MessageDeserializationMiddleware middleware = new ();
+
+        var act = async () => await middleware.InvokeAsync(context, static _ => Task.CompletedTask);
+
+        var exception = (await act.Should().ThrowAsync<MessageDeserializationException>()).Which;
+        exception.MessageType.Should().Be(typeof(SampleMessage));
+        exception.InnerException.Should().BeSameAs(failure);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_PreservesCancellationFailure()
+    {
+        var cancelledToken = new CancellationToken(canceled: true);
+        var failure = new OperationCanceledException(cancelledToken);
+        var services = new DictionaryServiceProvider().Add(new RecordingDeserializer(failure));
+        var context = CreateContext(services, cancelledToken);
+        MessageDeserializationMiddleware middleware = new ();
+
+        var act = async () => await middleware.InvokeAsync(context, static _ => Task.CompletedTask);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task InvokeAsync_RejectsNullArguments()
     {
         MessageDeserializationMiddleware middleware = new ();
@@ -66,7 +95,10 @@ public sealed class MessageDeserializationMiddlewareTests
         await nullNext.Should().ThrowAsync<ArgumentNullException>().WithParameterName("next");
     }
 
-    private static IncomingMessageContext CreateContext(IServiceProvider services)
+    private static IncomingMessageContext CreateContext(
+        IServiceProvider services,
+        CancellationToken? cancellationToken = null
+    )
     {
         var endpoint = new InboundEndpoint<SampleMessage>(
             "endpoint",
@@ -83,7 +115,7 @@ public sealed class MessageDeserializationMiddlewareTests
             endpoint,
             services,
             new NoOpAcknowledgement(),
-            TestContext.Current.CancellationToken,
+            cancellationToken ?? TestContext.Current.CancellationToken,
             typeof(SampleMessage)
         );
     }
@@ -104,6 +136,11 @@ public sealed class MessageDeserializationMiddlewareTests
             CancellationToken cancellationToken = default
         )
         {
+            if (_message is Exception exception)
+            {
+                throw exception;
+            }
+
             Context = context;
             return new ValueTask<object?>(_message);
         }

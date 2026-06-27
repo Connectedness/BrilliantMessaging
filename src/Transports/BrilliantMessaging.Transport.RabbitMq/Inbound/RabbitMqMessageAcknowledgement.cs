@@ -1,14 +1,14 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitMQ.Client;
 using BrilliantMessaging.Core.Messaging.Inbound;
+using RabbitMQ.Client;
 
 namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 
 /// <summary>
-/// The RabbitMQ <see cref="IMessageAcknowledgement" />. It acks or nacks a single delivery by its delivery tag,
-/// settling at most once so a duplicate ack/nack is a no-op.
+/// The RabbitMQ <see cref="IMessageAcknowledgement" />. It acks or rejects a single delivery by its delivery tag,
+/// settling at most once so a duplicate settlement is a no-op.
 /// </summary>
 public sealed class RabbitMqMessageAcknowledgement : IMessageAcknowledgement
 {
@@ -47,6 +47,10 @@ public sealed class RabbitMqMessageAcknowledgement : IMessageAcknowledgement
             return Task.CompletedTask;
         }
 
-        return _channel.BasicNackAsync(_deliveryTag, multiple: false, requeue, cancellationToken).AsTask();
+        // We settle exactly one delivery, so basic.reject gives us the same requeue/drop choice as
+        // basic.nack(multiple: false). RabbitMQ 4.3 quorum queues count basic.reject redeliveries toward
+        // delivery-limit; basic.nack requeues only increment acquired-count and would not exhaust that limit.
+        // See https://www.rabbitmq.com/docs/quorum-queues#when-is-delivery-count-incremented
+        return _channel.BasicRejectAsync(_deliveryTag, requeue, cancellationToken).AsTask();
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Immutable;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Transport.RabbitMq;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
@@ -20,6 +21,8 @@ public sealed class RabbitMqInboundConsumerBuilder : IBuildable<RabbitMqInboundC
     private string? _channelGroupName;
     private ushort _consumerDispatchConcurrency = 1;
     private bool _copyBody = true;
+    private RabbitMqQueueType? _queueType;
+    private RedeliveryClassifier? _redeliveryClassifier;
 
     private ImmutableArray<InboundMessageInspectorChainEntry> _inspectorChain =
     [
@@ -49,7 +52,9 @@ public sealed class RabbitMqInboundConsumerBuilder : IBuildable<RabbitMqInboundC
             _prefetchCount,
             _consumerDispatchConcurrency,
             _copyBody,
-            _handlers.ToImmutable()
+            _handlers.ToImmutable(),
+            _redeliveryClassifier,
+            _queueType
         );
     }
 
@@ -125,6 +130,42 @@ public sealed class RabbitMqInboundConsumerBuilder : IBuildable<RabbitMqInboundC
     public RabbitMqInboundConsumerBuilder UseChannelGroup(string channelGroupName)
     {
         _channelGroupName = RequireText(channelGroupName, nameof(channelGroupName));
+        return this;
+    }
+
+    /// <summary>
+    /// Asserts the queue type when the queue is passive, skipped, or otherwise externally declared.
+    /// </summary>
+    /// <param name="queueType">The queue type to use for compile-time redelivery decisions.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="queueType" /> is not a defined value.</exception>
+    public RabbitMqInboundConsumerBuilder QueueType(RabbitMqQueueType queueType)
+    {
+        if (!Enum.IsDefined(typeof(RabbitMqQueueType), queueType))
+        {
+            throw new ArgumentOutOfRangeException(nameof(queueType), queueType, "Unsupported RabbitMQ queue type.");
+        }
+
+        _queueType = queueType;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures a consumer-wide redelivery classifier for handler failures.
+    /// </summary>
+    /// <param name="configure">The callback that configures the classifier.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure" /> is <see langword="null" />.</exception>
+    public RabbitMqInboundConsumerBuilder WithRedelivery(Action<RedeliveryClassifierBuilder> configure)
+    {
+        if (configure is null)
+        {
+            throw new ArgumentNullException(nameof(configure));
+        }
+
+        RedeliveryClassifierBuilder builder = new ();
+        configure(builder);
+        _redeliveryClassifier = ((IBuildable<RedeliveryClassifier>) builder).Build();
         return this;
     }
 
@@ -222,8 +263,7 @@ public sealed class RabbitMqInboundConsumerBuilder : IBuildable<RabbitMqInboundC
 
         var handlerBuilder = new RabbitMqInboundHandlerBuilder();
         configure?.Invoke(handlerBuilder);
-        var (deserializerType, ackMode) =
-            ((IBuildable<(Type DeserializerType, MessageAckMode AckMode)>) handlerBuilder).Build();
+        var handlerConfiguration = ((IBuildable<RabbitMqInboundHandlerConfiguration>) handlerBuilder).Build();
 
         _handlers.Add(
             new RabbitMqInboundHandlerDefinition(
@@ -231,8 +271,9 @@ public sealed class RabbitMqInboundConsumerBuilder : IBuildable<RabbitMqInboundC
                 typeof(TMessage),
                 typeof(THandler),
                 MessageHandlerInvocation.Create<TMessage, THandler>(),
-                deserializerType,
-                ackMode
+                handlerConfiguration.DeserializerType,
+                handlerConfiguration.AckMode,
+                handlerConfiguration.RedeliveryClassifier
             )
         );
         return this;

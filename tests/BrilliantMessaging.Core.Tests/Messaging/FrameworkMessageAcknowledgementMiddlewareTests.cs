@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
+using FluentAssertions;
 using Xunit;
 
 namespace BrilliantMessaging.Core.Tests.Messaging;
@@ -45,6 +45,27 @@ public sealed class FrameworkMessageAcknowledgementMiddlewareTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         acknowledgement.Actions.Should().Equal("nack:false");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_NacksWithClassifierDecisionWhenHandlerFails()
+    {
+        var acknowledgement = new RecordingAcknowledgement();
+        var context = CreateContext(
+            acknowledgement,
+            MessageAckMode.Auto,
+            TestContext.Current.CancellationToken,
+            new RedeliveryClassifier(static failure => failure is TimeoutException)
+        );
+        FrameworkMessageAcknowledgementMiddleware middleware = new ();
+
+        var act = async () => await middleware.InvokeAsync(
+            context,
+            static _ => throw new TimeoutException("transient")
+        );
+
+        await act.Should().ThrowAsync<TimeoutException>();
+        acknowledgement.Actions.Should().Equal("nack:true");
     }
 
     [Fact]
@@ -102,7 +123,8 @@ public sealed class FrameworkMessageAcknowledgementMiddlewareTests
     private static IncomingMessageContext CreateContext(
         RecordingAcknowledgement acknowledgement,
         MessageAckMode ackMode,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        RedeliveryClassifier? redeliveryClassifier = null
     )
     {
         return new IncomingMessageContext(
@@ -115,7 +137,8 @@ public sealed class FrameworkMessageAcknowledgementMiddlewareTests
                 typeof(PayloadCodecMessageDeserializer),
                 "tests.message",
                 MessageHandlerInvocation.Create<TestMessage, TestHandler>(),
-                ackMode
+                ackMode,
+                redeliveryClassifier
             ),
             EmptyServiceProvider.Instance,
             acknowledgement,

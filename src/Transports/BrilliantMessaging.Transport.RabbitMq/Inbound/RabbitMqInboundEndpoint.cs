@@ -20,6 +20,7 @@ public abstract class RabbitMqInboundEndpoint : InboundEndpoint
     /// <param name="discriminator">The CloudEvents discriminator the endpoint is bound to.</param>
     /// <param name="handlerInvocation">The composed pipeline delegate that dispatches the message to the handler.</param>
     /// <param name="ackMode">The acknowledgement mode for the endpoint.</param>
+    /// <param name="redeliveryClassifier">The redelivery classifier for handler failures.</param>
     protected RabbitMqInboundEndpoint(
         string name,
         string topologyName,
@@ -28,7 +29,8 @@ public abstract class RabbitMqInboundEndpoint : InboundEndpoint
         Type deserializerType,
         string discriminator,
         MessageDelegate handlerInvocation,
-        MessageAckMode ackMode
+        MessageAckMode ackMode,
+        RedeliveryClassifier redeliveryClassifier
     )
         : base(
             name,
@@ -39,7 +41,8 @@ public abstract class RabbitMqInboundEndpoint : InboundEndpoint
             deserializerType,
             discriminator,
             handlerInvocation,
-            ackMode
+            ackMode,
+            redeliveryClassifier
         ) { }
 }
 
@@ -60,6 +63,7 @@ public sealed class RabbitMqInboundEndpoint<TMessage> : RabbitMqInboundEndpoint
     /// <param name="discriminator">The CloudEvents discriminator the endpoint is bound to.</param>
     /// <param name="handlerInvocation">The composed pipeline delegate that dispatches the message to the handler.</param>
     /// <param name="ackMode">The acknowledgement mode for the endpoint.</param>
+    /// <param name="redeliveryClassifier">The redelivery classifier for handler failures.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="handlerType" /> does not implement <see cref="IMessageHandler{TMessage}" />.</exception>
     public RabbitMqInboundEndpoint(
         string name,
@@ -68,7 +72,8 @@ public sealed class RabbitMqInboundEndpoint<TMessage> : RabbitMqInboundEndpoint
         Type deserializerType,
         string discriminator,
         MessageDelegate handlerInvocation,
-        MessageAckMode ackMode
+        MessageAckMode ackMode,
+        RedeliveryClassifier redeliveryClassifier
     )
         : base(
             name,
@@ -78,7 +83,8 @@ public sealed class RabbitMqInboundEndpoint<TMessage> : RabbitMqInboundEndpoint
             deserializerType,
             discriminator,
             handlerInvocation,
-            ackMode
+            ackMode,
+            redeliveryClassifier
         )
     {
         if (!typeof(IMessageHandler<TMessage>).IsAssignableFrom(handlerType))

@@ -8,15 +8,16 @@ namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 /// Fluent builder for a single inbound handler registration, configuring its deserializer and acknowledgement
 /// mode.
 /// </summary>
-public sealed class RabbitMqInboundHandlerBuilder : IBuildable<(Type DeserializerType, MessageAckMode AckMode)>
+public sealed class RabbitMqInboundHandlerBuilder : IBuildable<RabbitMqInboundHandlerConfiguration>
 {
     private MessageAckMode _ackMode = MessageAckMode.Auto;
     private Type _deserializerType = typeof(PayloadCodecMessageDeserializer);
+    private RedeliveryClassifier? _redeliveryClassifier;
 
     /// <inheritdoc />
-    (Type DeserializerType, MessageAckMode AckMode) IBuildable<(Type DeserializerType, MessageAckMode AckMode)>.Build()
+    RabbitMqInboundHandlerConfiguration IBuildable<RabbitMqInboundHandlerConfiguration>.Build()
     {
-        return (_deserializerType, _ackMode);
+        return new RabbitMqInboundHandlerConfiguration(_deserializerType, _ackMode, _redeliveryClassifier);
     }
 
     /// <summary>
@@ -46,6 +47,26 @@ public sealed class RabbitMqInboundHandlerBuilder : IBuildable<(Type Deserialize
         }
 
         _ackMode = ackMode;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures a redelivery classifier for this handler, overriding the consumer-wide classifier and the
+    /// queue-type default.
+    /// </summary>
+    /// <param name="configure">The callback that configures the classifier.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure" /> is <see langword="null" />.</exception>
+    public RabbitMqInboundHandlerBuilder WithRedelivery(Action<RedeliveryClassifierBuilder> configure)
+    {
+        if (configure is null)
+        {
+            throw new ArgumentNullException(nameof(configure));
+        }
+
+        RedeliveryClassifierBuilder builder = new ();
+        configure(builder);
+        _redeliveryClassifier = ((IBuildable<RedeliveryClassifier>) builder).Build();
         return this;
     }
 

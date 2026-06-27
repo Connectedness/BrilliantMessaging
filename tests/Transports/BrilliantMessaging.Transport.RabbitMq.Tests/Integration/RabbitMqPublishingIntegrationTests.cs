@@ -5,6 +5,10 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Outbound;
+using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,12 +16,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using Testcontainers.RabbitMq;
-using BrilliantMessaging.Core.Messaging;
-using BrilliantMessaging.Core.Messaging.Outbound;
-using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using Xunit;
-
-using BrilliantMessaging.Transport.RabbitMq.Outbound;
 
 namespace BrilliantMessaging.Transport.RabbitMq.Tests.Integration;
 
@@ -144,7 +143,8 @@ public sealed class RabbitMqPublishingIntegrationTests
             listener.ActivityStarted = activity =>
             {
                 // ReSharper disable once AccessToModifiedClosure -- OK in test scenario
-                if (activity.OperationName == "brilliantmessaging.outbound.publish" && activity.TraceId == directParentTraceId)
+                if (activity.OperationName == "brilliantmessaging.outbound.publish" &&
+                    activity.TraceId == directParentTraceId)
                 {
                     directProducerActivity = activity;
                 }
@@ -665,6 +665,7 @@ public sealed class RabbitMqPublishingIntegrationTests
                         builder.Queue(
                             "rejecting-queue",
                             queue => queue
+                               .AsClassicQueue()
                                .WithMaxLength(1)
                                .WithArgument("x-overflow", "reject-publish")
                         );

@@ -30,9 +30,30 @@ public sealed class MessageDeserializationMiddleware : IMessageMiddleware
             var deserializer = (IMessageDeserializer) context.Services.GetRequiredService(
                 context.Endpoint.DeserializerType
             );
-            context.Message = await deserializer
-               .DeserializeAsync(context, context.CancellationToken)
-               .ConfigureAwait(false);
+
+            try
+            {
+                context.Message = await deserializer
+                   .DeserializeAsync(context, context.CancellationToken)
+                   .ConfigureAwait(false);
+            }
+            catch (MessageDeserializationException)
+            {
+                throw;
+            }
+            catch (OperationCanceledException exception)
+            {
+                if (context.CancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+
+                throw new MessageDeserializationException(context.MessageType, exception);
+            }
+            catch (Exception exception)
+            {
+                throw new MessageDeserializationException(context.MessageType, exception);
+            }
         }
 
         await next(context).ConfigureAwait(false);

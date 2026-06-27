@@ -410,6 +410,7 @@ public sealed class RabbitMqTopologyCompiler
         Dictionary<string, InboundEndpoint> endpointsByName = new (StringComparer.Ordinal);
         Dictionary<InboundEndpointSelectionKey, RabbitMqInboundEndpoint> dispatchIndex =
             new (InboundEndpointSelectionKeyComparer.Instance);
+        var queuesByName = ToDictionary(configuration.Queues, static queue => queue.Name);
         List<RabbitMqInboundConsumer> consumers = [];
         List<RabbitMqInboundEndpoint> endpoints = [];
 
@@ -427,7 +428,12 @@ public sealed class RabbitMqTopologyCompiler
                 explicitChannelGroupsByName,
                 channelGroups
             );
-            var endpointPlans = CreateInboundEndpointPlans(consumerDefinition, effectiveMessageContracts);
+            var queueType = ResolveConsumerQueueType(consumerDefinition, queuesByName, validationErrors: null);
+            var endpointPlans = CreateInboundEndpointPlans(
+                consumerDefinition,
+                effectiveMessageContracts,
+                GetDefaultRedeliveryClassifier(queueType)
+            );
             List<RabbitMqInboundEndpoint> consumerEndpoints = [];
 
             foreach (var endpointPlan in endpointPlans)
@@ -438,7 +444,8 @@ public sealed class RabbitMqTopologyCompiler
                     endpointPlan.Handler,
                     topologyName,
                     endpointName,
-                    endpointPlan.PrimaryDiscriminator
+                    endpointPlan.PrimaryDiscriminator,
+                    endpointPlan.RedeliveryClassifier
                 );
 
                 endpoints.Add(endpoint);
@@ -468,7 +475,8 @@ public sealed class RabbitMqTopologyCompiler
 
     private static IReadOnlyList<InboundEndpointPlan> CreateInboundEndpointPlans(
         RabbitMqInboundConsumerDefinition consumerDefinition,
-        IMessageContractRegistry effectiveMessageContracts
+        IMessageContractRegistry effectiveMessageContracts,
+        RedeliveryClassifier defaultRedeliveryClassifier
     )
     {
         var orderedHandlers = OrderHandlers(consumerDefinition.Handlers).ToArray();
@@ -510,7 +518,10 @@ public sealed class RabbitMqTopologyCompiler
                 new InboundEndpointPlan(
                     handlerDefinition,
                     primaryDiscriminator,
-                    dispatchDiscriminators
+                    dispatchDiscriminators,
+                    handlerDefinition.RedeliveryClassifier ??
+                    consumerDefinition.RedeliveryClassifier ??
+                    defaultRedeliveryClassifier
                 )
             );
         }
@@ -617,13 +628,14 @@ public sealed class RabbitMqTopologyCompiler
         RabbitMqInboundHandlerDefinition handlerDefinition,
         string topologyName,
         string endpointName,
-        string discriminator
+        string discriminator,
+        RedeliveryClassifier redeliveryClassifier
     )
     {
         var closedMethod = CreateEndpointMethod.MakeGenericMethod(handlerDefinition.MessageType);
         return (RabbitMqInboundEndpoint) closedMethod.Invoke(
             null,
-            [handlerDefinition, topologyName, endpointName, discriminator]
+            [handlerDefinition, topologyName, endpointName, discriminator, redeliveryClassifier]
         )!;
     }
 
@@ -631,7 +643,8 @@ public sealed class RabbitMqTopologyCompiler
         RabbitMqInboundHandlerDefinition handlerDefinition,
         string topologyName,
         string endpointName,
-        string discriminator
+        string discriminator,
+        RedeliveryClassifier redeliveryClassifier
     )
     {
         return new RabbitMqInboundEndpoint<TMessage>(
@@ -641,7 +654,8 @@ public sealed class RabbitMqTopologyCompiler
             handlerDefinition.DeserializerType,
             discriminator,
             handlerDefinition.HandlerInvocation,
-            handlerDefinition.AckMode
+            handlerDefinition.AckMode,
+            redeliveryClassifier
         );
     }
 
@@ -795,6 +809,33 @@ public sealed class RabbitMqTopologyCompiler
             if (!Enum.IsDefined(typeof(RabbitMqDeclareMode), queue.DeclareMode))
             {
                 validationErrors.Add($"Queue '{queue.Name}' uses unsupported declare mode '{queue.DeclareMode}'.");
+            }
+
+            if (GetDeclaredQueueType(queue) == RabbitMqQueueType.Quorum)
+            {
+                List<string> classicOnlyFlags = [];
+
+                if (!queue.Durable)
+                {
+                    classicOnlyFlags.Add("durable=false");
+                }
+
+                if (queue.Exclusive)
+                {
+                    classicOnlyFlags.Add("exclusive=true");
+                }
+
+                if (queue.AutoDelete)
+                {
+                    classicOnlyFlags.Add("autoDelete=true");
+                }
+
+                if (classicOnlyFlags.Count > 0)
+                {
+                    validationErrors.Add(
+                        $"Queue '{queue.Name}' is configured as a quorum queue but sets classic-only flags ({string.Join(", ", classicOnlyFlags)}). Quorum queues must be durable, non-exclusive, and non-auto-delete; call AsClassicQueue() to use those flags."
+                    );
+                }
             }
         }
     }
@@ -1178,6 +1219,8 @@ public sealed class RabbitMqTopologyCompiler
 
         foreach (var consumer in OrderConsumers(consumers))
         {
+            var queueType = ResolveConsumerQueueType(consumer, queuesByName, validationErrors);
+
             if (!queueNames.Add(consumer.QueueName))
             {
                 validationErrors.Add(
@@ -1202,6 +1245,13 @@ public sealed class RabbitMqTopologyCompiler
             {
                 validationErrors.Add(
                     $"Inbound consumer for queue '{consumer.QueueName}' references unknown channel group '{consumer.ChannelGroupName}'."
+                );
+            }
+
+            if (HasExplicitRedeliveryClassifier(consumer) && queueType != RabbitMqQueueType.Quorum)
+            {
+                validationErrors.Add(
+                    $"Inbound consumer for queue '{consumer.QueueName}' configures redelivery, but the effective queue type is '{FormatQueueType(queueType)}'. Redelivery classifiers require a quorum queue with a broker delivery limit; call AsQuorumQueue() on the queue declaration or QueueType(RabbitMqQueueType.Quorum) on the consumer."
                 );
             }
 
@@ -1273,6 +1323,62 @@ public sealed class RabbitMqTopologyCompiler
                 }
             }
         }
+    }
+
+    private static bool HasExplicitRedeliveryClassifier(RabbitMqInboundConsumerDefinition consumer)
+    {
+        return consumer.RedeliveryClassifier is not null ||
+               consumer.Handlers.Any(static handler => handler.RedeliveryClassifier is not null);
+    }
+
+    private static RedeliveryClassifier GetDefaultRedeliveryClassifier(RabbitMqQueueType queueType)
+    {
+        return queueType == RabbitMqQueueType.Quorum ?
+            RedeliveryClassifier.RetryUnlessPoison :
+            RedeliveryClassifier.RejectAll;
+    }
+
+    private static RabbitMqQueueType ResolveConsumerQueueType(
+        RabbitMqInboundConsumerDefinition consumer,
+        IReadOnlyDictionary<string, RabbitMqQueueDefinition> queuesByName,
+        ICollection<string>? validationErrors
+    )
+    {
+        var explicitQueueType = consumer.QueueType;
+
+        if (explicitQueueType is not null &&
+            !Enum.IsDefined(typeof(RabbitMqQueueType), explicitQueueType.Value))
+        {
+            validationErrors?.Add(
+                $"Inbound consumer for queue '{consumer.QueueName}' uses unsupported queue type '{explicitQueueType}'."
+            );
+            explicitQueueType = RabbitMqQueueType.Unknown;
+        }
+
+        if (!queuesByName.TryGetValue(consumer.QueueName, out var queue))
+        {
+            return explicitQueueType ?? RabbitMqQueueType.Unknown;
+        }
+
+        var declaredQueueType = queue.DeclareMode == RabbitMqDeclareMode.Active ?
+            GetDeclaredQueueType(queue) :
+            RabbitMqQueueType.Unknown;
+
+        if (explicitQueueType is null)
+        {
+            return declaredQueueType;
+        }
+
+        if (queue.DeclareMode == RabbitMqDeclareMode.Active &&
+            TryGetQueueTypeArgument(queue, out var declaredQueueTypeValue) &&
+            declaredQueueType != explicitQueueType.Value)
+        {
+            validationErrors?.Add(
+                $"Inbound consumer for queue '{consumer.QueueName}' asserts queue type '{FormatQueueType(explicitQueueType.Value)}', but active queue declaration '{queue.Name}' sets x-queue-type '{declaredQueueTypeValue}'."
+            );
+        }
+
+        return explicitQueueType.Value;
     }
 
     private void ValidateInspectorChain(
@@ -1535,6 +1641,46 @@ public sealed class RabbitMqTopologyCompiler
         }
     }
 
+    private static RabbitMqQueueType GetDeclaredQueueType(RabbitMqQueueDefinition queue)
+    {
+        if (!TryGetQueueTypeArgument(queue, out var queueType))
+        {
+            return RabbitMqQueueType.Unknown;
+        }
+
+        return queueType.ToLowerInvariant() switch
+        {
+            "classic" => RabbitMqQueueType.Classic,
+            "quorum" => RabbitMqQueueType.Quorum,
+            _ => RabbitMqQueueType.Unknown
+        };
+    }
+
+    private static bool TryGetQueueTypeArgument(RabbitMqQueueDefinition queue, out string queueType)
+    {
+        if (queue.Arguments.TryGetValue("x-queue-type", out var rawQueueType) &&
+            rawQueueType is string value &&
+            !string.IsNullOrWhiteSpace(value))
+        {
+            queueType = value;
+            return true;
+        }
+
+        queueType = string.Empty;
+        return false;
+    }
+
+    private static string FormatQueueType(RabbitMqQueueType queueType)
+    {
+        return queueType switch
+        {
+            RabbitMqQueueType.Classic => "classic",
+            RabbitMqQueueType.Quorum => "quorum",
+            RabbitMqQueueType.Unknown => "unknown",
+            _ => queueType.ToString()
+        };
+    }
+
     private static Dictionary<string, T> ToDictionary<T>(IEnumerable<T> values, Func<T, string> getName)
     {
         return values
@@ -1622,12 +1768,14 @@ public sealed class RabbitMqTopologyCompiler
         public InboundEndpointPlan(
             RabbitMqInboundHandlerDefinition handler,
             string primaryDiscriminator,
-            IReadOnlyList<string> dispatchDiscriminators
+            IReadOnlyList<string> dispatchDiscriminators,
+            RedeliveryClassifier redeliveryClassifier
         )
         {
             Handler = handler;
             PrimaryDiscriminator = primaryDiscriminator;
             DispatchDiscriminators = dispatchDiscriminators;
+            RedeliveryClassifier = redeliveryClassifier;
         }
 
         public RabbitMqInboundHandlerDefinition Handler { get; }
@@ -1635,6 +1783,8 @@ public sealed class RabbitMqTopologyCompiler
         public string PrimaryDiscriminator { get; }
 
         public IReadOnlyList<string> DispatchDiscriminators { get; }
+
+        public RedeliveryClassifier RedeliveryClassifier { get; }
     }
 
     private sealed class ResolvedInboundRecognizer

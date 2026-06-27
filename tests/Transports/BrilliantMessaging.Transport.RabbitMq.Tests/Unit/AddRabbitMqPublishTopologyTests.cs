@@ -278,6 +278,7 @@ public sealed class AddRabbitMqPublishTopologyTests
                         "orders-created",
                         queue => queue
                            .WithDeclareMode(RabbitMqDeclareMode.Passive)
+                           .AsClassicQueue()
                            .DurableQueue(false)
                            .ExclusiveQueue()
                            .AutoDeleteQueue()
@@ -285,7 +286,6 @@ public sealed class AddRabbitMqPublishTopologyTests
                            .WithExpires(TimeSpan.FromSeconds(30))
                            .WithMaxLength(100)
                            .WithMaxLengthBytes(4096)
-                           .WithQueueType("classic")
                            .SingleActiveConsumer()
                     );
                     builder.QueueBinding(
@@ -324,7 +324,8 @@ public sealed class AddRabbitMqPublishTopologyTests
         var orders = topology.Exchanges.Single(static exchange => exchange.Name == "orders");
         var queue = topology.Queues.Should().ContainSingle().Which;
         var queueBinding = topology.Bindings.OfType<RabbitMqQueueBindingDefinition>().Should().ContainSingle().Which;
-        var exchangeBinding = topology.Bindings.OfType<RabbitMqExchangeBindingDefinition>().Should().ContainSingle().Which;
+        var exchangeBinding =
+            topology.Bindings.OfType<RabbitMqExchangeBindingDefinition>().Should().ContainSingle().Which;
         var channelGroup = topology.OutboundChannelGroups.Single(static group => group.Name == "publishing");
 
         orders.Durable.Should().BeFalse();

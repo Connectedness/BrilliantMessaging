@@ -1,10 +1,12 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BrilliantMessaging.Abstractions;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Core.Messaging.Outbound;
@@ -280,6 +282,143 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
     }
 
     [Fact]
+    public async Task QuorumRedelivery_RetriesHandlerFailureUntilBrokerDeadLettersAndRejectsPoisonImmediately()
+    {
+        const string sourceExchange = "redelivery-source-exchange";
+        const string deadLetterExchange = "redelivery-dead-letter-exchange";
+        const string retryQueue = "redelivery-retry-queue";
+        const string poisonQueue = "redelivery-poison-queue";
+        const string retryDeadLetterQueue = "redelivery-retry-dead-letter-queue";
+        const string poisonDeadLetterQueue = "redelivery-poison-dead-letter-queue";
+        const string retryDiscriminator = "tests.rabbitmq.redelivery.retry";
+        const string poisonDiscriminator = "tests.rabbitmq.redelivery.poison";
+        var cancellationToken = TestContext.Current.CancellationToken;
+        {
+            RedeliveryAttemptSink sink = new ();
+            var services = new ServiceCollection();
+            services.AddSingleton(sink);
+            services
+               .AddBrilliantMessaging()
+               .UseCloudEvents(options => options.Source = "/tests/rabbitmq/redelivery")
+               .MapMessageContracts(
+                    contracts =>
+                    {
+                        contracts.Map<RetryableRedeliveryMessage>(retryDiscriminator);
+                        contracts.Map<PoisonRedeliveryMessage>(poisonDiscriminator);
+                    }
+                )
+               .AddRabbitMqTopology(
+                    builder =>
+                    {
+                        builder.UseConnectionFactory(
+                            _ => new ConnectionFactory
+                            {
+                                Uri = new Uri(_container.GetConnectionString())
+                            }
+                        );
+                        builder.Exchange(sourceExchange, ExchangeType.Direct);
+                        builder.Exchange(deadLetterExchange, ExchangeType.Direct);
+                        builder.Queue(
+                            retryQueue,
+                            queue => queue
+                               .WithDeadLetterExchange(deadLetterExchange)
+                               .WithDeadLetterRoutingKey("retry.dead")
+                        );
+                        builder.Queue(
+                            poisonQueue,
+                            queue => queue
+                               .WithDeadLetterExchange(deadLetterExchange)
+                               .WithDeadLetterRoutingKey("poison.dead")
+                        );
+                        builder.Queue(retryDeadLetterQueue);
+                        builder.Queue(poisonDeadLetterQueue);
+                        builder.QueueBinding(sourceExchange, retryQueue, "retry");
+                        builder.QueueBinding(sourceExchange, poisonQueue, "poison");
+                        builder.QueueBinding(deadLetterExchange, retryDeadLetterQueue, "retry.dead");
+                        builder.QueueBinding(deadLetterExchange, poisonDeadLetterQueue, "poison.dead");
+                        builder.Publish<RetryableRedeliveryMessage>(
+                            target => target
+                               .ToDirectExchange(sourceExchange, "retry")
+                               .WithSerializer<CloudEventMessageSerializer>()
+                        );
+                        builder.Consume(
+                            retryQueue,
+                            consumer => consumer.Handle<RetryableRedeliveryMessage, RetryableRedeliveryHandler>()
+                        );
+                        builder.Consume(
+                            poisonQueue,
+                            consumer => consumer.Handle<PoisonRedeliveryMessage, PoisonRedeliveryHandler>()
+                        );
+                    }
+                );
+
+            await using var serviceProvider = services.BuildServiceProvider();
+            var hostedServices = serviceProvider.GetServices<IHostedService>().ToArray();
+            await ApplyDeliveryLimitPolicyAsync(retryQueue, deliveryLimit: 5, cancellationToken);
+
+            try
+            {
+                foreach (var hostedService in hostedServices)
+                {
+                    await hostedService.StartAsync(cancellationToken);
+                }
+
+                var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+                await publisher.PublishMessageAsync(
+                    new RetryableRedeliveryMessage("retry"),
+                    cancellationToken: cancellationToken
+                );
+
+                await sink.WaitForRedeliveryAsync(cancellationToken);
+
+                var connectionFactory = new ConnectionFactory
+                {
+                    Uri = new Uri(_container.GetConnectionString())
+                };
+                await using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
+                await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
+
+                var retryDeadLetter = await GetRequiredMessageAsync(
+                    channel,
+                    retryDeadLetterQueue,
+                    cancellationToken,
+                    maximumAttempts: 120
+                );
+
+                await channel.BasicPublishAsync(
+                    sourceExchange,
+                    "poison",
+                    mandatory: true,
+                    CreatePoisonProperties(poisonDiscriminator),
+                    "not-json"u8.ToArray(),
+                    cancellationToken
+                );
+
+                var poisonDeadLetter = await GetRequiredMessageAsync(
+                    channel,
+                    poisonDeadLetterQueue,
+                    cancellationToken,
+                    maximumAttempts: 80
+                );
+
+                sink.Attempts.Should().HaveCountGreaterThan(1);
+                Encoding.UTF8.GetString(retryDeadLetter.Body.ToArray()).Should().Be("{\"Value\":\"retry\"}");
+                GetDeathReason(retryDeadLetter).Should().Be("delivery_limit");
+                Encoding.UTF8.GetString(poisonDeadLetter.Body.ToArray()).Should().Be("not-json");
+                GetDeathReason(poisonDeadLetter).Should().Be("rejected");
+                GetDeathCount(poisonDeadLetter).Should().Be(1);
+            }
+            finally
+            {
+                foreach (var hostedService in hostedServices.Reverse())
+                {
+                    await hostedService.StopAsync(CancellationToken.None);
+                }
+            }
+        }
+    }
+
+    [Fact]
     public async Task DedicatedOutboundAndInboundTopologies_PublishAndConsumeAcrossTwoConnections()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -424,10 +563,11 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
     private static async Task<BasicGetResult> GetRequiredMessageAsync(
         IChannel channel,
         string queueName,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        int maximumAttempts = 40
     )
     {
-        for (var attempt = 0; attempt < 40; attempt++)
+        for (var attempt = 0; attempt < maximumAttempts; attempt++)
         {
             var result = await channel.BasicGetAsync(queueName, true, cancellationToken);
 
@@ -440,6 +580,192 @@ public sealed class RabbitMqDedicatedTopologiesIntegrationTests
         }
 
         throw new InvalidOperationException($"No RabbitMQ message was available in queue '{queueName}'.");
+    }
+
+    private async Task ApplyDeliveryLimitPolicyAsync(
+        string queueName,
+        int deliveryLimit,
+        CancellationToken cancellationToken
+    )
+    {
+        var result = await _container.ExecAsync(
+            [
+                "rabbitmqctl",
+                "set_policy",
+                "--apply-to",
+                "queues",
+                "redelivery-limit",
+                $"^{queueName}$",
+                $"{{\"delivery-limit\":{deliveryLimit}}}"
+            ],
+            cancellationToken
+        );
+
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Failed to configure RabbitMQ delivery-limit policy: {result.Stderr}"
+            );
+        }
+    }
+
+    private static BasicProperties CreatePoisonProperties(string discriminator)
+    {
+        return new BasicProperties
+        {
+            ContentType = "application/json",
+            MessageId = Guid.NewGuid().ToString("D"),
+            Headers = new Dictionary<string, object?>
+            {
+                ["cloudEvents:specversion"] = "1.0",
+                ["cloudEvents:id"] = Guid.NewGuid().ToString("D"),
+                ["cloudEvents:source"] = "/tests/rabbitmq/redelivery",
+                ["cloudEvents:type"] = discriminator,
+                ["cloudEvents:time"] = DateTimeOffset.UtcNow.ToString("O"),
+                ["cloudEvents:datacontenttype"] = "application/json"
+            }
+        };
+    }
+
+    private static string GetDeathReason(BasicGetResult message)
+    {
+        return GetAmqpString(GetDeathValue(message, "reason"));
+    }
+
+    private static uint GetDeathCount(BasicGetResult message)
+    {
+        return GetDeathValue(message, "count") switch
+        {
+            byte value => value,
+            sbyte value when value >= 0 => (uint) value,
+            short value when value >= 0 => (uint) value,
+            ushort value => value,
+            int value when value >= 0 => (uint) value,
+            uint value => value,
+            long value when value >= 0 && value <= uint.MaxValue => (uint) value,
+            ulong value when value <= uint.MaxValue => (uint) value,
+            var value => throw new InvalidOperationException($"Unsupported x-death count value '{value}'.")
+        };
+    }
+
+    private static object? GetDeathValue(BasicGetResult message, string name)
+    {
+        if (message.BasicProperties.Headers is null ||
+            !message.BasicProperties.Headers.TryGetValue("x-death", out var rawDeath) ||
+            rawDeath is not IEnumerable deaths)
+        {
+            throw new InvalidOperationException("The RabbitMQ message does not contain an x-death header.");
+        }
+
+        foreach (var death in deaths)
+        {
+            if (death is IDictionary<string, object?> nullableDictionary &&
+                nullableDictionary.TryGetValue(name, out var nullableValue))
+            {
+                return nullableValue;
+            }
+
+            if (death is IDictionary<string, object> dictionary &&
+                dictionary.TryGetValue(name, out var value))
+            {
+                return value;
+            }
+        }
+
+        throw new InvalidOperationException($"The RabbitMQ message x-death header does not contain '{name}'.");
+    }
+
+    private static string GetAmqpString(object? value)
+    {
+        return value switch
+        {
+            byte[] bytes => Encoding.UTF8.GetString(bytes),
+            string text => text,
+            null => string.Empty,
+            _ => value.ToString() ?? string.Empty
+        };
+    }
+
+    private sealed record RetryableRedeliveryMessage(string Value) : ICloudEvent
+    {
+        Guid ICloudEvent.Id { get; } = BrilliantMessagingUuid.NewId();
+
+        DateTimeOffset ICloudEvent.Time { get; } = DateTimeOffset.UtcNow;
+
+        string? ICloudEvent.Subject => null;
+    }
+
+    private sealed record PoisonRedeliveryMessage(string Value);
+
+    private sealed class RetryableRedeliveryHandler : IMessageHandler<RetryableRedeliveryMessage>
+    {
+        private readonly RedeliveryAttemptSink _sink;
+
+        public RetryableRedeliveryHandler(RedeliveryAttemptSink sink)
+        {
+            _sink = sink;
+        }
+
+        public Task HandleAsync(
+            RetryableRedeliveryMessage message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken
+        )
+        {
+            _sink.Record(context.Transport.DeliveryAttempt);
+            throw new InvalidOperationException("retryable failure");
+        }
+    }
+
+    private sealed class PoisonRedeliveryHandler : IMessageHandler<PoisonRedeliveryMessage>
+    {
+        public Task HandleAsync(
+            PoisonRedeliveryMessage message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken
+        )
+        {
+            throw new InvalidOperationException("The poison message should fail before handler invocation.");
+        }
+    }
+
+    private sealed class RedeliveryAttemptSink
+    {
+        private readonly List<uint> _attempts = [];
+
+        private readonly TaskCompletionSource<bool> _redelivered =
+            new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private readonly object _sync = new ();
+
+        public IReadOnlyList<uint> Attempts
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _attempts.ToArray();
+                }
+            }
+        }
+
+        public void Record(uint attempt)
+        {
+            lock (_sync)
+            {
+                _attempts.Add(attempt);
+
+                if (_attempts.Count > 1)
+                {
+                    _redelivered.TrySetResult(true);
+                }
+            }
+        }
+
+        public async Task WaitForRedeliveryAsync(CancellationToken cancellationToken)
+        {
+            await _redelivered.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private sealed class MixedMessageSink
