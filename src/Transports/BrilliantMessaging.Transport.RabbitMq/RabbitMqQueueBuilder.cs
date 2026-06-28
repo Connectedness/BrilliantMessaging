@@ -264,6 +264,220 @@ public sealed class RabbitMqQueueBuilder : IBuildable<RabbitMqQueueDefinition>
         return this;
     }
 
+    /// <summary>
+    /// Sets the delivery limit (<c>x-delivery-limit</c>) for a quorum queue, after which a message is
+    /// dead-lettered instead of redelivered.
+    /// </summary>
+    /// <param name="limit">
+    /// The maximum number of deliveries; must be <c>-1</c> or greater. <c>-1</c> disables the
+    /// limit (not recommended).
+    /// </param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="limit" /> is less than <c>-1</c>.</exception>
+    public RabbitMqQueueBuilder WithDeliveryLimit(int limit)
+    {
+        if (limit < -1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(limit), "The value must be -1 or greater.");
+        }
+
+        _arguments["x-delivery-limit"] = limit;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the delayed-retry configuration (<c>x-delayed-retry-type</c>, <c>x-delayed-retry-min</c>, and
+    /// optionally <c>x-delayed-retry-max</c>) for a quorum queue, controlling which redelivered messages are
+    /// held back for a delay before being retried.
+    /// </summary>
+    /// <param name="type">The delayed-retry type.</param>
+    /// <param name="minDelay">The minimum delay before a retry; must be zero or greater.</param>
+    /// <param name="maxDelay">The optional maximum delay before a retry; must be zero or greater when supplied.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="minDelay" /> is negative, or when <paramref name="maxDelay" /> is supplied and
+    /// negative.
+    /// </exception>
+    public RabbitMqQueueBuilder WithDelayedRetry(
+        RabbitMqDelayedRetryType type,
+        TimeSpan minDelay,
+        TimeSpan? maxDelay = null
+    )
+    {
+        _arguments["x-delayed-retry-type"] = MapDelayedRetryType(type);
+        _arguments["x-delayed-retry-min"] = ToMilliseconds(minDelay, nameof(minDelay));
+
+        if (maxDelay is { } maxDelayValue)
+        {
+            _arguments["x-delayed-retry-max"] = ToMilliseconds(maxDelayValue, nameof(maxDelay));
+        }
+        else
+        {
+            _arguments.Remove("x-delayed-retry-max");
+        }
+
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the delayed-retry configuration for a quorum queue with the type defaulting to
+    /// <see cref="RabbitMqDelayedRetryType.All" />.
+    /// </summary>
+    /// <param name="minDelay">The minimum delay before a retry; must be zero or greater.</param>
+    /// <param name="maxDelay">The optional maximum delay before a retry; must be zero or greater when supplied.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="minDelay" /> is negative, or when <paramref name="maxDelay" /> is supplied and
+    /// negative.
+    /// </exception>
+    public RabbitMqQueueBuilder WithDelayedRetry(TimeSpan minDelay, TimeSpan? maxDelay = null)
+    {
+        return WithDelayedRetry(RabbitMqDelayedRetryType.All, minDelay, maxDelay);
+    }
+
+    /// <summary>
+    /// Sets the dead-lettering strategy (<c>x-dead-letter-strategy</c>) for a quorum queue, controlling whether
+    /// dead-lettered messages can be delivered more than once to the dead-letter exchange.
+    /// </summary>
+    /// <param name="strategy">The dead-lettering strategy.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <remarks>
+    /// <see cref="RabbitMqDeadLetterStrategy.AtLeastOnce" /> additionally requires
+    /// <see cref="WithOverflow(RabbitMqOverflow)" /> set to <see cref="RabbitMqOverflow.RejectPublish" /> at
+    /// runtime; this constraint is enforced by the broker, not by the compiler.
+    /// </remarks>
+    public RabbitMqQueueBuilder WithDeadLetterStrategy(RabbitMqDeadLetterStrategy strategy)
+    {
+        _arguments["x-dead-letter-strategy"] = MapDeadLetterStrategy(strategy);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the overflow behavior (<c>x-overflow</c>) of the queue, controlling what happens when the maximum
+    /// length or length-bytes limit is reached.
+    /// </summary>
+    /// <param name="overflow">The overflow behavior.</param>
+    /// <returns>The same builder for chaining.</returns>
+    public RabbitMqQueueBuilder WithOverflow(RabbitMqOverflow overflow)
+    {
+        _arguments["x-overflow"] = MapOverflow(overflow);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the maximum priority (<c>x-max-priority</c>) of a classic queue, defining the range of message
+    /// priorities the queue supports.
+    /// </summary>
+    /// <param name="maxPriority">The maximum priority; must be greater than zero (1-255).</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxPriority" /> is zero.</exception>
+    /// <remarks>
+    /// Quorum queues silently ignore <c>x-max-priority</c> and always use the full 0-31 priority range; the
+    /// compiler rejects this argument on quorum queues. Use <see cref="AsClassicQueue" /> to control the priority
+    /// range.
+    /// </remarks>
+    public RabbitMqQueueBuilder WithMaxPriority(byte maxPriority)
+    {
+        if (maxPriority == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxPriority), "The value must be greater than zero.");
+        }
+
+        _arguments["x-max-priority"] = maxPriority;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the queue leader locator (<c>x-queue-leader-locator</c>) for a quorum queue, controlling how the
+    /// leader for a new quorum queue is selected across the cluster.
+    /// </summary>
+    /// <param name="locator">The leader locator strategy.</param>
+    /// <returns>The same builder for chaining.</returns>
+    public RabbitMqQueueBuilder WithQueueLeaderLocator(RabbitMqQueueLeaderLocator locator)
+    {
+        _arguments["x-queue-leader-locator"] = MapQueueLeaderLocator(locator);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the initial quorum cluster size (<c>x-quorum-initial-group-size</c>) for a quorum queue, controlling
+    /// the number of replicas in the quorum group at declaration time.
+    /// </summary>
+    /// <param name="size">The initial cluster size; must be one or greater.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="size" /> is less than one.</exception>
+    public RabbitMqQueueBuilder WithInitialClusterSize(int size)
+    {
+        if (size < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(size), "The value must be one or greater.");
+        }
+
+        _arguments["x-quorum-initial-group-size"] = size;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the consumer timeout (<c>x-consumer-timeout</c>) for a quorum queue, after which a consumer is
+    /// considered timed out and the message is requeued or dead-lettered.
+    /// </summary>
+    /// <param name="timeout">The consumer timeout; must be greater than zero.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="timeout" /> is zero or negative.</exception>
+    public RabbitMqQueueBuilder WithConsumerTimeout(TimeSpan timeout)
+    {
+        if (timeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeout), "The value must be greater than zero.");
+        }
+
+        _arguments["x-consumer-timeout"] = checked((long) timeout.TotalMilliseconds);
+        return this;
+    }
+
+    private static string MapDelayedRetryType(RabbitMqDelayedRetryType type)
+    {
+        return type switch
+        {
+            RabbitMqDelayedRetryType.Disabled => "disabled",
+            RabbitMqDelayedRetryType.All => "all",
+            RabbitMqDelayedRetryType.Failed => "failed",
+            RabbitMqDelayedRetryType.Returned => "returned",
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unsupported delayed retry type.")
+        };
+    }
+
+    private static string MapDeadLetterStrategy(RabbitMqDeadLetterStrategy strategy)
+    {
+        return strategy switch
+        {
+            RabbitMqDeadLetterStrategy.AtMostOnce => "at-most-once",
+            RabbitMqDeadLetterStrategy.AtLeastOnce => "at-least-once",
+            _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, "Unsupported dead-letter strategy.")
+        };
+    }
+
+    private static string MapOverflow(RabbitMqOverflow overflow)
+    {
+        return overflow switch
+        {
+            RabbitMqOverflow.DropHead => "drop-head",
+            RabbitMqOverflow.RejectPublish => "reject-publish",
+            RabbitMqOverflow.RejectPublishDlx => "reject-publish-dlx",
+            _ => throw new ArgumentOutOfRangeException(nameof(overflow), overflow, "Unsupported overflow behavior.")
+        };
+    }
+
+    private static string MapQueueLeaderLocator(RabbitMqQueueLeaderLocator locator)
+    {
+        return locator switch
+        {
+            RabbitMqQueueLeaderLocator.ClientLocal => "client-local",
+            RabbitMqQueueLeaderLocator.Balanced => "balanced",
+            _ => throw new ArgumentOutOfRangeException(nameof(locator), locator, "Unsupported queue leader locator.")
+        };
+    }
+
     private static string RequireText(string value, string parameterName)
     {
         if (string.IsNullOrWhiteSpace(value))

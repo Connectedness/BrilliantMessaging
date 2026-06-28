@@ -744,9 +744,13 @@ public sealed class RabbitMqTopologyCompiler
             configuration.InboundChannelGroups,
             static group => group.Name
         );
+        var consumerQueueNames = new HashSet<string>(
+            configuration.Consumers.Select(static consumer => consumer.QueueName),
+            StringComparer.Ordinal
+        );
 
         ValidateExchangeDefinitions(configuration.Exchanges, validationErrors);
-        ValidateQueueDefinitions(configuration.Queues, validationErrors);
+        ValidateQueueDefinitions(configuration.Queues, consumerQueueNames, validationErrors);
         ValidateBindings(configuration.Bindings, exchangesByName, queuesByName, validationErrors);
 
         // Outbound validation.
@@ -801,6 +805,7 @@ public sealed class RabbitMqTopologyCompiler
 
     private static void ValidateQueueDefinitions(
         IReadOnlyList<RabbitMqQueueDefinition> queues,
+        HashSet<string> consumerQueueNames,
         ICollection<string> validationErrors
     )
     {
@@ -837,6 +842,68 @@ public sealed class RabbitMqTopologyCompiler
                     );
                 }
             }
+
+            // Queue-type-incompatible knob guards run for queues that no consumer references. Queues with
+            // consumers are guarded in ValidateConsumers using the consumer-resolved effective queue type,
+            // which accounts for an explicit QueueType(Quorum) on a passive queue. Delete-mode queues are
+            // being removed, so their knobs are irrelevant.
+            if (queue.DeclareMode != RabbitMqDeclareMode.Delete && !consumerQueueNames.Contains(queue.Name))
+            {
+                ValidateQueueKnobs(queue, GetDeclaredQueueType(queue), validationErrors);
+            }
+        }
+    }
+
+    private static void ValidateQueueKnobs(
+        RabbitMqQueueDefinition queue,
+        RabbitMqQueueType effectiveQueueType,
+        ICollection<string> validationErrors
+    )
+    {
+        // (a) Quorum-only args on Classic/Unknown — these args require a quorum queue.
+        if (effectiveQueueType != RabbitMqQueueType.Quorum)
+        {
+            string[] quorumOnlyArgs =
+            [
+                "x-delivery-limit",
+                "x-delayed-retry-type",
+                "x-delayed-retry-min",
+                "x-delayed-retry-max",
+                "x-dead-letter-strategy",
+                "x-queue-leader-locator",
+                "x-quorum-initial-group-size",
+                "x-consumer-timeout"
+            ];
+
+            foreach (var argName in quorumOnlyArgs)
+            {
+                if (queue.Arguments.ContainsKey(argName))
+                {
+                    validationErrors.Add(
+                        $"Queue '{queue.Name}' configures '{argName}' but the effective queue type is '{FormatQueueType(effectiveQueueType)}'. This argument requires a quorum queue; call AsQuorumQueue() on the queue declaration or QueueType(RabbitMqQueueType.Quorum) on the consumer."
+                    );
+                }
+            }
+        }
+
+        // (b) x-overflow = reject-publish-dlx on Quorum — quorum queues do not support reject-publish-dlx.
+        if (effectiveQueueType == RabbitMqQueueType.Quorum &&
+            queue.Arguments.TryGetValue("x-overflow", out var overflow) &&
+            overflow is "reject-publish-dlx")
+        {
+            validationErrors.Add(
+                $"Queue '{queue.Name}' configures 'x-overflow=reject-publish-dlx' but the effective queue type is 'quorum'. Quorum queues do not support reject-publish-dlx; use DropHead or RejectPublish, or call AsClassicQueue() to use reject-publish-dlx."
+            );
+        }
+
+        // (c) x-max-priority on Quorum — quorum queues silently ignore this arg and always use the full 0-31
+        // priority range, so the user's configured range would not take effect.
+        if (effectiveQueueType == RabbitMqQueueType.Quorum &&
+            queue.Arguments.ContainsKey("x-max-priority"))
+        {
+            validationErrors.Add(
+                $"Queue '{queue.Name}' configures 'x-max-priority' but the effective queue type is 'quorum'. Quorum queues silently ignore x-max-priority and always use the full 0-31 priority range; call AsClassicQueue() to control the priority range."
+            );
         }
     }
 
@@ -1239,6 +1306,12 @@ public sealed class RabbitMqTopologyCompiler
                     $"Inbound consumer references unknown queue '{consumer.QueueName}'."
                 );
             }
+            else if (queuesByName[consumer.QueueName].DeclareMode == RabbitMqDeclareMode.Delete)
+            {
+                validationErrors.Add(
+                    $"Inbound consumer for queue '{consumer.QueueName}' references a queue declared with Delete mode; remove the Consume(…) call or change the queue's declare mode."
+                );
+            }
 
             if (!string.IsNullOrWhiteSpace(consumer.ChannelGroupName) &&
                 !channelGroupsByName.ContainsKey(consumer.ChannelGroupName!))
@@ -1253,6 +1326,16 @@ public sealed class RabbitMqTopologyCompiler
                 validationErrors.Add(
                     $"Inbound consumer for queue '{consumer.QueueName}' configures redelivery, but the effective queue type is '{FormatQueueType(queueType)}'. Redelivery classifiers require a quorum queue with a broker delivery limit; call AsQuorumQueue() on the queue declaration or QueueType(RabbitMqQueueType.Quorum) on the consumer."
                 );
+            }
+
+            // Queue-type-incompatible knob guards for queues that a consumer references. The effective queue type
+            // is resolved through the consumer (which accounts for an explicit QueueType(Quorum) on a passive
+            // queue), so the guards are correct even when the queue definition itself does not carry an
+            // x-queue-type argument. Queues without consumers are guarded in ValidateQueueDefinitions.
+            if (queuesByName.TryGetValue(consumer.QueueName, out var consumerQueue) &&
+                consumerQueue.DeclareMode != RabbitMqDeclareMode.Delete)
+            {
+                ValidateQueueKnobs(consumerQueue, queueType, validationErrors);
             }
 
             ValidateInspectorChain(consumer, validationErrors);

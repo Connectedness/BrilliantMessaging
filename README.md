@@ -227,19 +227,41 @@ without requeue. `RetryMessageException` forces retry on quorum. You can narrow 
 decision consumer-wide or per handler:
 
 ```csharp
-rabbit.Consume("orders-processing", consumer => consumer
-    .WithRedelivery(redelivery =>
-        redelivery.ShouldRetry(ex => ex is TimeoutException))
-    .Handle<OrderPlaced, OrderPlacedHandler>(handler => handler
+rabbit
+    .Consume("orders-processing", consumer => consumer
         .WithRedelivery(redelivery =>
-            redelivery.ShouldRetry(ex => ex is DbUpdateConcurrencyException))));
+            redelivery.ShouldRetry(ex => ex is TimeoutException)
+         )
+        .Handle<OrderPlaced, OrderPlacedHandler>(handler => handler
+            .WithRedelivery(redelivery =>
+                redelivery.ShouldRetry(ex => ex is DbUpdateConcurrencyException)
+             )
+         )
+    );
 ```
 
-Brilliant Messaging only classifies. It does not count attempts, delay, or set
-`x-delivery-limit` / `x-delayed-retry-*`. Redelivery is immediate and bounded by the
-broker's quorum delivery limit (RabbitMQ's default is about 20 deliveries); delayed
-retry, delivery-limit tuning, and dead-letter routing belong in RabbitMQ policies or
-operator-managed topology outside this API.
+Brilliant Messaging only classifies. It does not count attempts on its own;
+delivery-limit tuning, delayed retry, dead-letter routing, overflow behavior, and the
+other RabbitMQ policy-style queue knobs are declared on the queue builder so the
+topology definition is the single Configuration-as-Code source for both resource
+existence and resource policy:
+
+```csharp
+rabbit
+    .Queue("orders-processing", queue => queue
+        .WithDeliveryLimit(3)
+        .WithDelayedRetry(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(30))
+        .WithDeadLetterStrategy(RabbitMqDeadLetterStrategy.AtMostOnce)
+        .WithOverflow(RabbitMqOverflow.RejectPublish));
+```
+
+The available knob methods are `WithDeliveryLimit`, `WithDelayedRetry`,
+`WithDeadLetterStrategy`, `WithOverflow`, `WithMaxPriority`, `WithQueueLeaderLocator`,
+`WithInitialClusterSize`, and `WithConsumerTimeout` (alongside the existing
+`WithDeadLetterExchange`, `WithMessageTtl`, `WithMaxLength`, and `WithMaxLengthBytes`).
+The compiler guards queue-type-incompatible knobs: quorum-only arguments on a classic or
+unknown queue, `x-overflow = reject-publish-dlx` and `x-max-priority` on a quorum queue
+each hard-error with the queue name and a remediation.
 
 The compiler auto-detects a consumer's queue type from actively declared
 `x-queue-type`. For passive or externally declared queues, use
@@ -247,7 +269,8 @@ The compiler auto-detects a consumer's queue type from actively declared
 
 ```csharp
 rabbit.Queue("orders-processing", queue => queue.WithDeclareMode(RabbitMqDeclareMode.Passive));
-rabbit.Consume("orders-processing", consumer => consumer
+rabbit
+    .Consume("orders-processing", consumer => consumer
     .QueueType(RabbitMqQueueType.Quorum)
     .WithRedelivery(redelivery => redelivery.ShouldRetry(_ => true))
     .Handle<OrderPlaced, OrderPlacedHandler>());
@@ -260,6 +283,49 @@ backstop for `requeue: true`; on these endpoints `RetryMessageException` is a no
 Asserting `QueueType(RabbitMqQueueType.Quorum)` for a queue that is actually classic
 removes that guard and can create an unbounded redelivery loop, so use it only to
 describe externally managed quorum queues accurately.
+
+#### Evolving topology resources
+
+RabbitMQ throws `406 PRECONDITION_FAILED` when a queue is redeclared with different
+arguments, so changing a queue's policy arguments requires a new queue name rather than
+redeclaring the existing one. Brilliant Messaging supports an explicit introduce → drain
+→ delete workflow driven entirely from the topology definition:
+
+1. **Introduce** a new queue (for example `orders-v2`) under a new name with the new
+   arguments; keep `orders-v1` in the topology so it is re-declared unchanged. Add the
+   new binding `ex → orders-v2` (`Active`) and flip the old binding
+   `ex → orders-v1` to `Delete` mode so the broker unbinds it and new messages stop
+   flowing to `orders-v1`. Move consumers to `orders-v2`. Deploy.
+2. **Drain** `orders-v1` on the broker until empty (its binding is gone, so no new
+   messages arrive).
+3. **Remove** `orders-v1`: flip its declare mode to `Delete` and deploy once more — the
+   framework reads the queue's ready-message count with a passive declare, fails safely
+   with a clear "drain first" error if the queue is not yet empty, and otherwise deletes
+   it. The delete proceeds regardless of consumers still attached to the drained queue, so
+   in an init-container / rolling deployment it removes `orders-v1` even while the previous
+   version's consumers are still connected (they receive a consumer-cancel and are about to
+   be replaced anyway). Then remove both the old queue and old binding lines entirely.
+
+```csharp
+rabbit.Queue("orders-v2", queue => queue.WithDeliveryLimit(5));
+rabbit.Queue("orders-v1", queue => queue.WithDeclareMode(RabbitMqDeclareMode.Delete));
+rabbit.QueueBinding("orders", "orders-v2", "orders.created");
+rabbit.QueueBinding(
+    "orders",
+    "orders-v1",
+    "orders.created",
+    binding => binding.WithBindingMode(RabbitMqBindingMode.Delete)
+);
+```
+
+The provisioner runs all `Active` bindings before any `Delete` bindings, so in step 1
+the new `ex → orders-v2` bind is established before the old `ex → orders-v1` unbind runs
+— there is never a window in which the exchange has neither binding. A `Delete`-mode
+queue or binding that is already absent on the broker succeeds silently (idempotent
+restart). The empty check counts only ready messages, not messages a still-attached
+consumer holds unacknowledged, so make sure the old queue has fully drained before
+flipping it to `Delete` — an in-flight unacknowledged message is discarded together with
+the queue. The RabbitMQ management UI remains a valid alternative for removal.
 
 ### Publishing
 
