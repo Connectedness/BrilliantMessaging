@@ -9,6 +9,8 @@ using BrilliantMessaging.Transport.RabbitMq.Inbound;
 using BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 using FluentAssertions;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 using Xunit;
 
 namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
@@ -113,13 +115,103 @@ public sealed class RabbitMqTopologyProvisionerDeleteModeTests
         await act.Should().NotThrowAsync<Exception>();
     }
 
+    [Fact]
+    public async Task ProvisionAsync_DeletesEmptyQueueInDeleteMode()
+    {
+        TestRabbitMqChannel testChannel = new ()
+        {
+            QueueDeclarePassiveAsyncHandler = (name, _) => Task.FromResult(new QueueDeclareOk(name, 0, 0)),
+            QueueDeleteAsyncHandler = (_, _) => Task.FromResult(0u)
+        };
+        var topology = BuildMinimalTopology(queues: [DeleteQueue("delete-queue")], channel: testChannel);
+
+        var provisioner = new RabbitMqTopologyProvisioner(topology);
+        var act = async () => await provisioner.ProvisionAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync<Exception>();
+        testChannel.QueueDeleteCallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ProvisionAsync_ThrowsWhenQueueInDeleteModeStillHasMessages()
+    {
+        TestRabbitMqChannel testChannel = new ()
+        {
+            QueueDeclarePassiveAsyncHandler = (name, _) => Task.FromResult(new QueueDeclareOk(name, 3, 0))
+        };
+        var topology = BuildMinimalTopology(queues: [DeleteQueue("non-empty-queue")], channel: testChannel);
+
+        var provisioner = new RabbitMqTopologyProvisioner(topology);
+        var act = async () => await provisioner.ProvisionAsync(CancellationToken.None);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>())
+           .Which.Message.Should().Contain("still has 3 message(s)");
+        testChannel.QueueDeleteCallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ProvisionAsync_TreatsNotFoundOnPassiveDeclareAsSuccess()
+    {
+        TestRabbitMqChannel testChannel = new ()
+        {
+            QueueDeclarePassiveAsyncHandler = (_, _) => Task.FromException<QueueDeclareOk>(CreateNotFound())
+        };
+        var topology = BuildMinimalTopology(queues: [DeleteQueue("absent-queue")], channel: testChannel);
+
+        var provisioner = new RabbitMqTopologyProvisioner(topology);
+        var act = async () => await provisioner.ProvisionAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync<Exception>();
+        testChannel.QueueDeleteCallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ProvisionAsync_TreatsNotFoundOnDeleteAsSuccess()
+    {
+        // The queue is present and empty at the passive declare, then removed (operator action, concurrent
+        // deploy) before the delete call lands. The resulting 404 must be treated as success so Delete mode
+        // stays idempotent rather than failing provisioning.
+        TestRabbitMqChannel testChannel = new ()
+        {
+            QueueDeclarePassiveAsyncHandler = (name, _) => Task.FromResult(new QueueDeclareOk(name, 0, 0)),
+            QueueDeleteAsyncHandler = (_, _) => Task.FromException<uint>(CreateNotFound())
+        };
+        var topology = BuildMinimalTopology(queues: [DeleteQueue("racing-queue")], channel: testChannel);
+
+        var provisioner = new RabbitMqTopologyProvisioner(topology);
+        var act = async () => await provisioner.ProvisionAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync<Exception>();
+        testChannel.QueueDeleteCallCount.Should().Be(1);
+    }
+
+    private static RabbitMqQueueDefinition DeleteQueue(string name)
+    {
+        return new RabbitMqQueueDefinition(
+            name,
+            RabbitMqDeclareMode.Delete,
+            true,
+            false,
+            false,
+            new Dictionary<string, object?>()
+        );
+    }
+
+    private static OperationInterruptedException CreateNotFound()
+    {
+        return new OperationInterruptedException(
+            new ShutdownEventArgs(ShutdownInitiator.Peer, Constants.NotFound, "NOT_FOUND")
+        );
+    }
+
     private static RabbitMqTopology BuildMinimalTopology(
         IReadOnlyList<RabbitMqExchangeDefinition>? exchanges = null,
         IReadOnlyList<RabbitMqQueueDefinition>? queues = null,
-        IReadOnlyList<RabbitMqBindingDefinition>? bindings = null
+        IReadOnlyList<RabbitMqBindingDefinition>? bindings = null,
+        TestRabbitMqChannel? channel = null
     )
     {
-        TestRabbitMqChannel testChannel = new ();
+        var testChannel = channel ?? new TestRabbitMqChannel();
         TestRabbitMqConnection testConnection = new ();
         testConnection.EnqueueChannel(testChannel.Object);
         RabbitMqConnectionProvider connectionProvider = new (

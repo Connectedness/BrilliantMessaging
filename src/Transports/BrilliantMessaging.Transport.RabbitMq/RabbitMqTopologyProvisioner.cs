@@ -317,36 +317,35 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
         // so the "drain first" safety check is implemented as a pre-delete passive declare: if the queue has
         // messages, we throw before deleting. In the introduce → drain → delete workflow the binding is already
         // removed, so no new messages arrive between the check and the delete.
-        QueueDeclareOk declareResult;
-
         try
         {
-            declareResult = await channel
+            var declareResult = await channel
                .QueueDeclarePassiveAsync(queueName, cancellationToken)
+               .ConfigureAwait(false);
+
+            if (declareResult.MessageCount > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Queue '{queueName}' cannot be deleted because it still has {declareResult.MessageCount} message(s). Drain the queue before setting its declare mode to Delete."
+                );
+            }
+
+            await channel
+               .QueueDeleteAsync(
+                    queueName,
+                    ifUnused: false,
+                    ifEmpty: false,
+                    cancellationToken: cancellationToken
+                )
                .ConfigureAwait(false);
         }
         catch (OperationInterruptedException ex) when (IsBrokerNotFound(ex))
         {
-            // A 404 NOT_FOUND means the queue is already absent on the broker. The desired state — resource
-            // absent — is already achieved, so Delete mode is idempotent across restarts.
-            return;
+            // A 404 NOT_FOUND means the queue is already absent on the broker — whether on the passive declare
+            // or on the delete itself, since the queue can be removed (operator action, concurrent deploy)
+            // between the two calls. The desired state — resource absent — is already achieved, so Delete mode
+            // is idempotent across restarts.
         }
-
-        if (declareResult.MessageCount > 0)
-        {
-            throw new InvalidOperationException(
-                $"Queue '{queueName}' cannot be deleted because it still has {declareResult.MessageCount} message(s). Drain the queue before setting its declare mode to Delete."
-            );
-        }
-
-        await channel
-           .QueueDeleteAsync(
-                queueName,
-                ifUnused: false,
-                ifEmpty: false,
-                cancellationToken: cancellationToken
-            )
-           .ConfigureAwait(false);
     }
 
     private static bool IsBrokerNotFound(OperationInterruptedException exception)

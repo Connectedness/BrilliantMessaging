@@ -26,6 +26,12 @@ public sealed class TestRabbitMqChannel
 
     public Func<CancellationToken, ValueTask>? BasicPublishAsyncHandler { get; set; }
 
+    public Func<string, CancellationToken, Task<QueueDeclareOk>>? QueueDeclarePassiveAsyncHandler { get; set; }
+
+    public Func<string, CancellationToken, Task<uint>>? QueueDeleteAsyncHandler { get; set; }
+
+    public int QueueDeleteCallCount { get; private set; }
+
     public int BasicPublishCallCount { get; private set; }
 
     public int BasicConsumeCallCount { get; private set; }
@@ -157,6 +163,15 @@ public sealed class TestRabbitMqChannel
                 LastPublishedProperties = (BasicProperties) arguments![3]!;
                 LastPublishedBody = (ReadOnlyMemory<byte>) arguments[4]!;
                 return BasicPublishAsyncHandler?.Invoke((CancellationToken) arguments![^1]!) ?? default(ValueTask);
+            case "QueueDeclarePassiveAsync":
+                return QueueDeclarePassiveAsyncHandler is not null
+                    ? QueueDeclarePassiveAsyncHandler((string) arguments![0]!, (CancellationToken) arguments[^1]!)
+                    : RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
+            case "QueueDeleteAsync":
+                QueueDeleteCallCount++;
+                return QueueDeleteAsyncHandler is not null
+                    ? QueueDeleteAsyncHandler((string) arguments![0]!, (CancellationToken) arguments[^1]!)
+                    : RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
             case "BasicQosAsync":
                 LastPrefetchCount = (ushort) arguments![1]!;
                 return Task.CompletedTask;
