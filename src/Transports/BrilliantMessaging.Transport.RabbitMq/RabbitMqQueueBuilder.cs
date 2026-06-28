@@ -311,6 +311,10 @@ public sealed class RabbitMqQueueBuilder : IBuildable<RabbitMqQueueDefinition>
         {
             _arguments["x-delayed-retry-max"] = ToMilliseconds(maxDelayValue, nameof(maxDelay));
         }
+        else
+        {
+            _arguments.Remove("x-delayed-retry-max");
+        }
 
         return this;
     }

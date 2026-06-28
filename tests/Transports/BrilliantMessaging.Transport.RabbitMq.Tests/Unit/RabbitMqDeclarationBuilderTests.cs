@@ -303,6 +303,17 @@ public sealed class RabbitMqDeclarationBuilderTests
     }
 
     [Fact]
+    public void QueueBuilder_WithDelayedRetry_UnsetsMaxWhenNull()
+    {
+        var definition = new RabbitMqQueueBuilder("work")
+            .WithDelayedRetry(RabbitMqDelayedRetryType.All, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10))
+            .WithDelayedRetry(RabbitMqDelayedRetryType.All, TimeSpan.FromSeconds(1))
+            .Build();
+
+        definition.Arguments.Should().NotContainKey("x-delayed-retry-max");
+    }
+
+    [Fact]
     public void QueueBuilder_WritesAllQueueLeaderLocatorValues()
     {
         var clientLocal = new RabbitMqQueueBuilder("work")
