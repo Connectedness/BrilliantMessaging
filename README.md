@@ -249,10 +249,10 @@ existence and resource policy:
 ```csharp
 rabbit
     .Queue("orders-processing", queue => queue
-    .WithDeliveryLimit(3)
-    .WithDelayedRetry(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(30))
-    .WithDeadLetterStrategy(RabbitMqDeadLetterStrategy.AtMostOnce)
-    .WithOverflow(RabbitMqOverflow.RejectPublish));
+        .WithDeliveryLimit(3)
+        .WithDelayedRetry(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(30))
+        .WithDeadLetterStrategy(RabbitMqDeadLetterStrategy.AtMostOnce)
+        .WithOverflow(RabbitMqOverflow.RejectPublish));
 ```
 
 The available knob methods are `WithDeliveryLimit`, `WithDelayedRetry`,
