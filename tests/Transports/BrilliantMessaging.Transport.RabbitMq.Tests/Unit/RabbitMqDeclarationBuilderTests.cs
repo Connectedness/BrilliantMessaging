@@ -336,4 +336,146 @@ public sealed class RabbitMqDeclarationBuilderTests
         blankAlternateExchange.Should().Throw<ArgumentException>().WithParameterName("exchangeName");
         blankDelayedExchangeType.Should().Throw<ArgumentException>().WithParameterName("delayedExchangeType");
     }
+
+    [Theory]
+    [InlineData(RabbitMqHeaderMatch.All, "all")]
+    [InlineData(RabbitMqHeaderMatch.Any, "any")]
+    [InlineData(RabbitMqHeaderMatch.AllWithX, "all-with-x")]
+    [InlineData(RabbitMqHeaderMatch.AnyWithX, "any-with-x")]
+    public void QueueBindingBuilder_WithHeaderMatch_WritesXMatchArgument(RabbitMqHeaderMatch match, string expected)
+    {
+        var definition = new RabbitMqQueueBindingBuilder("ex", "queue", "routing")
+           .WithHeaderMatch(match)
+           .Build();
+
+        definition.Arguments.Should().Contain("x-match", expected);
+    }
+
+    [Theory]
+    [InlineData(RabbitMqHeaderMatch.All, "all")]
+    [InlineData(RabbitMqHeaderMatch.Any, "any")]
+    [InlineData(RabbitMqHeaderMatch.AllWithX, "all-with-x")]
+    [InlineData(RabbitMqHeaderMatch.AnyWithX, "any-with-x")]
+    public void ExchangeBindingBuilder_WithHeaderMatch_WritesXMatchArgument(RabbitMqHeaderMatch match, string expected)
+    {
+        var definition = new RabbitMqExchangeBindingBuilder("source", "destination", "routing")
+           .WithHeaderMatch(match)
+           .Build();
+
+        definition.Arguments.Should().Contain("x-match", expected);
+    }
+
+    [Fact]
+    public void QueueBindingBuilder_WithHeaderMatch_OverridesExistingXMatch()
+    {
+        var definition = new RabbitMqQueueBindingBuilder("ex", "queue", "routing")
+           .WithArgument("x-match", "any")
+           .WithHeaderMatch(RabbitMqHeaderMatch.AllWithX)
+           .Build();
+
+        definition.Arguments.Should().Contain("x-match", "all-with-x");
+    }
+
+    [Fact]
+    public void QueueBindingBuilder_WithHeader_WritesDefaultAllXMatchWhenNoneSet()
+    {
+        var definition = new RabbitMqQueueBindingBuilder("ex", "queue", "routing")
+           .WithHeader("tenant", "acme")
+           .Build();
+
+        definition.Arguments.Should().Contain("x-match", "all");
+        definition.Arguments.Should().Contain("tenant", "acme");
+    }
+
+    [Fact]
+    public void QueueBindingBuilder_WithHeader_DoesNotOverrideExplicitlySetXMatch()
+    {
+        var definition = new RabbitMqQueueBindingBuilder("ex", "queue", "routing")
+           .WithHeaderMatch(RabbitMqHeaderMatch.Any)
+           .WithHeader("tenant", "acme")
+           .Build();
+
+        definition.Arguments.Should().Contain("x-match", "any");
+        definition.Arguments.Should().Contain("tenant", "acme");
+    }
+
+    [Fact]
+    public void QueueBindingBuilder_WithHeader_DoesNotOverrideXMatchSetByRawWithArgument()
+    {
+        var definition = new RabbitMqQueueBindingBuilder("ex", "queue", "routing")
+           .WithArgument("x-match", "any-with-x")
+           .WithHeader("tenant", "acme")
+           .Build();
+
+        definition.Arguments.Should().Contain("x-match", "any-with-x");
+        definition.Arguments.Should().Contain("tenant", "acme");
+    }
+
+    [Fact]
+    public void QueueBindingBuilder_WithHeader_RejectsXMatchName()
+    {
+        var builder = new RabbitMqQueueBindingBuilder("ex", "queue", "routing");
+
+        Action act = () => builder.WithHeader("x-match", "all");
+
+        act.Should().Throw<ArgumentException>().WithParameterName("name")
+           .Which.Message.Should().Contain("x-match");
+    }
+
+    [Fact]
+    public void QueueBindingBuilder_WithHeader_RejectsBlankName()
+    {
+        var builder = new RabbitMqQueueBindingBuilder("ex", "queue", "routing");
+
+        Action act = () => builder.WithHeader(" ", "value");
+
+        act.Should().Throw<ArgumentException>().WithParameterName("name");
+    }
+
+    [Fact]
+    public void ExchangeBindingBuilder_WithHeader_WritesDefaultAllXMatchWhenNoneSet()
+    {
+        var definition = new RabbitMqExchangeBindingBuilder("source", "destination", "routing")
+           .WithHeader("tenant", "acme")
+           .Build();
+
+        definition.Arguments.Should().Contain("x-match", "all");
+        definition.Arguments.Should().Contain("tenant", "acme");
+    }
+
+    [Fact]
+    public void ExchangeBindingBuilder_WithHeader_RejectsXMatchName()
+    {
+        var builder = new RabbitMqExchangeBindingBuilder("source", "destination", "routing");
+
+        Action act = () => builder.WithHeader("x-match", "all");
+
+        act.Should().Throw<ArgumentException>().WithParameterName("name")
+           .Which.Message.Should().Contain("x-match");
+    }
+
+    [Fact]
+    public void ExchangeBindingBuilder_WithHeader_RejectsBlankName()
+    {
+        var builder = new RabbitMqExchangeBindingBuilder("source", "destination", "routing");
+
+        Action act = () => builder.WithHeader(" ", "value");
+
+        act.Should().Throw<ArgumentException>().WithParameterName("name");
+    }
+
+    [Fact]
+    public void QueueBindingBuilder_WithHeader_AllowsXPrefixedHeaderName()
+    {
+        // x-prefixed headers (other than x-match) are valid header predicates; they just only participate in
+        // matching when the match mode is AllWithX/AnyWithX. The typed API allows them so users can configure
+        // x-tenant etc. with the typed methods.
+        var definition = new RabbitMqQueueBindingBuilder("ex", "queue", "routing")
+           .WithHeaderMatch(RabbitMqHeaderMatch.AllWithX)
+           .WithHeader("x-tenant", "acme")
+           .Build();
+
+        definition.Arguments.Should().Contain("x-tenant", "acme");
+        definition.Arguments.Should().Contain("x-match", "all-with-x");
+    }
 }

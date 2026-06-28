@@ -25,9 +25,16 @@ namespace BrilliantMessaging.Transport.RabbitMq;
 /// <para>
 /// The empty check counts only ready messages, not messages a still-attached consumer holds unacknowledged, so
 /// ensure the old queue has fully drained before flipping it to <see cref="Delete" /> — an in-flight unacknowledged
-/// message is discarded together with the queue. <see cref="Delete" /> is defined on this shared enum so it reads
-/// correctly for exchanges too, but exchange deletion is out of scope and surfaces as an
-/// <see cref="System.ArgumentOutOfRangeException" /> at provisioning time.
+/// message is discarded together with the queue.
+/// </para>
+/// <para>
+/// <see cref="Delete" /> also applies to exchanges. Exchange deletion is unconditional (the exchange holds no
+/// messages, so there is nothing to drain) and the broker cascade-removes the bindings owned by the deleted
+/// exchange. A <c>404 NOT_FOUND</c> for an already-absent exchange is treated as success, so <see cref="Delete" />
+/// is idempotent across restarts. Use <see cref="Delete" /> as the last step of the introduce → swap → delete
+/// workflow for exchanges: introduce the replacement exchange and bindings, deploy publishers so all live
+/// instances use the replacement, wait until old publishers are gone (a <c>basic.publish</c> to a missing
+/// exchange is a <c>404</c> channel error), then flip the old exchange's declare mode to <see cref="Delete" />.
 /// </para>
 /// </remarks>
 public enum RabbitMqDeclareMode
@@ -50,8 +57,8 @@ public enum RabbitMqDeclareMode
     /// <summary>
     /// Remove the resource at provisioning time. For queues, the provisioner deletes the queue only when it has
     /// no ready messages, failing safely with a clear "drain first" error when the queue is not yet empty; the
-    /// delete proceeds regardless of attached consumers. A <c>404 NOT_FOUND</c> is treated as success. Exchange
-    /// deletion is out of scope and throws at provisioning time.
+    /// delete proceeds regardless of attached consumers. For exchanges, the delete is unconditional and the broker
+    /// cascade-removes the bindings owned by the deleted exchange. A <c>404 NOT_FOUND</c> is treated as success.
     /// </summary>
     Delete = 3
 }

@@ -706,8 +706,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
                     builder.QueueBinding(
                         "source",
                         "inbound",
-                        "validation.*",
-                        binding => binding.WithArgument("x-match", "all")
+                        "validation.*"
                     );
                     builder.ExchangeBinding("source", "alternate", "overflow");
                     builder.ChannelGroup(

@@ -1130,6 +1130,14 @@ public sealed class RabbitMqTopologyCompiler
         ICollection<string> validationErrors
     )
     {
+        if (exchange.DeclareMode == RabbitMqDeclareMode.Delete)
+        {
+            validationErrors.Add(
+                $"{targetDescription} references exchange '{exchange.Name}' declared with Delete mode; remove the target or change the exchange's declare mode."
+            );
+            return;
+        }
+
         var expectedExchangeType = target switch
         {
             RabbitMqFanoutOutboundTargetDefinition => ExchangeType.Fanout,
@@ -1721,7 +1729,122 @@ public sealed class RabbitMqTopologyCompiler
                     );
                     break;
             }
+
+            // Header-match arguments (the `x-match` marker the typed WithHeaderMatch/WithHeader methods write)
+            // are silently ignored by every exchange type except `headers`, where they are the routing predicate.
+            // Catch the footgun where a binding configures header matching but its source exchange is not a
+            // headers exchange. The guard keys on `x-match` so it covers both the typed API and a raw
+            // WithArgument("x-match", …) escape hatch, and it applies to both queue and exchange bindings.
+            if (!exchangesByName.TryGetValue(binding.SourceExchangeName, out var sourceExchange))
+            {
+                continue;
+            }
+
+            if (binding.Arguments.TryGetValue("x-match", out var rawHeaderMatch) &&
+                !string.Equals(sourceExchange.Type, ExchangeType.Headers, StringComparison.Ordinal))
+            {
+                validationErrors.Add(
+                    $"{GetBindingDescription(binding)} configures header-match arguments but its source exchange '{binding.SourceExchangeName}' is of type '{sourceExchange.Type}'. Header matching requires a headers exchange; remove the header-match configuration or use a headers exchange."
+                );
+            }
+            else if (string.Equals(sourceExchange.Type, ExchangeType.Headers, StringComparison.Ordinal))
+            {
+                ValidateHeadersExchangeBindingArguments(binding, rawHeaderMatch, validationErrors);
+            }
         }
+    }
+
+    private static void ValidateHeadersExchangeBindingArguments(
+        RabbitMqBindingDefinition binding,
+        object? rawHeaderMatch,
+        ICollection<string> validationErrors
+    )
+    {
+        // Delete bindings may need to carry the exact old argument table to remove a bad binding from the broker.
+        // Skip bindings are externally managed. Only Active bindings can create the surprising routing behavior.
+        if (binding.BindingMode != RabbitMqBindingMode.Active)
+        {
+            return;
+        }
+
+        if (rawHeaderMatch is null)
+        {
+            ValidateXPrefixedPredicatesWithoutHeaderMatch(binding, validationErrors);
+            return;
+        }
+
+        if (rawHeaderMatch is not string headerMatch)
+        {
+            validationErrors.Add(
+                $"{GetBindingDescription(binding)} configures unsupported headers-exchange x-match value '{FormatArgumentValue(rawHeaderMatch)}'. Supported values are 'all', 'any', 'all-with-x', and 'any-with-x'."
+            );
+            return;
+        }
+
+        switch (headerMatch)
+        {
+            case "all":
+            case "any":
+                ValidatePlainHeaderMatchDoesNotUseXPrefixedPredicates(binding, headerMatch, validationErrors);
+                return;
+            case "all-with-x":
+            case "any-with-x":
+                return;
+            default:
+                validationErrors.Add(
+                    $"{GetBindingDescription(binding)} configures unsupported headers-exchange x-match value '{headerMatch}'. Supported values are 'all', 'any', 'all-with-x', and 'any-with-x'."
+                );
+                return;
+        }
+    }
+
+    private static void ValidateXPrefixedPredicatesWithoutHeaderMatch(
+        RabbitMqBindingDefinition binding,
+        ICollection<string> validationErrors
+    )
+    {
+        var xPrefixedHeaderNames = GetXPrefixedHeaderPredicateNames(binding);
+
+        if (xPrefixedHeaderNames.Length == 0)
+        {
+            return;
+        }
+
+        validationErrors.Add(
+            $"{GetBindingDescription(binding)} configures x-prefixed header predicate(s) {FormatQuotedValues(xPrefixedHeaderNames)} without an x-match argument. RabbitMQ's plain/default header-match modes ignore x-prefixed header predicates; use WithHeaderMatch(RabbitMqHeaderMatch.AllWithX or RabbitMqHeaderMatch.AnyWithX) or remove the x-prefixed predicate."
+        );
+    }
+
+    private static void ValidatePlainHeaderMatchDoesNotUseXPrefixedPredicates(
+        RabbitMqBindingDefinition binding,
+        string headerMatch,
+        ICollection<string> validationErrors
+    )
+    {
+        var xPrefixedHeaderNames = GetXPrefixedHeaderPredicateNames(binding);
+
+        if (xPrefixedHeaderNames.Length == 0)
+        {
+            return;
+        }
+
+        validationErrors.Add(
+            $"{GetBindingDescription(binding)} configures x-prefixed header predicate(s) {FormatQuotedValues(xPrefixedHeaderNames)} with x-match '{headerMatch}'. RabbitMQ ignores x-prefixed header predicates for plain 'all' and 'any' matches; use WithHeaderMatch(RabbitMqHeaderMatch.AllWithX or RabbitMqHeaderMatch.AnyWithX) or remove the x-prefixed predicate."
+        );
+    }
+
+    private static string[] GetXPrefixedHeaderPredicateNames(RabbitMqBindingDefinition binding)
+    {
+        return binding.Arguments.Keys
+           .Where(IsXPrefixedHeaderPredicate)
+           .OrderBy(static name => name, StringComparer.Ordinal)
+           .ToArray();
+    }
+
+    private static bool IsXPrefixedHeaderPredicate(string argumentName)
+    {
+        return !string.Equals(argumentName, "x-match", StringComparison.Ordinal) &&
+               argumentName.StartsWith("x-", StringComparison.Ordinal);
     }
 
     private static RabbitMqQueueType GetDeclaredQueueType(RabbitMqQueueDefinition queue)
@@ -1821,6 +1944,16 @@ public sealed class RabbitMqTopologyCompiler
     private static string GetTypeName(Type messageType)
     {
         return messageType.FullName ?? messageType.Name;
+    }
+
+    private static string FormatQuotedValues(IEnumerable<string> values)
+    {
+        return string.Join(", ", values.Select(static value => $"'{value}'"));
+    }
+
+    private static string FormatArgumentValue(object? value)
+    {
+        return value?.ToString() ?? "<null>";
     }
 
     private void LogWorstCaseChannelCount(int worstCaseChannelCount, string description)

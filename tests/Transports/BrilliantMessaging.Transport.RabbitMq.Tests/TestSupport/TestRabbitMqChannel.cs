@@ -30,9 +30,23 @@ public sealed class TestRabbitMqChannel
 
     public Func<string, CancellationToken, Task<uint>>? QueueDeleteAsyncHandler { get; set; }
 
+    public Func<string, CancellationToken, Task>? ExchangeDeleteAsyncHandler { get; set; }
+
+    public Func<Task>? QueueUnbindAsyncHandler { get; set; }
+
+    public Func<Task>? ExchangeUnbindAsyncHandler { get; set; }
+
     public int QueueDeleteCallCount { get; private set; }
 
+    public int ExchangeDeleteCallCount { get; private set; }
+
     public int QueueDeclareCallCount { get; private set; }
+
+    public int ExchangeDeclareCallCount { get; private set; }
+
+    public int ExchangeUnbindCallCount { get; private set; }
+
+    public int QueueUnbindCallCount { get; private set; }
 
     public int BasicPublishCallCount { get; private set; }
 
@@ -168,15 +182,29 @@ public sealed class TestRabbitMqChannel
             case "QueueDeclareAsync":
                 QueueDeclareCallCount++;
                 return RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
+            case "ExchangeDeclareAsync":
+                ExchangeDeclareCallCount++;
+                return RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
             case "QueueDeclarePassiveAsync":
-                return QueueDeclarePassiveAsyncHandler is not null
-                    ? QueueDeclarePassiveAsyncHandler((string) arguments![0]!, (CancellationToken) arguments[^1]!)
-                    : RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
+                return QueueDeclarePassiveAsyncHandler is not null ?
+                    QueueDeclarePassiveAsyncHandler((string) arguments![0]!, (CancellationToken) arguments[^1]!) :
+                    RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
             case "QueueDeleteAsync":
                 QueueDeleteCallCount++;
-                return QueueDeleteAsyncHandler is not null
-                    ? QueueDeleteAsyncHandler((string) arguments![0]!, (CancellationToken) arguments[^1]!)
-                    : RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
+                return QueueDeleteAsyncHandler is not null ?
+                    QueueDeleteAsyncHandler((string) arguments![0]!, (CancellationToken) arguments[^1]!) :
+                    RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
+            case "ExchangeDeleteAsync":
+                ExchangeDeleteCallCount++;
+                return ExchangeDeleteAsyncHandler is not null ?
+                    ExchangeDeleteAsyncHandler((string) arguments![0]!, (CancellationToken) arguments[^1]!) :
+                    RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
+            case "ExchangeUnbindAsync":
+                ExchangeUnbindCallCount++;
+                return ExchangeUnbindAsyncHandler?.Invoke() ?? Task.CompletedTask;
+            case "QueueUnbindAsync":
+                QueueUnbindCallCount++;
+                return QueueUnbindAsyncHandler?.Invoke() ?? Task.CompletedTask;
             case "BasicQosAsync":
                 LastPrefetchCount = (ushort) arguments![1]!;
                 return Task.CompletedTask;
