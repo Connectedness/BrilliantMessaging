@@ -32,6 +32,8 @@ public sealed class TestRabbitMqChannel
 
     public int QueueDeleteCallCount { get; private set; }
 
+    public int QueueDeclareCallCount { get; private set; }
+
     public int BasicPublishCallCount { get; private set; }
 
     public int BasicConsumeCallCount { get; private set; }
@@ -163,6 +165,9 @@ public sealed class TestRabbitMqChannel
                 LastPublishedProperties = (BasicProperties) arguments![3]!;
                 LastPublishedBody = (ReadOnlyMemory<byte>) arguments[4]!;
                 return BasicPublishAsyncHandler?.Invoke((CancellationToken) arguments![^1]!) ?? default(ValueTask);
+            case "QueueDeclareAsync":
+                QueueDeclareCallCount++;
+                return RabbitMqDispatchProxyDefaults.GetDefaultValue(targetMethod.ReturnType);
             case "QueueDeclarePassiveAsync":
                 return QueueDeclarePassiveAsyncHandler is not null
                     ? QueueDeclarePassiveAsyncHandler((string) arguments![0]!, (CancellationToken) arguments[^1]!)

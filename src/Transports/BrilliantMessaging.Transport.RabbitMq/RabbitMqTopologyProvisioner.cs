@@ -52,19 +52,29 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
 
         try
         {
-            await using var channel = await _topology.CreateChannelAsync(cancellationToken).ConfigureAwait(false);
+            // Provisioning runs on a single, sequentially used channel, but several idempotency paths
+            // (a Delete-mode queue or binding that is already absent on the broker) swallow a NOT_FOUND
+            // and continue — and a NOT_FOUND is the broker having closed the channel underneath us. A
+            // bounded pool of one self-heals that: each step acquires a lease, and a channel the broker
+            // shut down is discarded on release so the next acquire opens a fresh one. A healthy channel
+            // is returned to the pool and reused, so in the common case this is still one channel for the
+            // whole run. Acquiring per step (rather than holding one lease across the loop) is what makes
+            // the renewal work — channel health is only evaluated at acquire/release.
+            await using var channelPool = new DefaultRabbitMqChannelPool(1, _topology.CreateChannelAsync);
 
             foreach (var exchange in _topology.Exchanges)
             {
-                await ProvisionExchangeAsync(channel, exchange, cancellationToken).ConfigureAwait(false);
+                await using var lease = await channelPool.AcquireAsync(cancellationToken).ConfigureAwait(false);
+                await ProvisionExchangeAsync(lease.Channel, exchange, cancellationToken).ConfigureAwait(false);
             }
 
             foreach (var queue in _topology.Queues)
             {
-                await ProvisionQueueAsync(channel, queue, cancellationToken).ConfigureAwait(false);
+                await using var lease = await channelPool.AcquireAsync(cancellationToken).ConfigureAwait(false);
+                await ProvisionQueueAsync(lease.Channel, queue, cancellationToken).ConfigureAwait(false);
             }
 
-            await ProvisionBindingsAsync(channel, _topology.Bindings, _topology.Queues, cancellationToken)
+            await ProvisionBindingsAsync(channelPool, _topology.Bindings, _topology.Queues, cancellationToken)
                .ConfigureAwait(false);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -108,7 +118,7 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
     }
 
     private static async Task ProvisionBindingsAsync(
-        IChannel channel,
+        IRabbitMqChannelPool channelPool,
         IReadOnlyList<RabbitMqBindingDefinition> bindings,
         IReadOnlyList<RabbitMqQueueDefinition> queues,
         CancellationToken cancellationToken
@@ -136,7 +146,8 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
         {
             if (binding.BindingMode is RabbitMqBindingMode.Active or RabbitMqBindingMode.Skip)
             {
-                await ProvisionBindingAsync(channel, binding, deleteQueueNames, cancellationToken)
+                await using var lease = await channelPool.AcquireAsync(cancellationToken).ConfigureAwait(false);
+                await ProvisionBindingAsync(lease.Channel, binding, deleteQueueNames, cancellationToken)
                    .ConfigureAwait(false);
             }
         }
@@ -145,7 +156,8 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
         {
             if (binding.BindingMode == RabbitMqBindingMode.Delete)
             {
-                await ProvisionBindingAsync(channel, binding, deleteQueueNames, cancellationToken)
+                await using var lease = await channelPool.AcquireAsync(cancellationToken).ConfigureAwait(false);
+                await ProvisionBindingAsync(lease.Channel, binding, deleteQueueNames, cancellationToken)
                    .ConfigureAwait(false);
             }
         }

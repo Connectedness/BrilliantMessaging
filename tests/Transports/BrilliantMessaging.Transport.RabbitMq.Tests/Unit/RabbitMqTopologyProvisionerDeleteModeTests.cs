@@ -185,6 +185,49 @@ public sealed class RabbitMqTopologyProvisionerDeleteModeTests
         testChannel.QueueDeleteCallCount.Should().Be(1);
     }
 
+    [Fact]
+    public async Task ProvisionAsync_RenewsChannelAfterDeleteClosesItAndProvisionsRemainingResources()
+    {
+        // A Delete-mode queue that is already absent makes the broker close the channel with a NOT_FOUND.
+        // The provisioner must acquire a fresh channel so the following Active queue is still declared,
+        // rather than running on the dead channel. Without renewal the second declare would either land on
+        // closedChannel or fail outright.
+        TestRabbitMqChannel closedChannel = new ();
+        closedChannel.QueueDeclarePassiveAsyncHandler = (_, _) =>
+        {
+            // Model the broker closing the channel as part of raising the NOT_FOUND.
+            closedChannel.Close(Constants.NotFound, "NOT_FOUND");
+            return Task.FromException<QueueDeclareOk>(CreateNotFound());
+        };
+        TestRabbitMqChannel renewedChannel = new ();
+
+        var topology = BuildMinimalTopology(
+            queues: [DeleteQueue("absent-queue"), ActiveQueue("new-queue")],
+            channel: closedChannel,
+            additionalChannels: [renewedChannel]
+        );
+
+        var provisioner = new RabbitMqTopologyProvisioner(topology);
+        var act = async () => await provisioner.ProvisionAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync<Exception>();
+        closedChannel.IsOpen.Should().BeFalse();
+        closedChannel.QueueDeclareCallCount.Should().Be(0);
+        renewedChannel.QueueDeclareCallCount.Should().Be(1);
+    }
+
+    private static RabbitMqQueueDefinition ActiveQueue(string name)
+    {
+        return new RabbitMqQueueDefinition(
+            name,
+            RabbitMqDeclareMode.Active,
+            true,
+            false,
+            false,
+            new Dictionary<string, object?>()
+        );
+    }
+
     private static RabbitMqQueueDefinition DeleteQueue(string name)
     {
         return new RabbitMqQueueDefinition(
@@ -208,12 +251,24 @@ public sealed class RabbitMqTopologyProvisionerDeleteModeTests
         IReadOnlyList<RabbitMqExchangeDefinition>? exchanges = null,
         IReadOnlyList<RabbitMqQueueDefinition>? queues = null,
         IReadOnlyList<RabbitMqBindingDefinition>? bindings = null,
-        TestRabbitMqChannel? channel = null
+        TestRabbitMqChannel? channel = null,
+        IReadOnlyList<TestRabbitMqChannel>? additionalChannels = null
     )
     {
         var testChannel = channel ?? new TestRabbitMqChannel();
         TestRabbitMqConnection testConnection = new ();
         testConnection.EnqueueChannel(testChannel.Object);
+
+        // Additional channels back the pool's renewal path: when the broker closes a channel (a swallowed
+        // NOT_FOUND), the provisioner acquires a fresh one, which the connection dispenses from this queue.
+        if (additionalChannels is not null)
+        {
+            foreach (var renewalChannel in additionalChannels)
+            {
+                testConnection.EnqueueChannel(renewalChannel.Object);
+            }
+        }
+
         RabbitMqConnectionProvider connectionProvider = new (
             _ => Task.FromResult(testConnection.Object)
         );
