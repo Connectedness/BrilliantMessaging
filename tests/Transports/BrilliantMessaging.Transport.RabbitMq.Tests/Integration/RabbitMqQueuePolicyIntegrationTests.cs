@@ -135,10 +135,10 @@ public sealed class RabbitMqQueuePolicyIntegrationTests
         const string v2Queue = "policy-evolve-orders-v2";
         var cancellationToken = TestContext.Current.CancellationToken;
         {
-            ConsumedMessageSink sink = new ();
-            var services = new ServiceCollection();
-            services.AddSingleton(sink);
-            services
+            // Phase 1: provision the v1 topology with an Active binding ex → v1 and no consumer, then publish.
+            // The message lands in v1, proving the binding routes traffic into v1 on the broker.
+            var firstServices = new ServiceCollection();
+            firstServices
                .AddTestCloudEvents()
                .AddRabbitMqTopology(
                     builder =>
@@ -151,49 +151,30 @@ public sealed class RabbitMqQueuePolicyIntegrationTests
                         );
                         builder.Exchange(exchange, ExchangeType.Direct);
                         builder.Queue(v1Queue);
-                        builder.Queue(v2Queue);
-                        // The old binding is flipped to Delete so the broker unbinds ex → orders-v1.
-                        builder.QueueBinding(
-                            exchange,
-                            v1Queue,
-                            "orders.created",
-                            binding => binding.WithBindingMode(RabbitMqBindingMode.Delete)
-                        );
-                        // The new binding is Active so the broker binds ex → orders-v2.
-                        builder.QueueBinding(exchange, v2Queue, "orders.created");
+                        builder.QueueBinding(exchange, v1Queue, "orders.created");
                         builder.Publish<RabbitMqPublishMessage>(
                             target => target
                                .ToDirectExchange(exchange, "orders.created")
                                .WithSerializer<CloudEventMessageSerializer>()
                         );
-                        builder.Consume(
-                            v2Queue,
-                            consumer => consumer
-                               .PrefetchCount(1)
-                               .Concurrency(1)
-                               .Handle<RabbitMqPublishMessage, RecordingPublishMessageHandler>()
-                        );
                     }
                 );
 
-            await using var serviceProvider = services.BuildServiceProvider();
-            var hostedServices = serviceProvider.GetServices<IHostedService>().ToArray();
+            await using var firstServiceProvider = firstServices.BuildServiceProvider();
+            var firstHostedServices = firstServiceProvider.GetServices<IHostedService>().ToArray();
 
             try
             {
-                foreach (var hostedService in hostedServices)
+                foreach (var hostedService in firstHostedServices)
                 {
                     await hostedService.StartAsync(cancellationToken);
                 }
 
-                var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
-                await publisher.PublishMessageAsync(
+                var firstPublisher = firstServiceProvider.GetRequiredService<IMessagePublisher>();
+                await firstPublisher.PublishMessageAsync(
                     new RabbitMqPublishMessage(100, "created"),
                     cancellationToken: cancellationToken
                 );
-
-                var consumed = await sink.WaitAsync(cancellationToken);
-                consumed.Id.Should().Be(100);
 
                 var connectionFactory = new ConnectionFactory
                 {
@@ -202,12 +183,91 @@ public sealed class RabbitMqQueuePolicyIntegrationTests
                 await using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
                 await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
 
-                // The old queue should have no messages (its binding was removed).
+                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+                (await channel.MessageCountAsync(v1Queue, cancellationToken)).Should().BeGreaterThan(0);
+
+                // Drain v1 so we can cleanly assert later that no new messages route to it after the unbind.
+                var drainResult = await channel.BasicGetAsync(v1Queue, true, cancellationToken);
+                drainResult.Should().NotBeNull();
                 (await channel.MessageCountAsync(v1Queue, cancellationToken)).Should().Be(0);
+
+                // Phase 2: re-provision with the v1 binding flipped to Delete and a new v2 binding Active.
+                // The provisioner binds ex → v2 first (Active pass) and then unbinds the pre-existing
+                // ex → v1 binding (Delete pass), proving a binding that existed on the broker is actually removed.
+                ConsumedMessageSink sink = new ();
+                var secondServices = new ServiceCollection();
+                secondServices.AddSingleton(sink);
+                secondServices
+                   .AddTestCloudEvents()
+                   .AddRabbitMqTopology(
+                        builder =>
+                        {
+                            builder.UseConnectionFactory(
+                                _ => new ConnectionFactory
+                                {
+                                    Uri = new Uri(_container.GetConnectionString())
+                                }
+                            );
+                            builder.Exchange(exchange, ExchangeType.Direct);
+                            builder.Queue(v1Queue);
+                            builder.Queue(v2Queue);
+                            // The old binding is flipped to Delete so the broker unbinds the existing ex → orders-v1.
+                            builder.QueueBinding(
+                                exchange,
+                                v1Queue,
+                                "orders.created",
+                                binding => binding.WithBindingMode(RabbitMqBindingMode.Delete)
+                            );
+                            // The new binding is Active so the broker binds ex → orders-v2.
+                            builder.QueueBinding(exchange, v2Queue, "orders.created");
+                            builder.Publish<RabbitMqPublishMessage>(
+                                target => target
+                                   .ToDirectExchange(exchange, "orders.created")
+                                   .WithSerializer<CloudEventMessageSerializer>()
+                            );
+                            builder.Consume(
+                                v2Queue,
+                                consumer => consumer
+                                   .PrefetchCount(1)
+                                   .Concurrency(1)
+                                   .Handle<RabbitMqPublishMessage, RecordingPublishMessageHandler>()
+                            );
+                        }
+                    );
+
+                await using var secondServiceProvider = secondServices.BuildServiceProvider();
+                var secondHostedServices = secondServiceProvider.GetServices<IHostedService>().ToArray();
+
+                try
+                {
+                    foreach (var hostedService in secondHostedServices)
+                    {
+                        await hostedService.StartAsync(cancellationToken);
+                    }
+
+                    var secondPublisher = secondServiceProvider.GetRequiredService<IMessagePublisher>();
+                    await secondPublisher.PublishMessageAsync(
+                        new RabbitMqPublishMessage(200, "created"),
+                        cancellationToken: cancellationToken
+                    );
+
+                    var consumed = await sink.WaitAsync(cancellationToken);
+                    consumed.Id.Should().Be(200);
+
+                    // The v1 queue should still have no messages — the unbind means new publishes no longer route to it.
+                    (await channel.MessageCountAsync(v1Queue, cancellationToken)).Should().Be(0);
+                }
+                finally
+                {
+                    foreach (var hostedService in secondHostedServices.Reverse())
+                    {
+                        await hostedService.StopAsync(CancellationToken.None);
+                    }
+                }
             }
             finally
             {
-                foreach (var hostedService in hostedServices.Reverse())
+                foreach (var hostedService in firstHostedServices.Reverse())
                 {
                     await hostedService.StopAsync(CancellationToken.None);
                 }
