@@ -83,16 +83,19 @@ public sealed class ManualDelayScheduler : IInMemoryDelayScheduler
     public async Task WaitForPendingAsync(int count, TimeSpan timeout)
     {
         using var cancellation = new CancellationTokenSource(timeout);
-        while (PendingCount < count)
+        try
         {
-            if (cancellation.IsCancellationRequested)
+            while (PendingCount < count)
             {
-                throw new TimeoutException(
-                    $"Expected at least {count} pending delay(s) within {timeout}, observed {PendingCount}."
-                );
+                await Task.Delay(5, cancellation.Token).ConfigureAwait(false);
             }
-
-            await Task.Delay(5, cancellation.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // The only cancellation source is the timeout, so surface it as a timeout rather than a cancellation.
+            throw new TimeoutException(
+                $"Expected at least {count} pending delay(s) within {timeout}, observed {PendingCount}."
+            );
         }
     }
 
