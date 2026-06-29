@@ -385,7 +385,6 @@ public sealed class InMemoryBroker
         }
 
         var transportMessage = delivery.CreateMessage();
-        var pipelineStarted = false;
 
         await using var scope = _serviceScopeFactory.CreateAsyncScope();
 
@@ -433,7 +432,6 @@ public sealed class InMemoryBroker
                 Message = inspectResult.Message
             };
 
-            pipelineStarted = true;
             await _pipeline(context).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (workerToken.IsCancellationRequested)
@@ -448,12 +446,11 @@ public sealed class InMemoryBroker
                 route.Topic
             );
 
-            // Once the pipeline has started, the framework acknowledgement middleware owns settlement; only the
-            // pre-pipeline path (unrecognized message, unknown endpoint) settles here.
-            if (!pipelineStarted)
-            {
-                await acknowledgement.NackAsync(requeue: false, CancellationToken.None).ConfigureAwait(false);
-            }
+            // The acknowledgement settles at most once, so this is a no-op when the framework acknowledgement
+            // middleware already settled inside the pipeline; it only matters for the pre-pipeline path
+            // (unrecognized message, unknown endpoint) and for an unexpected failure in an outer middleware that
+            // runs before settlement.
+            await acknowledgement.NackAsync(requeue: false, CancellationToken.None).ConfigureAwait(false);
         }
     }
 
