@@ -106,6 +106,34 @@ public sealed class InMemoryTopologyCompilerValidationTests
     }
 
     [Fact]
+    public void Compile_RejectsConsumerThatDeadLettersToUndeclaredTopic()
+    {
+        var services = CreateServices(static contracts => contracts.Map<OrderPlaced>("tests.order.placed"));
+        services.AddBrilliantMessaging().AddInMemoryTopology(
+            topology => topology
+               .Topic("orders")
+               .Consume(
+                    "orders",
+                    consumer => consumer
+                       .OnFailure(failure => failure.DeadLetterTo("orders.dead"))
+                       .Handle<OrderPlaced, OrderPlacedHandler>()
+                )
+        );
+        using var serviceProvider = services.BuildServiceProvider();
+
+        var act = () => _ = serviceProvider.GetRequiredService<Topology>();
+
+        act.Should()
+           .Throw<TopologyValidationException>()
+           .Which
+           .ValidationErrors
+           .Should()
+           .Contain(
+                "Consumer for topic 'orders' dead-letters to undeclared topic 'orders.dead'. Declare it with Topic(\"orders.dead\")."
+            );
+    }
+
+    [Fact]
     public void Compile_RejectsDuplicateHandlerDiscriminatorOnSingleConsumer()
     {
         var services = CreateServices(static contracts => contracts.Map<OrderPlaced>("tests.order.placed"));

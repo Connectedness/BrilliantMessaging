@@ -343,6 +343,14 @@ public sealed class InMemoryTopologyCompiler
                 );
             }
 
+            if (consumer.DeliveryPolicy.DeadLetterTopic is { } deadLetterTopic &&
+                !declaredTopics.Contains(deadLetterTopic))
+            {
+                errors.Add(
+                    $"Consumer for topic '{consumer.Topic}' dead-letters to undeclared topic '{deadLetterTopic}'. Declare it with Topic(\"{deadLetterTopic}\")."
+                );
+            }
+
             if (consumer.Handlers.Length == 0)
             {
                 errors.Add($"Consume('{consumer.Topic}') declares no handlers.");
