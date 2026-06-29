@@ -41,6 +41,11 @@ public sealed class InMemoryTestHost : IAsyncDisposable
     /// </summary>
     public InMemoryBroker Broker => _serviceProvider.GetRequiredService<InMemoryBroker>();
 
+    /// <summary>
+    /// Resolves the default topology compiled for the host.
+    /// </summary>
+    public Topology Topology => _serviceProvider.GetRequiredService<Topology>();
+
     public async ValueTask DisposeAsync()
     {
         await StopRuntimesAsync().ConfigureAwait(false);
@@ -95,9 +100,17 @@ public sealed class InMemoryTestHost : IAsyncDisposable
     /// </summary>
     public async Task StopRuntimesAsync()
     {
+        await StopRuntimesAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Stops the topology runtimes with a caller-supplied cancellation token.
+    /// </summary>
+    public async Task StopRuntimesAsync(CancellationToken cancellationToken)
+    {
         for (var index = _runtimes.Length - 1; index >= 0; index--)
         {
-            await _runtimes[index].StopAsync(CancellationToken.None).ConfigureAwait(false);
+            await _runtimes[index].StopAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 }

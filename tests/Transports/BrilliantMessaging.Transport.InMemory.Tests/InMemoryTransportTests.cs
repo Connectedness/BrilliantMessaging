@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Core.Messaging.Outbound;
 using BrilliantMessaging.Transport.InMemory.Outbound;
 using BrilliantMessaging.Transport.InMemory.Tests.TestSupport;
 using FluentAssertions;
@@ -45,6 +47,191 @@ public sealed class InMemoryTransportTests
         recorded.Headers[$"{InMemoryOutboundTarget<OrderPlaced>.CloudEventsHeaderPrefix}type"]
            .Should()
            .Be("tests.order.placed");
+    }
+
+    [Fact]
+    public async Task PublishRawAsync_RecordsSerializedBodyHeadersContentTypeAndMessageId()
+    {
+        using var serviceProvider = CreateOutboundOnlyServiceProvider();
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var target = serviceProvider.GetRequiredService<Topology>().GetRequiredTarget<OrderPlaced>();
+        SerializedMessage message = new (
+            "raw-body"u8.ToArray(),
+            "application/octet-stream",
+            "gzip",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["x-custom"] = "custom-value",
+                ["x-null"] = null
+            },
+            "raw-message-id",
+            "raw-correlation-id"
+        );
+
+        await publisher.PublishRawAsync(message, target, CancellationToken);
+
+        var recorded = serviceProvider.GetRequiredService<InMemoryBroker>()
+           .GetMessages("orders")
+           .Should()
+           .ContainSingle()
+           .Which;
+        recorded.Topic.Should().Be("orders");
+        recorded.Body.ToArray().Should().Equal("raw-body"u8.ToArray());
+        recorded.ContentType.Should().Be("application/octet-stream");
+        recorded.MessageId.Should().Be("raw-message-id");
+        recorded.Headers.Should().ContainKey("x-custom").WhoseValue.Should().Be("custom-value");
+        recorded.Headers.Should().ContainKey("x-null").WhoseValue.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PublishMessageAsync_BindsCloudEventOptionalAttributesToPrefixedHeaders()
+    {
+        CloudEventEnvelope envelope = new (
+            "1.0",
+            "93f0208d-10fe-47fc-a3e4-daed821f80b7",
+            "/tests/in-memory/custom-source",
+            "tests.order.placed.custom",
+            new DateTimeOffset(2026, 5, 31, 12, 34, 56, TimeSpan.Zero),
+            "orders/order-42",
+            "application/vnd.brilliantmessaging.order+json",
+            "https://schemas.example.test/orders/placed.json",
+            "custom-body"u8.ToArray(),
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["partitionkey"] = "order-42",
+                ["emptyextension"] = null
+            }
+        );
+        using var serviceProvider = CreateOutboundOnlyServiceProvider(new FixedEnvelopeMessageSerializer(envelope));
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var target = serviceProvider.GetRequiredService<Topology>().GetRequiredTarget<OrderPlaced>();
+
+        await publisher.PublishMessageAsync(
+            new OrderPlaced { OrderId = "order-42" },
+            target,
+            cancellationToken: CancellationToken
+        );
+
+        var recorded = serviceProvider.GetRequiredService<InMemoryBroker>()
+           .GetMessages("orders")
+           .Should()
+           .ContainSingle()
+           .Which;
+        var prefix = InMemoryOutboundTarget<OrderPlaced>.CloudEventsHeaderPrefix;
+        recorded.Body.ToArray().Should().Equal("custom-body"u8.ToArray());
+        recorded.ContentType.Should().Be("application/vnd.brilliantmessaging.order+json");
+        recorded.MessageId.Should().Be(envelope.Id);
+        recorded.Headers.Should().ContainKey($"{prefix}id").WhoseValue.Should().Be(envelope.Id);
+        recorded.Headers.Should().ContainKey($"{prefix}specversion").WhoseValue.Should().Be("1.0");
+        recorded.Headers.Should().ContainKey($"{prefix}source").WhoseValue.Should().Be(envelope.Source);
+        recorded.Headers.Should().ContainKey($"{prefix}type").WhoseValue.Should().Be(envelope.Type);
+        recorded.Headers.Should().ContainKey($"{prefix}time").WhoseValue.Should()
+           .Be("2026-05-31T12:34:56.0000000+00:00");
+        recorded.Headers.Should().ContainKey($"{prefix}subject").WhoseValue.Should().Be(envelope.Subject);
+        recorded.Headers.Should().ContainKey($"{prefix}dataschema").WhoseValue.Should().Be(envelope.DataSchema);
+        recorded.Headers.Should().ContainKey($"{prefix}partitionkey").WhoseValue.Should().Be("order-42");
+        recorded.Headers.Should().ContainKey($"{prefix}emptyextension").WhoseValue.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PrePipelineDeliveryMissingCloudEventsType_IsDeadLetteredWithoutInvokingHandler()
+    {
+        await using var host = await CreateDeadLetteringHostAsync(WithContracts);
+        var message = CreateRawMessage(
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["cloudEvents:specversion"] = "1.0"
+            }
+        );
+
+        await host.Publisher.PublishRawAsync(
+            message,
+            host.Topology.GetRequiredTarget<OrderPlaced>(),
+            CancellationToken
+        );
+        await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+
+        host.Probe.Invocations.Should().BeEmpty();
+        host.Broker.GetMessages("orders").Should().ContainSingle();
+        var deadLetter = host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which;
+        deadLetter.Body.ToArray().Should().Equal(message.Body);
+        deadLetter.Headers.Should().NotContainKey("cloudEvents:type");
+    }
+
+    [Fact]
+    public async Task PrePipelineDeliveryWithUnregisteredCloudEventsType_IsDeadLetteredWithoutInvokingHandler()
+    {
+        await using var host = await CreateDeadLetteringHostAsync(WithContracts);
+        var message = CreateRawMessage(
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["cloudEvents:type"] = "tests.order.unknown"
+            }
+        );
+
+        await host.Publisher.PublishRawAsync(
+            message,
+            host.Topology.GetRequiredTarget<OrderPlaced>(),
+            CancellationToken
+        );
+        await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+
+        host.Probe.Invocations.Should().BeEmpty();
+        var deadLetter = host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which;
+        deadLetter.Headers.Should().ContainKey("cloudEvents:type").WhoseValue.Should().Be("tests.order.unknown");
+    }
+
+    [Fact]
+    public async Task PrePipelineDeliveryWithInboundAliasButNoEndpoint_IsDeadLetteredWithoutInvokingHandler()
+    {
+        await using var host = await CreateDeadLetteringHostAsync(WithContractsAndLegacyOrderPlacedAlias);
+        var message = CreateRawMessage(
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["cloudEvents:specversion"] = "1.0",
+                ["cloudEvents:id"] = "legacy-message",
+                ["cloudEvents:source"] = "/tests/legacy",
+                ["cloudEvents:type"] = "tests.order.placed.legacy",
+                ["cloudEvents:time"] = "2026-06-29T12:00:00.0000000+00:00"
+            }
+        );
+
+        await host.Publisher.PublishRawAsync(
+            message,
+            host.Topology.GetRequiredTarget<OrderPlaced>(),
+            CancellationToken
+        );
+        await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+
+        host.Probe.Invocations.Should().BeEmpty();
+        var deadLetter = host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which;
+        deadLetter.Headers.Should()
+           .ContainKey("cloudEvents:type")
+           .WhoseValue.Should()
+           .Be("tests.order.placed.legacy");
+    }
+
+    [Fact]
+    public async Task PrePipelineDeliveryWithMalformedCloudEventsEnvelope_IsDeadLetteredWithoutInvokingHandler()
+    {
+        await using var host = await CreateDeadLetteringHostAsync(WithContracts);
+        var message = CreateRawMessage(
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["cloudEvents:type"] = "tests.order.placed"
+            }
+        );
+
+        await host.Publisher.PublishRawAsync(
+            message,
+            host.Topology.GetRequiredTarget<OrderPlaced>(),
+            CancellationToken
+        );
+        await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+
+        host.Probe.Invocations.Should().BeEmpty();
+        var deadLetter = host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which;
+        deadLetter.Headers.Should().ContainKey("cloudEvents:type").WhoseValue.Should().Be("tests.order.placed");
     }
 
     [Fact]
@@ -362,6 +549,70 @@ public sealed class InMemoryTransportTests
     }
 
     [Fact]
+    public async Task ManualAck_IgnoresDuplicateSettlement()
+    {
+        await using var host = await InMemoryTestHost
+           .StartAsync(
+                builder => WithContracts(builder)
+                   .AddInMemoryTopology(
+                        topology => topology
+                           .Topic("orders")
+                           .Topic("orders.dead")
+                           .Publish<OrderPlaced>(target => target.ToTopic("orders"))
+                           .Consume(
+                                "orders",
+                                consumer => consumer
+                                   .OnFailure(failure => failure.DeadLetterTo("orders.dead"))
+                                   .Handle<OrderPlaced, DoubleAckOrderPlacedHandler>(
+                                        handler => handler.ManualAck()
+                                    )
+                            )
+                    )
+            );
+
+        await host.Publisher.PublishMessageAsync(
+            new OrderPlaced { OrderId = "double-ack" },
+            cancellationToken: CancellationToken
+        );
+        await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+
+        host.Probe.Invocations.Should().ContainSingle();
+        host.Broker.GetMessages("orders.dead").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ManualNack_IgnoresDuplicateSettlement()
+    {
+        await using var host = await InMemoryTestHost
+           .StartAsync(
+                builder => WithContracts(builder)
+                   .AddInMemoryTopology(
+                        topology => topology
+                           .Topic("orders")
+                           .Topic("orders.dead")
+                           .Publish<OrderPlaced>(target => target.ToTopic("orders"))
+                           .Consume(
+                                "orders",
+                                consumer => consumer
+                                   .OnFailure(failure => failure.DeadLetterTo("orders.dead"))
+                                   .Handle<OrderPlaced, DoubleNackOrderPlacedHandler>(
+                                        handler => handler.ManualAck()
+                                    )
+                            )
+                    )
+            );
+
+        await host.Publisher.PublishMessageAsync(
+            new OrderPlaced { OrderId = "double-nack" },
+            cancellationToken: CancellationToken
+        );
+        await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+
+        host.Probe.Invocations.Should().ContainSingle();
+        host.Broker.GetMessages("orders.dead").Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task Brokers_AreIsolatedPerServiceProviderByDefault()
     {
         await using var first = await CreateOutboundOnlyHostAsync();
@@ -465,7 +716,7 @@ public sealed class InMemoryTransportTests
                            .Consume("orders", consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>())
                     )
             );
-        await host.StopRuntimesAsync();
+        await host.StopRuntimesAsync(CancellationToken);
 
         var act = async () => await host.Publisher
            .PublishMessageAsync(new OrderPlaced { OrderId = "after-stop" }, cancellationToken: CancellationToken);
@@ -502,8 +753,42 @@ public sealed class InMemoryTransportTests
         );
         await scheduler.WaitForPendingAsync(1, Timeout);
 
-        await host.StopRuntimesAsync().WaitAsync(Timeout, CancellationToken);
+        await host.StopRuntimesAsync(CancellationToken).WaitAsync(Timeout, CancellationToken);
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenCallerCancellationInterruptsDrain_CancelsWorkersAndPropagatesCancellation()
+    {
+        TaskCompletionSource<bool> gate = new (TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var host = await InMemoryTestHost
+           .StartAsync(
+                builder => WithContracts(builder)
+                   .AddInMemoryTopology(
+                        topology => topology
+                           .Topic("orders")
+                           .Publish<OrderPlaced>(target => target.ToTopic("orders"))
+                           .Consume("orders", consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>())
+                    )
+            );
+        host.Probe.Gate = gate;
+
+        await host.Publisher.PublishMessageAsync(
+            new OrderPlaced { OrderId = "cancel-stop" },
+            cancellationToken: CancellationToken
+        );
+        await host.Probe.WaitForInvocationsAsync(1, Timeout);
+        using CancellationTokenSource cancellation = new ();
+        await cancellation.CancelAsync();
+
+        var act = async () => await host.StopRuntimesAsync(cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        var publishAfterStop = async () => await host.Publisher.PublishMessageAsync(
+            new OrderPlaced { OrderId = "after-cancelled-stop" },
+            cancellationToken: CancellationToken
+        );
+        await publishAfterStop.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
@@ -542,6 +827,79 @@ public sealed class InMemoryTransportTests
         );
     }
 
+    private static Task<InMemoryTestHost> CreateDeadLetteringHostAsync(
+        Func<BrilliantMessagingBuilder, BrilliantMessagingBuilder> configureContracts
+    )
+    {
+        return InMemoryTestHost.StartAsync(
+            builder => configureContracts(builder)
+               .AddInMemoryTopology(
+                    topology => topology
+                       .Topic("orders")
+                       .Topic("orders.dead")
+                       .Publish<OrderPlaced>(target => target.ToTopic("orders"))
+                       .Consume(
+                            "orders",
+                            consumer => consumer
+                               .OnFailure(failure => failure.DeadLetterTo("orders.dead"))
+                               .Handle<OrderPlaced, OrderPlacedHandler>()
+                        )
+                )
+        );
+    }
+
+    private static SerializedMessage CreateRawMessage(IReadOnlyDictionary<string, string?> headers)
+    {
+        return new SerializedMessage(
+            "{}"u8.ToArray(),
+            "application/json",
+            null,
+            headers,
+            "raw-message",
+            null
+        );
+    }
+
+    private static ServiceProvider CreateOutboundOnlyServiceProvider(FixedEnvelopeMessageSerializer? serializer = null)
+    {
+        ServiceCollection services = new ();
+        if (serializer is not null)
+        {
+            services.AddSingleton(serializer);
+        }
+
+        WithContracts(services.AddBrilliantMessaging().UseCloudEvents(static options => options.Source = "/tests"))
+           .AddInMemoryTopology(
+                topology =>
+                {
+                    topology.Topic("orders");
+                    topology.Publish<OrderPlaced>(
+                        target =>
+                        {
+                            target.ToTopic("orders");
+                            if (serializer is not null)
+                            {
+                                target.WithSerializer<FixedEnvelopeMessageSerializer>();
+                            }
+                        }
+                    );
+                }
+            );
+
+        return services.BuildServiceProvider();
+    }
+
+    private static BrilliantMessagingBuilder WithContractsAndLegacyOrderPlacedAlias(BrilliantMessagingBuilder builder)
+    {
+        return builder.MapMessageContracts(
+            static contracts =>
+            {
+                contracts.Map<OrderPlaced>("tests.order.placed").WithInboundAlias("tests.order.placed.legacy");
+                contracts.Map<OrderShipped>("tests.order.shipped");
+            }
+        );
+    }
+
     private static BrilliantMessagingBuilder WithContracts(BrilliantMessagingBuilder builder)
     {
         return builder.MapMessageContracts(
@@ -551,5 +909,26 @@ public sealed class InMemoryTransportTests
                 contracts.Map<OrderShipped>("tests.order.shipped");
             }
         );
+    }
+}
+
+public sealed class FixedEnvelopeMessageSerializer : IMessageSerializer
+{
+    private readonly CloudEventEnvelope _envelope;
+
+    public FixedEnvelopeMessageSerializer(CloudEventEnvelope envelope)
+    {
+        _envelope = envelope;
+    }
+
+    public ValueTask<CloudEventEnvelope> SerializeAsync<T>(
+        T message,
+        in CloudEventMetadata metadata,
+        string? type,
+        string? dataSchema,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return new ValueTask<CloudEventEnvelope>(_envelope);
     }
 }

@@ -75,3 +75,66 @@ public sealed class OrderShippedHandler : IMessageHandler<OrderShipped>
         );
     }
 }
+
+/// <summary>
+/// Manually acknowledges the delivery twice to verify duplicate settlement is ignored.
+/// </summary>
+public sealed class DoubleAckOrderPlacedHandler : IMessageHandler<OrderPlaced>
+{
+    private readonly HandlerProbe _probe;
+
+    public DoubleAckOrderPlacedHandler(HandlerProbe probe)
+    {
+        _probe = probe;
+    }
+
+    public async Task HandleAsync(
+        OrderPlaced message,
+        IncomingMessageContext context,
+        CancellationToken cancellationToken
+    )
+    {
+        await _probe.HandleAsync(
+            context.Transport.Source,
+            context.Endpoint.Name,
+            message,
+            context.Transport.DeliveryAttempt,
+            cancellationToken
+        ).ConfigureAwait(false);
+
+        await context.Acknowledgement.AckAsync(cancellationToken).ConfigureAwait(false);
+        await context.Acknowledgement.AckAsync(cancellationToken).ConfigureAwait(false);
+        await context.Acknowledgement.NackAsync(requeue: false, cancellationToken).ConfigureAwait(false);
+    }
+}
+
+/// <summary>
+/// Manually rejects the delivery twice to verify duplicate settlement is ignored.
+/// </summary>
+public sealed class DoubleNackOrderPlacedHandler : IMessageHandler<OrderPlaced>
+{
+    private readonly HandlerProbe _probe;
+
+    public DoubleNackOrderPlacedHandler(HandlerProbe probe)
+    {
+        _probe = probe;
+    }
+
+    public async Task HandleAsync(
+        OrderPlaced message,
+        IncomingMessageContext context,
+        CancellationToken cancellationToken
+    )
+    {
+        await _probe.HandleAsync(
+            context.Transport.Source,
+            context.Endpoint.Name,
+            message,
+            context.Transport.DeliveryAttempt,
+            cancellationToken
+        ).ConfigureAwait(false);
+
+        await context.Acknowledgement.NackAsync(requeue: false, cancellationToken).ConfigureAwait(false);
+        await context.Acknowledgement.NackAsync(requeue: false, cancellationToken).ConfigureAwait(false);
+    }
+}
