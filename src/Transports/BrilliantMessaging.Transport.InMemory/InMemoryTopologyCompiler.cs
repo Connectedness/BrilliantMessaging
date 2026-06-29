@@ -278,8 +278,6 @@ public sealed class InMemoryTopologyCompiler
         ICollection<string> errors
     )
     {
-        HashSet<string> targetNames = new (StringComparer.Ordinal);
-
         foreach (var nameGroup in configuration.Targets
                     .Where(static target => !string.IsNullOrWhiteSpace(target.TargetName))
                     .GroupBy(static target => target.TargetName!, StringComparer.Ordinal))
