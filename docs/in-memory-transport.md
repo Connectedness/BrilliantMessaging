@@ -132,6 +132,11 @@ await broker.DrainUntilIdleAsync(TimeSpan.FromSeconds(5), cancellationToken);
 messages that were consumed. The returned `InMemoryTransportMessage` exposes the serialized body,
 headers, content type, message id, topic, and delivery attempt metadata.
 
+Recordings accumulate for the lifetime of the broker — that is, for the lifetime of the owning service
+provider. This is intentional so tests can inspect everything that was ever routed, but it means a
+long-running local-development host backed by the in-memory transport will retain every routed message
+in memory until the provider is disposed.
+
 For named topologies, resolve the broker by topology key:
 
 ```csharp
