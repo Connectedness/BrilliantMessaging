@@ -114,8 +114,9 @@ delivery to the named topic. If `DeadLetterTo` is not configured, the delivery i
 inspection is just normal topic inspection on the dead-letter topic; there is no separate dead-letter
 store.
 
-Retry delays are scheduled through `IInMemoryDelayScheduler`. The default implementation uses real time.
-Tests can replace the singleton scheduler with a manual implementation to drive retries without sleeping.
+Retry delays are scheduled through `IInMemoryDelayScheduler`. The default implementation,
+`RealTimeInMemoryDelayScheduler`, uses real time. Tests can replace it with the shipped
+`ManualDelayScheduler` to drive retries without sleeping — see [Test helpers](#test-helpers).
 
 ## Support API
 
@@ -173,3 +174,103 @@ start/stop model. On stop, the broker:
 - closes the background worker queues.
 
 Publishing after the runtime has stopped fails with an `InvalidOperationException`.
+
+## Test helpers
+
+The package ships a few helpers in the `BrilliantMessaging.Transport.InMemory` namespace so you do not
+have to reimplement them in every test project. They are intended for tests, samples, and local
+development; production code does not need them.
+
+### InMemoryTestHost
+
+`InMemoryTestHost` wires Brilliant Messaging with an in-memory topology, starts the topology runtimes,
+and exposes the publisher and broker. It is an `IAsyncDisposable`: disposing it stops the runtimes and
+disposes the underlying service provider.
+
+```csharp
+await using var host = await InMemoryTestHost.StartAsync(builder => builder
+    .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("orders.placed"))
+    .AddInMemoryTopology(memory =>
+    {
+        memory.Topic("orders");
+        memory.Publish<OrderPlaced>(target => target.ToTopic("orders"));
+        memory.Consume("orders", consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>());
+    }));
+
+await host.Publisher.PublishMessageAsync(new OrderPlaced("42"), cancellationToken: cancellationToken);
+await host.Broker.DrainUntilIdleAsync(TimeSpan.FromSeconds(5), cancellationToken);
+
+host.Broker.GetMessages("orders").Should().ContainSingle();
+```
+
+- `StartAsync(configure, scheduler = null, source = "/in-memory")` runs `configure` against a fresh
+  `BrilliantMessagingBuilder`. `scheduler` overrides the delay scheduler (see `ManualDelayScheduler`
+  below); `source` sets the CloudEvents source applied to published messages.
+- `Publisher`, `Broker`, `BrokerFor(name)`, and `Topology` resolve the wired services.
+- `Probe` returns the registered `HandlerProbe`, or `null` when none was registered.
+- `StopRuntimesAsync()` stops the runtimes without disposing the container, so a test can still resolve
+  services and assert post-shutdown behavior.
+
+### HandlerProbe
+
+`HandlerProbe` is a shared recording handler helper. Register it as a singleton and forward your handlers
+to it, then assert on what was delivered, force failures, or hold deliveries in flight.
+
+```csharp
+services.AddSingleton<HandlerProbe>();
+
+public sealed class OrderPlacedHandler(HandlerProbe probe) : IMessageHandler<OrderPlaced>
+{
+    public Task HandleAsync(OrderPlaced message, IncomingMessageContext context, CancellationToken cancellationToken) =>
+        probe.HandleAsync(
+            context.Transport.Source,
+            context.Endpoint.Name,
+            message,
+            context.Transport.DeliveryAttempt,
+            cancellationToken);
+}
+```
+
+```csharp
+// Fail the first two attempts, then succeed.
+host.Probe!.OnHandle = invocation =>
+    invocation.DeliveryAttempt < 3 ? new InvalidOperationException("transient") : null;
+
+await host.Probe.WaitForInvocationsAsync(3, TimeSpan.FromSeconds(5));
+host.Probe.Invocations.Should().HaveCount(3);
+```
+
+- `Invocations` exposes the recorded `HandlerInvocation`s in order (route, endpoint name, message, and
+  delivery attempt).
+- `OnHandle` returns the exception to throw for an invocation, or `null` to complete successfully.
+- `Gate`, when set, makes every invocation await the supplied `TaskCompletionSource` before returning,
+  letting a test hold a delivery in flight.
+- `WaitForInvocationsAsync(count, timeout)` completes once `count` invocations are recorded and throws
+  `TimeoutException` otherwise.
+
+### ManualDelayScheduler
+
+`ManualDelayScheduler` is a deterministic `IInMemoryDelayScheduler` that captures retry delays instead of
+sleeping, so retry and backoff tests run without real time. Register it as the scheduler — it wins over
+the default `RealTimeInMemoryDelayScheduler`, which is registered with `TryAdd`:
+
+```csharp
+var scheduler = new ManualDelayScheduler();
+
+// Through the host:
+await using var host = await InMemoryTestHost.StartAsync(builder => /* ... */, scheduler);
+
+// Or directly, before AddInMemoryTopology runs:
+services.AddSingleton<IInMemoryDelayScheduler>(scheduler);
+```
+
+```csharp
+await scheduler.WaitForPendingAsync(1, TimeSpan.FromSeconds(5)); // wait until a retry is scheduled
+scheduler.ReleaseAll();                                          // let the scheduled retries run
+scheduler.RequestedDelays.Should().Equal(TimeSpan.FromMilliseconds(25));
+```
+
+- `PendingCount` and `RequestedDelays` observe the delays captured so far.
+- `ReleaseAll()` completes every captured delay immediately.
+- `WaitForPendingAsync(count, timeout)` waits until `count` delays are captured and throws
+  `TimeoutException` otherwise.
