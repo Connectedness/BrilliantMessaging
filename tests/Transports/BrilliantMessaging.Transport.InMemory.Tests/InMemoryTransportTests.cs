@@ -52,7 +52,7 @@ public sealed class InMemoryTransportTests
     [Fact]
     public async Task PublishRawAsync_RecordsSerializedBodyHeadersContentTypeAndMessageId()
     {
-        using var serviceProvider = CreateOutboundOnlyServiceProvider();
+        await using var serviceProvider = CreateOutboundOnlyServiceProvider();
         var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
         var target = serviceProvider.GetRequiredService<Topology>().GetRequiredTarget<OrderPlaced>();
         SerializedMessage message = new (
@@ -84,6 +84,61 @@ public sealed class InMemoryTransportTests
     }
 
     [Fact]
+    public async Task PublishRawAsync_ThrowsAndRecordsNothingWhenCancellationIsAlreadyRequested()
+    {
+        await using var serviceProvider = CreateOutboundOnlyServiceProvider();
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var target = serviceProvider.GetRequiredService<Topology>().GetRequiredTarget<OrderPlaced>();
+        SerializedMessage message = new (
+            "raw-body"u8.ToArray(),
+            "application/octet-stream",
+            null,
+            new Dictionary<string, string?>(StringComparer.Ordinal),
+            "raw-message-id",
+            "raw-correlation-id"
+        );
+        using CancellationTokenSource cancellation = new ();
+        await cancellation.CancelAsync();
+
+        var act = async () => await publisher.PublishRawAsync(message, target, cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        serviceProvider.GetRequiredService<InMemoryBroker>().GetMessages("orders").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PublishMessageAsync_ThrowsAndRecordsNothingWhenCancellationIsAlreadyRequested()
+    {
+        CloudEventEnvelope envelope = new (
+            "1.0",
+            "93f0208d-10fe-47fc-a3e4-daed821f80b7",
+            "/tests",
+            "tests.order.placed",
+            new DateTimeOffset(2026, 5, 31, 12, 34, 56, TimeSpan.Zero),
+            null,
+            "application/json",
+            null,
+            "custom-body"u8.ToArray(),
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+        );
+        await using var serviceProvider =
+            CreateOutboundOnlyServiceProvider(new FixedEnvelopeMessageSerializer(envelope));
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var target = serviceProvider.GetRequiredService<Topology>().GetRequiredTarget<OrderPlaced>();
+        using CancellationTokenSource cancellation = new ();
+        await cancellation.CancelAsync();
+
+        var act = async () => await publisher.PublishMessageAsync(
+            new OrderPlaced { OrderId = "order-1" },
+            target,
+            cancellationToken: cancellation.Token
+        );
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        serviceProvider.GetRequiredService<InMemoryBroker>().GetMessages("orders").Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task PublishMessageAsync_BindsCloudEventOptionalAttributesToPrefixedHeaders()
     {
         CloudEventEnvelope envelope = new (
@@ -102,7 +157,8 @@ public sealed class InMemoryTransportTests
                 ["emptyextension"] = null
             }
         );
-        using var serviceProvider = CreateOutboundOnlyServiceProvider(new FixedEnvelopeMessageSerializer(envelope));
+        await using var serviceProvider =
+            CreateOutboundOnlyServiceProvider(new FixedEnvelopeMessageSerializer(envelope));
         var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
         var target = serviceProvider.GetRequiredService<Topology>().GetRequiredTarget<OrderPlaced>();
 

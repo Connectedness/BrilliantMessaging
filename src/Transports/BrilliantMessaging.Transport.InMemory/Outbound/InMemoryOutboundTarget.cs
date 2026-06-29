@@ -62,6 +62,8 @@ public sealed class InMemoryOutboundTarget<TMessage> : OutboundTarget<TMessage>
     /// <inheritdoc />
     protected override Task PublishSerializedCoreAsync(SerializedMessage message, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         Dictionary<string, object?> headers = new (message.Headers.Count, StringComparer.Ordinal);
         foreach (var header in message.Headers)
         {
@@ -79,6 +81,8 @@ public sealed class InMemoryOutboundTarget<TMessage> : OutboundTarget<TMessage>
         CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var headers = CreateHeaders(envelope);
         var body = envelope.Data.ToArray();
         return _broker.RouteAsync(_topic, body, headers, envelope.DataContentType, envelope.Id);
