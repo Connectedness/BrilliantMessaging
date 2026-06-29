@@ -58,14 +58,12 @@ public sealed class RabbitMqExchangePolicyIntegrationTests
             await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
             (await channel.MessageCountAsync(queue, cancellationToken)).Should().BeGreaterThan(0);
             await DrainAsync(channel, queue, cancellationToken);
-
-            // Phase 2: flip downstream to Delete. Keep both bindings Active so the skip-set must skip them
-            // (the binding loop skips any binding naming a Delete-mode exchange on either end). The provisioner
-            // deletes downstream, and the broker cascade-removes both upstream→downstream and downstream→queue.
-            await StopAllAsync(phase1HostedServices);
         }
         finally
         {
+            // Phase 2: flip downstream to Delete. Keep both bindings Active so the skip-set must skip them
+            // (the binding loop skips any binding naming a Delete-mode exchange on either end). The provisioner
+            // deletes downstream, and the broker cascade-removes both upstream→downstream and downstream→queue.
             await StopAllAsync(phase1HostedServices);
         }
 
