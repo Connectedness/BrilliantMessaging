@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace BrilliantMessaging.Transport.InMemory.Tests.TestSupport;
+namespace BrilliantMessaging.Transport.InMemory;
 
 /// <summary>
-/// Records every handler invocation and lets a test decide whether a given invocation should fail or block. Shared
-/// as a singleton across the per-delivery scopes that resolve the handlers.
+/// Records every handler invocation and lets the caller decide whether a given invocation should fail or block.
+/// Shared as a singleton across the per-delivery scopes that resolve the handlers.
 /// </summary>
 public sealed class HandlerProbe
 {
@@ -23,10 +23,13 @@ public sealed class HandlerProbe
 
     /// <summary>
     /// When set, every handler awaits this gate (observing the delivery cancellation token) before it returns,
-    /// letting a test hold a delivery in flight.
+    /// letting the caller hold a delivery in flight.
     /// </summary>
     public TaskCompletionSource<bool>? Gate { get; set; }
 
+    /// <summary>
+    /// Gets the handler invocations recorded so far, in invocation order.
+    /// </summary>
     public IReadOnlyList<HandlerInvocation> Invocations
     {
         get
@@ -38,6 +41,10 @@ public sealed class HandlerProbe
         }
     }
 
+    /// <summary>
+    /// Records an invocation, then optionally blocks on <see cref="Gate" /> and throws the exception returned by
+    /// <see cref="OnHandle" />, if any.
+    /// </summary>
     public async Task HandleAsync(
         string route,
         string endpointName,
@@ -101,12 +108,3 @@ public sealed class HandlerProbe
         await task.WaitAsync(timeout).ConfigureAwait(false);
     }
 }
-
-/// <summary>
-/// A single recorded handler invocation.
-/// </summary>
-/// <param name="Route">The topic the delivery arrived on.</param>
-/// <param name="EndpointName">The endpoint name that handled the delivery.</param>
-/// <param name="Message">The deserialized message.</param>
-/// <param name="DeliveryAttempt">The one-based delivery attempt.</param>
-public sealed record HandlerInvocation(string Route, string EndpointName, object Message, int DeliveryAttempt);
