@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace BrilliantMessaging.Transport.InMemory.Tests.TestSupport;
+namespace BrilliantMessaging.Transport.InMemory;
 
 /// <summary>
 /// A hand-crafted <see cref="IInMemoryDelayScheduler" /> that captures every requested delay and releases them only
-/// when the test asks, so retry scheduling can be driven deterministically without sleeping.
+/// when the caller asks, so retry scheduling can be driven deterministically without sleeping.
 /// </summary>
 public sealed class ManualDelayScheduler : IInMemoryDelayScheduler
 {
