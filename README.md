@@ -327,6 +327,69 @@ consumer holds unacknowledged, so make sure the old queue has fully drained befo
 flipping it to `Delete` — an in-flight unacknowledged message is discarded together with
 the queue. The RabbitMQ management UI remains a valid alternative for removal.
 
+Exchanges follow the same workflow when their type or arguments must change, because
+RabbitMQ refuses an in-place redeclare: a different `type` raises `530 NOT_ALLOWED`, while
+different `durable`/`auto-delete`/arguments raises `406 PRECONDITION_FAILED` (both close
+the channel). Introduce the replacement exchange (for example `orders-v2`) under a new
+name, add the new bindings, deploy publishers so all live instances publish to
+`orders-v2`, then flip the old exchange to `Delete`:
+
+```csharp
+rabbit.Exchange("orders-v2", ExchangeType.Topic);
+rabbit.Exchange("orders-v1", exchange => exchange.WithDeclareMode(RabbitMqDeclareMode.Delete));
+```
+
+Exchange deletion is **unconditional**: unlike a queue, an exchange holds no messages, so
+there is nothing to drain before deleting, and the broker cascade-removes the bindings
+owned by the deleted exchange. The provisioner skips any binding that names a
+`Delete`-mode exchange on either end, so you do not need to flip each binding to `Delete`
+individually — the exchange delete cleans them up. A `Delete`-mode exchange that is
+already absent on the broker succeeds silently (idempotent restart). The topology
+compiler rejects an outbound target that publishes to a `Delete`-mode exchange, so the
+configuration cannot accidentally route traffic to a resource that is being removed.
+
+**Rolling-deploy hazard:** deleting an exchange breaks any older application instance
+that is still publishing to it — a `basic.publish` to a missing exchange is a
+`404 NOT_FOUND` channel error. The safe workflow is introduce the replacement exchange
+and bindings, deploy publishers so all live instances use the replacement, **wait until
+old publishers are gone**, then flip the old exchange to `Delete`. Do not flip the old
+exchange to `Delete` while a previous deployment's publishers are still running against
+it.
+
+##### Headers-exchange bindings
+
+A `headers` exchange routes on header values rather than a routing key, and the
+`x-match` binding argument controls whether all configured headers must match or any one
+of them. The binding builders expose a typed API for this so you do not have to reach for
+the raw `WithArgument(...)` escape hatch:
+
+```csharp
+rabbit.Exchange("orders", ExchangeType.Headers);
+rabbit.Queue("orders-by-tenant");
+rabbit.QueueBinding(
+    "orders",
+    "orders-by-tenant",
+    configure: binding => binding
+       .WithHeaderMatch(RabbitMqHeaderMatch.All)
+       .WithHeader("tenant", "acme")
+       .WithHeader("region", "us")
+);
+```
+
+`RabbitMqHeaderMatch` has four values: `All` and `Any` are the classic AMQP 0-9-1 modes
+(logical AND / OR), while `AllWithX` and `AnyWithX` are the RabbitMQ extensions that
+**include `x-`-prefixed headers in matching**. The plain `All` / `Any` modes exclude
+`x-`-prefixed headers from matching. If every configured predicate is `x-`-prefixed,
+plain `All` can match every message (zero effective predicates), while plain `Any`
+matches none. Use `AllWithX` / `AnyWithX` when the framework's own `x-`-prefixed header
+conventions (for example `x-tenant`) must participate in routing. `WithHeader(...)`
+rejects the literal name `x-match` (it is the match-mode control argument, not a header
+predicate) and writes a default `x-match` of `all` when none has been set yet, so a
+single `WithHeader` call is unambiguous. The topology compiler rejects header-match
+configuration on a binding whose source exchange is not type `headers`, rejects unknown
+`x-match` values, and rejects Active headers bindings that combine plain `All` / `Any`
+(or an omitted `x-match`) with `x-`-prefixed predicates.
+
 ### Publishing
 
 `IMessagePublisher` is your outbound surface. The common call is

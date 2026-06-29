@@ -74,8 +74,13 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
                 await ProvisionQueueAsync(lease.Channel, queue, cancellationToken).ConfigureAwait(false);
             }
 
-            await ProvisionBindingsAsync(channelPool, _topology.Bindings, _topology.Queues, cancellationToken)
-               .ConfigureAwait(false);
+            await ProvisionBindingsAsync(
+                channelPool,
+                _topology.Bindings,
+                _topology.Queues,
+                _topology.Exchanges,
+                cancellationToken
+            ).ConfigureAwait(false);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
@@ -121,6 +126,7 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
         IRabbitMqChannelPool channelPool,
         IReadOnlyList<RabbitMqBindingDefinition> bindings,
         IReadOnlyList<RabbitMqQueueDefinition> queues,
+        IReadOnlyList<RabbitMqExchangeDefinition> exchanges,
         CancellationToken cancellationToken
     )
     {
@@ -138,6 +144,20 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
             }
         }
 
+        // Build the matching set for Delete-mode exchanges. The preceding exchange loop has already deleted these
+        // exchanges and the broker has cascade-removed the bindings owned by them (both as source and as
+        // destination), so any binding that names a deleted exchange on either end is skipped in both passes: an
+        // Active re-bind would target an absent exchange, and a Delete unbind would be redundant.
+        HashSet<string> deleteExchangeNames = new (StringComparer.Ordinal);
+
+        foreach (var exchange in exchanges)
+        {
+            if (exchange.DeclareMode == RabbitMqDeclareMode.Delete)
+            {
+                deleteExchangeNames.Add(exchange.Name);
+            }
+        }
+
         // Two passes guarantee routing continuity: all Active/Skip bindings first (creating/re-asserting
         // bindings, including a new ex → orders-v2 bind), then all Delete bindings (running the unbinds,
         // including the old ex → orders-v1 unbind). The exchange is never without a binding mid-provisioning
@@ -147,8 +167,13 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
             if (binding.BindingMode is RabbitMqBindingMode.Active or RabbitMqBindingMode.Skip)
             {
                 await using var lease = await channelPool.AcquireAsync(cancellationToken).ConfigureAwait(false);
-                await ProvisionBindingAsync(lease.Channel, binding, deleteQueueNames, cancellationToken)
-                   .ConfigureAwait(false);
+                await ProvisionBindingAsync(
+                    lease.Channel,
+                    binding,
+                    deleteQueueNames,
+                    deleteExchangeNames,
+                    cancellationToken
+                ).ConfigureAwait(false);
             }
         }
 
@@ -157,8 +182,13 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
             if (binding.BindingMode == RabbitMqBindingMode.Delete)
             {
                 await using var lease = await channelPool.AcquireAsync(cancellationToken).ConfigureAwait(false);
-                await ProvisionBindingAsync(lease.Channel, binding, deleteQueueNames, cancellationToken)
-                   .ConfigureAwait(false);
+                await ProvisionBindingAsync(
+                    lease.Channel,
+                    binding,
+                    deleteQueueNames,
+                    deleteExchangeNames,
+                    cancellationToken
+                ).ConfigureAwait(false);
             }
         }
     }
@@ -167,6 +197,7 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
         IChannel channel,
         RabbitMqBindingDefinition binding,
         HashSet<string> deleteQueueNames,
+        HashSet<string> deleteExchangeNames,
         CancellationToken cancellationToken
     )
     {
@@ -175,6 +206,21 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
         // redundant, and an explicit re-bind would target a queue the preceding queue loop just deleted.
         if (binding is RabbitMqQueueBindingDefinition { QueueName: var skipQueueName } &&
             deleteQueueNames.Contains(skipQueueName))
+        {
+            return Task.CompletedTask;
+        }
+
+        // A binding that names a Delete-mode exchange on either end is skipped entirely. The preceding exchange
+        // loop has already deleted the exchange and the broker has cascade-removed its bindings, so an Active
+        // re-bind would target an absent exchange and a Delete unbind would be redundant. This covers both
+        // a queue binding's source exchange and an exchange binding's source or destination.
+        if (deleteExchangeNames.Contains(binding.SourceExchangeName))
+        {
+            return Task.CompletedTask;
+        }
+
+        if (binding is RabbitMqExchangeBindingDefinition skipExchangeBinding &&
+            deleteExchangeNames.Contains(skipExchangeBinding.DestinationExchangeName))
         {
             return Task.CompletedTask;
         }
@@ -207,12 +253,8 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
                     false,
                     cancellationToken
                 ),
-            RabbitMqExchangeBindingDefinition { BindingMode: RabbitMqBindingMode.Delete } =>
-                throw new ArgumentOutOfRangeException(
-                    nameof(binding),
-                    RabbitMqBindingMode.Delete,
-                    "Exchange binding deletion is not supported; exchange bindings are out of scope for Delete mode."
-                ),
+            RabbitMqExchangeBindingDefinition { BindingMode: RabbitMqBindingMode.Delete } exchangeBinding =>
+                UnbindExchangeBindingAsync(channel, exchangeBinding, arguments, cancellationToken),
             RabbitMqQueueBindingDefinition queueBinding => throw new ArgumentOutOfRangeException(
                 nameof(binding),
                 queueBinding.BindingMode,
@@ -252,6 +294,32 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
         }
     }
 
+    private static async Task UnbindExchangeBindingAsync(
+        IChannel channel,
+        RabbitMqExchangeBindingDefinition exchangeBinding,
+        IDictionary<string, object?> arguments,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            await channel.ExchangeUnbindAsync(
+                exchangeBinding.DestinationExchangeName,
+                exchangeBinding.SourceExchangeName,
+                exchangeBinding.RoutingKey,
+                arguments,
+                false,
+                cancellationToken
+            ).ConfigureAwait(false);
+        }
+        catch (OperationInterruptedException ex) when (IsBrokerNotFound(ex))
+        {
+            // A not-found error means the binding (or its source or destination exchange) is already absent on
+            // the broker. The desired state — binding absent — is already achieved, so Delete mode is idempotent
+            // across restarts. Other broker errors propagate unchanged.
+        }
+    }
+
     private static Task ProvisionExchangeAsync(
         IChannel channel,
         RabbitMqExchangeDefinition exchange,
@@ -272,11 +340,7 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
                 arguments,
                 cancellationToken: cancellationToken
             ),
-            RabbitMqDeclareMode.Delete => throw new ArgumentOutOfRangeException(
-                nameof(exchange),
-                exchange.DeclareMode,
-                "Exchange deletion is not supported; exchanges are out of scope for Delete mode."
-            ),
+            RabbitMqDeclareMode.Delete => DeleteExchangeAsync(channel, exchange.Name, cancellationToken),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(exchange),
                 exchange.DeclareMode,
@@ -363,6 +427,33 @@ public sealed class RabbitMqTopologyProvisioner : ITopologyProvisioner
     private static bool IsBrokerNotFound(OperationInterruptedException exception)
     {
         return exception.ShutdownReason is { ReplyCode: Constants.NotFound };
+    }
+
+    private static async Task DeleteExchangeAsync(
+        IChannel channel,
+        string exchangeName,
+        CancellationToken cancellationToken
+    )
+    {
+        // Exchange deletion is unconditional (ifUnused: false). Unlike a queue, an exchange holds no messages, so
+        // there is nothing to drain before deleting, and the broker cascade-removes the bindings owned by the
+        // deleted exchange. The binding skip-set in ProvisionBindingsAsync relies on this cascade: it leaves a
+        // Delete exchange's outgoing bindings in place on the assumption the delete removes them, which an
+        // ifUnused: true delete would refuse to do (it would reject the delete while the exchange still has any
+        // source binding). Routing continuity across a swap is instead preserved by the binding two-pass
+        // (create-before-destroy) and the multi-deploy introduce → swap → delete workflow.
+        try
+        {
+            await channel
+               .ExchangeDeleteAsync(exchangeName, ifUnused: false, cancellationToken: cancellationToken)
+               .ConfigureAwait(false);
+        }
+        catch (OperationInterruptedException ex) when (IsBrokerNotFound(ex))
+        {
+            // A 404 NOT_FOUND means the exchange is already absent on the broker. The desired state — resource
+            // absent — is already achieved, so Delete mode is idempotent across restarts. Other broker errors
+            // propagate unchanged.
+        }
     }
 
     private static IDictionary<string, object?> CreateMutableArguments(IReadOnlyDictionary<string, object?> arguments)
