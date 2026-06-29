@@ -158,8 +158,6 @@ public sealed class RabbitMqExchangePolicyIntegrationTests
             await using var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
             (await channel.MessageCountAsync(queue, cancellationToken)).Should().BeGreaterThan(0);
             await DrainAsync(channel, queue, cancellationToken);
-
-            await StopAllAsync(phase1HostedServices);
         }
         finally
         {
