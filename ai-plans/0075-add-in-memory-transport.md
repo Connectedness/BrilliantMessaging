@@ -8,27 +8,27 @@ The transport is intentionally process-local and non-durable. It should be usefu
 
 ## Acceptance Criteria
 
-- [ ] A new `BrilliantMessaging.Transport.InMemory` transport package is added to the solution and wired into `BrilliantMessaging.slnx`.
-- [ ] Public APIs are XML-documented and the project follows the repository's explicit `using` convention.
-- [ ] The user-facing API uses the agreed naming: `AddInMemoryTopology`, `AddInMemoryOutboundTopology`, `AddInMemoryInboundTopology`, `Topic`, `ToTopic`, `Consume`, `Concurrency`, `OnFailure`, `Retry`, `MaxAttempts`, `LinearBackoff`, `ExponentialBackoff`, and `DeadLetterTo`. `Topic` explicitly declares a topic resource; `ToTopic` and `Consume` reference a declared topic.
-- [ ] Published messages are dispatched through background queues, not inline during publish.
-- [ ] The transport supports topic-based publish/consume routing, with fanout to each configured consumer route for a topic.
-- [ ] Each consumer route preserves single-worker FIFO delivery by default and supports configurable concurrency.
-- [ ] The default handler failure behavior drops the failed delivery.
-- [ ] Per-consumer delivery policy configuration supports retry with max attempts and linear or exponential backoff.
-- [ ] Retry backoff scheduling uses an injectable time/scheduler abstraction so automated tests can drive delayed retries deterministically without sleeping.
-- [ ] `MaxAttempts` counts total delivery attempts, including the initial delivery; when attempts are exhausted, the delivery is republished to the topic named by `DeadLetterTo`, or dropped if `DeadLetterTo` is not configured.
-- [ ] `RetryMessageException` requests another attempt only when an explicit `Retry(...)` policy is configured, and then respects the configured retry/backoff policy; otherwise the default drop policy applies.
-- [ ] `RejectMessageException` republishes the delivery to the topic named by `DeadLetterTo`, or drops it if `DeadLetterTo` is not configured.
-- [ ] The transport uses real serialization and the normal CloudEvents, inspection, deserialization, middleware, acknowledgement, and diagnostics path.
-- [ ] An explicit public `InMemoryBroker` support service records every message routed to any topic and exposes `GetMessages(string topic)` so tests can assert what reached a topic (including its dead-letter topic); dead-letter inspection is just inspecting the configured `DeadLetterTo` topic.
-- [ ] The explicit public `InMemoryBroker` support service exposes `DrainUntilIdleAsync(TimeSpan timeout, CancellationToken cancellationToken = default)`.
-- [ ] `DrainUntilIdleAsync` waits for queued deliveries, in-flight handlers, and already scheduled retry deliveries to finish until idle, timeout, or cancellation.
-- [ ] In-memory broker state is registered as a singleton, keyed by topology where needed, so state is isolated per service provider by default.
-- [ ] Shutdown stops accepting new work, drains in-flight work until the configured timeout, then cancels remaining work.
-- [ ] `README.md` is updated with a short in-memory transport section that links to comprehensive documentation under `./docs`, including a concise example and the transport's process-local, non-durable semantics.
-- [ ] Automated tests need to be written, following the repository test rules.
-- [ ] Release builds stay warning-clean with `TreatWarningsAsErrors`.
+- [x] A new `BrilliantMessaging.Transport.InMemory` transport package is added to the solution and wired into `BrilliantMessaging.slnx`.
+- [x] Public APIs are XML-documented and the project follows the repository's explicit `using` convention.
+- [x] The user-facing API uses the agreed naming: `AddInMemoryTopology`, `AddInMemoryOutboundTopology`, `AddInMemoryInboundTopology`, `Topic`, `ToTopic`, `Consume`, `Concurrency`, `OnFailure`, `Retry`, `MaxAttempts`, `LinearBackoff`, `ExponentialBackoff`, and `DeadLetterTo`. `Topic` explicitly declares a topic resource; `ToTopic` and `Consume` reference a declared topic.
+- [x] Published messages are dispatched through background queues, not inline during publish.
+- [x] The transport supports topic-based publish/consume routing, with fanout to each configured consumer route for a topic.
+- [x] Each consumer route preserves single-worker FIFO delivery by default and supports configurable concurrency.
+- [x] The default handler failure behavior drops the failed delivery.
+- [x] Per-consumer delivery policy configuration supports retry with max attempts and linear or exponential backoff.
+- [x] Retry backoff scheduling uses an injectable time/scheduler abstraction so automated tests can drive delayed retries deterministically without sleeping.
+- [x] `MaxAttempts` counts total delivery attempts, including the initial delivery; when attempts are exhausted, the delivery is republished to the topic named by `DeadLetterTo`, or dropped if `DeadLetterTo` is not configured.
+- [x] `RetryMessageException` requests another attempt only when an explicit `Retry(...)` policy is configured, and then respects the configured retry/backoff policy; otherwise the default drop policy applies.
+- [x] `RejectMessageException` republishes the delivery to the topic named by `DeadLetterTo`, or drops it if `DeadLetterTo` is not configured.
+- [x] The transport uses real serialization and the normal CloudEvents, inspection, deserialization, middleware, acknowledgement, and diagnostics path.
+- [x] An explicit public `InMemoryBroker` support service records every message routed to any topic and exposes `GetMessages(string topic)` so tests can assert what reached a topic (including its dead-letter topic); dead-letter inspection is just inspecting the configured `DeadLetterTo` topic.
+- [x] The explicit public `InMemoryBroker` support service exposes `DrainUntilIdleAsync(TimeSpan timeout, CancellationToken cancellationToken = default)`.
+- [x] `DrainUntilIdleAsync` waits for queued deliveries, in-flight handlers, and already scheduled retry deliveries to finish until idle, timeout, or cancellation.
+- [x] In-memory broker state is registered as a singleton, keyed by topology where needed, so state is isolated per service provider by default.
+- [x] Shutdown stops accepting new work, drains in-flight work until the configured timeout, then cancels remaining work.
+- [x] `README.md` is updated with a short in-memory transport section that links to comprehensive documentation under `./docs`, including a concise example and the transport's process-local, non-durable semantics.
+- [x] Automated tests need to be written, following the repository test rules.
+- [x] Release builds stay warning-clean with `TreatWarningsAsErrors`.
 
 ## Technical Details
 

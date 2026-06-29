@@ -28,19 +28,26 @@ Most messaging libraries try to be helpful by guessing what broker resources you
 
 All packages target `netstandard2.0`, so they happily light up on modern .NET as well as older runtimes.
 
-| Package | What it gives you |
-| --- | --- |
-| `BrilliantMessaging.Abstractions` | The CloudEvents contracts: `ICloudEvent` and `BaseCloudEvent`. |
-| `BrilliantMessaging.Core` | Publishing, consuming, message contracts, the topology model, and DI wiring. |
-| `BrilliantMessaging.Transport.RabbitMq` | The RabbitMQ transport — exchanges, queues, bindings, publishers, and consumers. |
-| `BrilliantMessaging.OpenTelemetry` | One-line registration of Brilliant Messaging tracing and metrics with the OpenTelemetry SDK. |
+| Package                                 | What it gives you                                                                                           |
+|-----------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| `BrilliantMessaging.Abstractions`       | The CloudEvents contracts: `ICloudEvent` and `BaseCloudEvent`.                                              |
+| `BrilliantMessaging.Core`               | Publishing, consuming, message contracts, the topology model, and DI wiring.                                |
+| `BrilliantMessaging.Transport.InMemory` | A process-local, non-durable transport for tests, samples, local development, and workflow experimentation. |
+| `BrilliantMessaging.Transport.RabbitMq` | The RabbitMQ transport — exchanges, queues, bindings, publishers, and consumers.                            |
+| `BrilliantMessaging.OpenTelemetry`      | One-line registration of Brilliant Messaging tracing and metrics with the OpenTelemetry SDK.                |
 
 ## Installation
 
-RabbitMQ is the only transport today, and it transitively references the other two packages. So a single reference is all you need:
+Choose the transport that matches the runtime you want. RabbitMQ is the distributed broker transport:
 
 ```bash
 dotnet add package BrilliantMessaging.Transport.RabbitMq
+```
+
+The in-memory transport is useful for tests and local process-only scenarios:
+
+```bash
+dotnet add package BrilliantMessaging.Transport.InMemory
 ```
 
 Want distributed traces and metrics? Add the optional observability integration
@@ -49,6 +56,44 @@ alongside it — see [Observability](#observability):
 ```bash
 dotnet add package BrilliantMessaging.OpenTelemetry
 ```
+
+## In-memory transport
+
+`BrilliantMessaging.Transport.InMemory` runs the real Brilliant Messaging publish, serialization,
+CloudEvents, inbound middleware, acknowledgement, retry, diagnostics, and shutdown path without an
+external broker. It is process-local and non-durable: messages never leave the current service provider,
+there is no persistence, and state is discarded when the provider is disposed.
+
+```csharp
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Transport.InMemory;
+
+builder
+    .Services
+    .AddBrilliantMessaging()
+    .UseCloudEvents(options => options.Source = "/shop/orders")
+    .MapMessageContracts(contracts =>
+        contracts.Map<OrderPlaced>("shop.order.placed"))
+    .AddInMemoryTopology(memory =>
+    {
+        memory.Topic("orders");
+        memory.Topic("orders.dead");
+
+        memory.Publish<OrderPlaced>(target =>
+            target.ToTopic("orders"));
+
+        memory.Consume("orders", consumer => consumer
+            .OnFailure(failure => failure
+                .Retry(retry => retry
+                    .MaxAttempts(3)
+                    .LinearBackoff(TimeSpan.FromMilliseconds(50)))
+                .DeadLetterTo("orders.dead"))
+            .Handle<OrderPlaced, OrderPlacedHandler>());
+    });
+```
+
+For the full builder API, routing rules, retry/dead-letter behavior, broker inspection hooks,
+drain semantics, and shutdown behavior, see [In-memory transport](docs/in-memory-transport.md).
 
 ## Quick start
 
