@@ -7,7 +7,7 @@ using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Core.Messaging.Outbound;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BrilliantMessaging.Transport.InMemory.Tests.TestSupport;
+namespace BrilliantMessaging.Transport.InMemory;
 
 /// <summary>
 /// A small sociable-test harness that wires BrilliantMessaging with an in-memory topology, exposes the publisher
@@ -18,10 +18,10 @@ public sealed class InMemoryTestHost : IAsyncDisposable
     private readonly ITopologyRuntime[] _runtimes;
     private readonly ServiceProvider _serviceProvider;
 
-    private InMemoryTestHost(ServiceProvider serviceProvider, HandlerProbe probe)
+    private InMemoryTestHost(ServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-        Probe = probe;
+        Probe = serviceProvider.GetService<HandlerProbe>();
         _runtimes = serviceProvider.GetServices<ITopologyRuntime>().ToArray();
         Publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
     }
@@ -32,9 +32,11 @@ public sealed class InMemoryTestHost : IAsyncDisposable
     public IMessagePublisher Publisher { get; }
 
     /// <summary>
-    /// Gets the shared probe handlers record their invocations on.
+    /// Gets the <see cref="HandlerProbe" /> registered with the host, or <see langword="null" /> when none was
+    /// registered. Register one (for example with <c>services.AddSingleton&lt;HandlerProbe&gt;()</c>) and resolve
+    /// it into your handlers to record invocations.
     /// </summary>
-    public HandlerProbe Probe { get; }
+    public HandlerProbe? Probe { get; }
 
     /// <summary>
     /// Resolves the default in-memory broker.
@@ -46,6 +48,9 @@ public sealed class InMemoryTestHost : IAsyncDisposable
     /// </summary>
     public Topology Topology => _serviceProvider.GetRequiredService<Topology>();
 
+    /// <summary>
+    /// Stops the topology runtimes and disposes the underlying service provider.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await StopRuntimesAsync().ConfigureAwait(false);
@@ -61,17 +66,19 @@ public sealed class InMemoryTestHost : IAsyncDisposable
     }
 
     /// <summary>
-    /// Builds and starts a host. The handler probe is registered as a singleton, and the supplied configuration
-    /// runs against a fresh <see cref="BrilliantMessagingBuilder" />.
+    /// Builds and starts a host. The supplied configuration runs against a fresh
+    /// <see cref="BrilliantMessagingBuilder" />.
     /// </summary>
+    /// <param name="configure">Configures the messaging builder (contracts, topologies, handlers).</param>
+    /// <param name="scheduler">An optional delay scheduler registered before the topology is built.</param>
+    /// <param name="source">The CloudEvents source applied to published messages.</param>
     public static async Task<InMemoryTestHost> StartAsync(
         Action<BrilliantMessagingBuilder> configure,
-        IInMemoryDelayScheduler? scheduler = null
+        IInMemoryDelayScheduler? scheduler = null,
+        string source = "/in-memory"
     )
     {
-        var probe = new HandlerProbe();
         var services = new ServiceCollection();
-        services.AddSingleton(probe);
         if (scheduler is not null)
         {
             services.AddSingleton(scheduler);
@@ -79,11 +86,11 @@ public sealed class InMemoryTestHost : IAsyncDisposable
 
         var builder = services
            .AddBrilliantMessaging()
-           .UseCloudEvents(static options => options.Source = "/in-memory-tests");
+           .UseCloudEvents(options => options.Source = source);
         configure(builder);
 
         var serviceProvider = services.BuildServiceProvider();
-        var host = new InMemoryTestHost(serviceProvider, probe);
+        var host = new InMemoryTestHost(serviceProvider);
 
         foreach (var runtime in host._runtimes)
         {

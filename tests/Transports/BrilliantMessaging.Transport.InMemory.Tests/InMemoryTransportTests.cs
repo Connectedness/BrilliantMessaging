@@ -37,7 +37,7 @@ public sealed class InMemoryTransportTests
            .PublishMessageAsync(new OrderPlaced { OrderId = "order-1" }, cancellationToken: CancellationToken);
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        var invocation = host.Probe.Invocations.Should().ContainSingle().Which;
+        var invocation = host.Probe!.Invocations.Should().ContainSingle().Which;
         invocation.Route.Should().Be("orders");
         invocation.Message.Should().BeOfType<OrderPlaced>().Which.OrderId.Should().Be("order-1");
 
@@ -207,7 +207,7 @@ public sealed class InMemoryTransportTests
         );
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Should().BeEmpty();
+        host.Probe!.Invocations.Should().BeEmpty();
         host.Broker.GetMessages("orders").Should().ContainSingle();
         var deadLetter = host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which;
         deadLetter.Body.ToArray().Should().Equal(message.Body);
@@ -232,7 +232,7 @@ public sealed class InMemoryTransportTests
         );
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Should().BeEmpty();
+        host.Probe!.Invocations.Should().BeEmpty();
         var deadLetter = host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which;
         deadLetter.Headers.Should().ContainKey("cloudEvents:type").WhoseValue.Should().Be("tests.order.unknown");
     }
@@ -259,7 +259,7 @@ public sealed class InMemoryTransportTests
         );
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Should().BeEmpty();
+        host.Probe!.Invocations.Should().BeEmpty();
         var deadLetter = host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which;
         deadLetter.Headers.Should()
            .ContainKey("cloudEvents:type")
@@ -285,7 +285,7 @@ public sealed class InMemoryTransportTests
         );
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Should().BeEmpty();
+        host.Probe!.Invocations.Should().BeEmpty();
         var deadLetter = host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which;
         deadLetter.Headers.Should().ContainKey("cloudEvents:type").WhoseValue.Should().Be("tests.order.placed");
     }
@@ -304,12 +304,12 @@ public sealed class InMemoryTransportTests
                            .Consume("orders", consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>())
                     )
             );
-        host.Probe.Gate = gate;
+        host.Probe!.Gate = gate;
 
         await host.Publisher
            .PublishMessageAsync(new OrderPlaced { OrderId = "blocked" }, cancellationToken: CancellationToken)
            .WaitAsync(Timeout, CancellationToken);
-        await host.Probe.WaitForInvocationsAsync(1, Timeout);
+        await host.Probe!.WaitForInvocationsAsync(1, Timeout);
 
         var blockedDrain = async () => await host.Broker
            .DrainUntilIdleAsync(TimeSpan.FromMilliseconds(25), CancellationToken);
@@ -339,7 +339,7 @@ public sealed class InMemoryTransportTests
            .PublishMessageAsync(new OrderPlaced { OrderId = "fanout" }, cancellationToken: CancellationToken);
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations
+        host.Probe!.Invocations
            .Select(static invocation => invocation.Message)
            .Should()
            .AllBeOfType<OrderPlaced>()
@@ -376,7 +376,7 @@ public sealed class InMemoryTransportTests
         );
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations
+        host.Probe!.Invocations
            .Select(static invocation => ((OrderPlaced) invocation.Message).OrderId)
            .Should()
            .Equal("first", "second", "third");
@@ -401,7 +401,7 @@ public sealed class InMemoryTransportTests
                             )
                     )
             );
-        host.Probe.Gate = gate;
+        host.Probe!.Gate = gate;
 
         await host.Publisher.PublishMessageAsync(
             new OrderPlaced { OrderId = "first" },
@@ -411,9 +411,9 @@ public sealed class InMemoryTransportTests
             new OrderPlaced { OrderId = "second" },
             cancellationToken: CancellationToken
         );
-        await host.Probe.WaitForInvocationsAsync(2, Timeout);
+        await host.Probe!.WaitForInvocationsAsync(2, Timeout);
 
-        host.Probe.Invocations.Should().HaveCount(2);
+        host.Probe!.Invocations.Should().HaveCount(2);
         gate.SetResult(true);
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
     }
@@ -444,7 +444,7 @@ public sealed class InMemoryTransportTests
                     ),
                 scheduler
             );
-        host.Probe.OnHandle = invocation => invocation.DeliveryAttempt < 3 ?
+        host.Probe!.OnHandle = invocation => invocation.DeliveryAttempt < 3 ?
             new RetryMessageException("try again") :
             null;
 
@@ -458,7 +458,7 @@ public sealed class InMemoryTransportTests
         scheduler.ReleaseAll();
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Select(static invocation => invocation.DeliveryAttempt).Should().Equal(1, 2, 3);
+        host.Probe!.Invocations.Select(static invocation => invocation.DeliveryAttempt).Should().Equal(1, 2, 3);
         scheduler.RequestedDelays.Should().Equal(TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(20));
     }
 
@@ -482,7 +482,7 @@ public sealed class InMemoryTransportTests
                     ),
                 scheduler
             );
-        host.Probe.OnHandle = invocation => invocation.DeliveryAttempt == 1 ?
+        host.Probe!.OnHandle = invocation => invocation.DeliveryAttempt == 1 ?
             new RetryMessageException("retry once") :
             null;
 
@@ -497,7 +497,7 @@ public sealed class InMemoryTransportTests
         drain.IsCompleted.Should().BeFalse();
         scheduler.ReleaseAll();
         await drain;
-        host.Probe.Invocations.Select(static invocation => invocation.DeliveryAttempt).Should().Equal(1, 2);
+        host.Probe!.Invocations.Select(static invocation => invocation.DeliveryAttempt).Should().Equal(1, 2);
     }
 
     [Fact]
@@ -525,7 +525,7 @@ public sealed class InMemoryTransportTests
                     ),
                 scheduler
             );
-        host.Probe.OnHandle = static _ => new InvalidOperationException("still failing");
+        host.Probe!.OnHandle = static _ => new InvalidOperationException("still failing");
 
         await host.Publisher.PublishMessageAsync(
             new OrderPlaced { OrderId = "dead" },
@@ -535,7 +535,7 @@ public sealed class InMemoryTransportTests
         scheduler.ReleaseAll();
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Select(static invocation => invocation.DeliveryAttempt).Should().Equal(1, 2);
+        host.Probe!.Invocations.Select(static invocation => invocation.DeliveryAttempt).Should().Equal(1, 2);
         host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which.Topic.Should().Be("orders.dead");
     }
 
@@ -554,7 +554,7 @@ public sealed class InMemoryTransportTests
                     ),
                 scheduler
             );
-        host.Probe.OnHandle = static _ => new RetryMessageException("no retry policy");
+        host.Probe!.OnHandle = static _ => new RetryMessageException("no retry policy");
 
         await host.Publisher.PublishMessageAsync(
             new OrderPlaced { OrderId = "drop" },
@@ -562,7 +562,7 @@ public sealed class InMemoryTransportTests
         );
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Should().ContainSingle().Which.DeliveryAttempt.Should().Be(1);
+        host.Probe!.Invocations.Should().ContainSingle().Which.DeliveryAttempt.Should().Be(1);
         scheduler.PendingCount.Should().Be(0);
     }
 
@@ -591,7 +591,7 @@ public sealed class InMemoryTransportTests
                     ),
                 scheduler
             );
-        host.Probe.OnHandle = static _ => new RejectMessageException("poison");
+        host.Probe!.OnHandle = static _ => new RejectMessageException("poison");
 
         await host.Publisher.PublishMessageAsync(
             new OrderPlaced { OrderId = "poison" },
@@ -599,7 +599,7 @@ public sealed class InMemoryTransportTests
         );
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Should().ContainSingle().Which.DeliveryAttempt.Should().Be(1);
+        host.Probe!.Invocations.Should().ContainSingle().Which.DeliveryAttempt.Should().Be(1);
         scheduler.PendingCount.Should().Be(0);
         host.Broker.GetMessages("orders.dead").Should().ContainSingle();
     }
@@ -632,7 +632,7 @@ public sealed class InMemoryTransportTests
         );
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Should().ContainSingle();
+        host.Probe!.Invocations.Should().ContainSingle();
         host.Broker.GetMessages("orders.dead").Should().BeEmpty();
     }
 
@@ -664,7 +664,7 @@ public sealed class InMemoryTransportTests
         );
         await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
 
-        host.Probe.Invocations.Should().ContainSingle();
+        host.Probe!.Invocations.Should().ContainSingle();
         host.Broker.GetMessages("orders.dead").Should().ContainSingle();
     }
 
@@ -720,7 +720,7 @@ public sealed class InMemoryTransportTests
 
         outboundBroker.GetMessages("orders").Should().ContainSingle();
         inboundBroker.GetMessages("orders").Should().BeEmpty();
-        host.Probe.Invocations.Should().BeEmpty();
+        host.Probe!.Invocations.Should().BeEmpty();
     }
 
     [Fact]
@@ -756,7 +756,7 @@ public sealed class InMemoryTransportTests
 
         outboundBroker.GetMessages("orders").Should().ContainSingle();
         inboundBroker.GetMessages("orders").Should().BeEmpty();
-        host.Probe.Invocations.Should().BeEmpty();
+        host.Probe!.Invocations.Should().BeEmpty();
     }
 
     [Fact]
@@ -801,7 +801,7 @@ public sealed class InMemoryTransportTests
                     ),
                 scheduler
             );
-        host.Probe.OnHandle = static _ => new RetryMessageException("scheduled retry");
+        host.Probe!.OnHandle = static _ => new RetryMessageException("scheduled retry");
 
         await host.Publisher.PublishMessageAsync(
             new OrderPlaced { OrderId = "shutdown" },
@@ -827,13 +827,13 @@ public sealed class InMemoryTransportTests
                            .Consume("orders", consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>())
                     )
             );
-        host.Probe.Gate = gate;
+        host.Probe!.Gate = gate;
 
         await host.Publisher.PublishMessageAsync(
             new OrderPlaced { OrderId = "cancel-stop" },
             cancellationToken: CancellationToken
         );
-        await host.Probe.WaitForInvocationsAsync(1, Timeout);
+        await host.Probe!.WaitForInvocationsAsync(1, Timeout);
         using CancellationTokenSource cancellation = new ();
         await cancellation.CancelAsync();
 
@@ -947,6 +947,7 @@ public sealed class InMemoryTransportTests
 
     private static BrilliantMessagingBuilder WithContractsAndLegacyOrderPlacedAlias(BrilliantMessagingBuilder builder)
     {
+        builder.Services.AddSingleton<HandlerProbe>();
         return builder.MapMessageContracts(
             static contracts =>
             {
@@ -958,6 +959,7 @@ public sealed class InMemoryTransportTests
 
     private static BrilliantMessagingBuilder WithContracts(BrilliantMessagingBuilder builder)
     {
+        builder.Services.AddSingleton<HandlerProbe>();
         return builder.MapMessageContracts(
             static contracts =>
             {
