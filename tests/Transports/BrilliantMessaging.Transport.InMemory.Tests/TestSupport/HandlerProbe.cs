@@ -11,7 +11,7 @@ namespace BrilliantMessaging.Transport.InMemory.Tests.TestSupport;
 /// </summary>
 public sealed class HandlerProbe
 {
-    private readonly object _gate = new ();
+    private readonly Lock _gate = new ();
     private readonly List<HandlerInvocation> _invocations = [];
     private readonly List<(int Count, TaskCompletionSource<bool> Source)> _waiters = [];
 

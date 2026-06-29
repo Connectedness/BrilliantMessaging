@@ -26,7 +26,7 @@ namespace BrilliantMessaging.Transport.InMemory;
 /// </remarks>
 public sealed class InMemoryBroker
 {
-    private readonly object _idleLock = new ();
+    private readonly Lock _idleLock = new ();
     private readonly ILogger _logger;
     private readonly MessageDelegate _pipeline;
 

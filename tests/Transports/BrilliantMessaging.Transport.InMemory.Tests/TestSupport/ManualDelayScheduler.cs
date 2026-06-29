@@ -11,7 +11,7 @@ namespace BrilliantMessaging.Transport.InMemory.Tests.TestSupport;
 /// </summary>
 public sealed class ManualDelayScheduler : IInMemoryDelayScheduler
 {
-    private readonly object _gate = new ();
+    private readonly Lock _gate = new ();
     private readonly List<Pending> _pending = [];
     private readonly List<TimeSpan> _requested = [];
 
