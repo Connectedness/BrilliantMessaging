@@ -75,7 +75,6 @@ public sealed class InMemoryTestHost : IAsyncDisposable
         if (scheduler is not null)
         {
             services.AddSingleton(scheduler);
-            services.AddSingleton(scheduler);
         }
 
         var builder = services
