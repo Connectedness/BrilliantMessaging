@@ -216,7 +216,7 @@ public sealed class InMemoryBroker
             {
                 _logger.LogWarning(
                     exception,
-                    "In-memory topology '{Topology}' did not become idle after shutdown cancellation.",
+                    "In-memory topology '{Topology}' did not become idle after shutdown cancellation",
                     _topologyName
                 );
             }
@@ -241,7 +241,7 @@ public sealed class InMemoryBroker
             {
                 _logger.LogWarning(
                     exception,
-                    "In-memory topology '{Topology}' worker faulted during shutdown.",
+                    "In-memory topology '{Topology}' worker faulted during shutdown",
                     _topologyName
                 );
             }
@@ -442,7 +442,7 @@ public sealed class InMemoryBroker
         {
             _logger.LogError(
                 exception,
-                "In-memory inbound delivery failed for topic {Topic}.",
+                "In-memory inbound delivery failed for topic {Topic}",
                 route.Topic
             );
 
