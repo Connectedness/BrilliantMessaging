@@ -29,9 +29,9 @@ public sealed class InMemoryBroker
     private readonly Lock _idleLock = new ();
     private readonly ILogger _logger;
     private readonly MessageDelegate _pipeline;
-    private readonly InMemoryRecordingOptions _recording;
+    private readonly InMemoryRecordingOptions _recordingOptions;
 
-    private readonly ConcurrentDictionary<string, ConcurrentQueue<InMemoryTransportMessage>> _recordings =
+    private readonly ConcurrentDictionary<string, RecordingSlot> _recordings =
         new (StringComparer.Ordinal);
 
     private readonly IReadOnlyList<InMemoryConsumerRoute> _routes;
@@ -55,7 +55,7 @@ public sealed class InMemoryBroker
         IServiceScopeFactory serviceScopeFactory,
         IInMemoryDelayScheduler scheduler,
         TimeSpan shutdownTimeout,
-        InMemoryRecordingOptions recording,
+        InMemoryRecordingOptions recordingOptions,
         ILogger? logger
     )
     {
@@ -65,7 +65,7 @@ public sealed class InMemoryBroker
         _serviceScopeFactory = serviceScopeFactory;
         _scheduler = scheduler;
         _shutdownTimeout = shutdownTimeout;
-        _recording = recording;
+        _recordingOptions = recordingOptions;
         _logger = logger ?? NullLogger.Instance;
 
         Dictionary<string, IReadOnlyList<InMemoryConsumerRoute>> routesByTopic = new (StringComparer.Ordinal);
@@ -92,7 +92,7 @@ public sealed class InMemoryBroker
             throw new ArgumentException("The value cannot be null or whitespace.", nameof(topic));
         }
 
-        return _recordings.TryGetValue(topic, out var recorded) ? recorded.ToArray() : [];
+        return _recordings.TryGetValue(topic, out var slot) ? slot.Queue.ToArray() : [];
     }
 
     /// <summary>
@@ -337,20 +337,26 @@ public sealed class InMemoryBroker
 
     private void Record(string topic, InMemoryTransportMessage message)
     {
-        if (!_recording.Enabled)
+        if (!_recordingOptions.Enabled)
         {
             return;
         }
 
-        var recorded = _recordings.GetOrAdd(topic, static _ => new ConcurrentQueue<InMemoryTransportMessage>());
-        recorded.Enqueue(message);
+        var slot = _recordings.GetOrAdd(topic, static _ => new RecordingSlot());
+        slot.Queue.Enqueue(message);
 
-        if (_recording.MaxPerTopic is { } maxPerTopic)
+        if (_recordingOptions.MaxPerTopic is { } maxPerTopic && slot.TryAcquireLease())
         {
-            // Read Count once up front rather than re-walking the queue's segments on every iteration; under
-            // concurrent routing this is an approximate excess, which is acceptable since the cap is an upper
-            // bound rather than an exact-at-every-instant invariant.
-            for (var excess = recorded.Count - maxPerTopic; excess > 0 && recorded.TryDequeue(out _); excess--) { }
+            try
+            {
+                for (var excess = slot.Queue.Count - maxPerTopic;
+                     excess > 0 && slot.Queue.TryDequeue(out _);
+                     excess--) { }
+            }
+            finally
+            {
+                slot.ReturnLease();
+            }
         }
     }
 
@@ -523,5 +529,16 @@ public sealed class InMemoryBroker
         var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         source.SetResult(true);
         return source;
+    }
+
+    private sealed class RecordingSlot
+    {
+        private int _lease;
+
+        public ConcurrentQueue<InMemoryTransportMessage> Queue { get; } = [];
+
+        public bool TryAcquireLease() => Interlocked.CompareExchange(ref _lease, 1, 0) == 0;
+
+        public void ReturnLease() => Interlocked.Exchange(ref _lease, 0);
     }
 }
