@@ -347,7 +347,10 @@ public sealed class InMemoryBroker
 
         if (_recording.MaxPerTopic is { } maxPerTopic)
         {
-            while (recorded.Count > maxPerTopic && recorded.TryDequeue(out _)) { }
+            // Read Count once up front rather than re-walking the queue's segments on every iteration; under
+            // concurrent routing this is an approximate excess, which is acceptable since the cap is an upper
+            // bound rather than an exact-at-every-instant invariant.
+            for (var excess = recorded.Count - maxPerTopic; excess > 0 && recorded.TryDequeue(out _); excess--) { }
         }
     }
 
