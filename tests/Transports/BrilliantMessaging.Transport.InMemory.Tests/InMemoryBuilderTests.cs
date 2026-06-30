@@ -93,6 +93,65 @@ public sealed class InMemoryBuilderTests
     }
 
     [Fact]
+    public void Build_DefaultsToUnboundedRecording()
+    {
+        InMemoryTopologyBuilder builder = new ();
+
+        var configuration = ((IBuildable<InMemoryTopologyConfiguration>) builder).Build();
+
+        configuration.Recording.Should().Be(InMemoryRecordingOptions.Unbounded);
+    }
+
+    [Fact]
+    public void RecordMessages_ParameterlessConfiguresUnboundedRecording()
+    {
+        InMemoryTopologyBuilder builder = new ();
+
+        builder.RecordMessages(false).RecordMessages();
+
+        var configuration = ((IBuildable<InMemoryTopologyConfiguration>) builder).Build();
+        configuration.Recording.Should().Be(InMemoryRecordingOptions.Unbounded);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RecordMessages_BooleanConfiguresRecordingMode(bool record)
+    {
+        InMemoryTopologyBuilder builder = new ();
+
+        builder.RecordMessages(record);
+
+        var configuration = ((IBuildable<InMemoryTopologyConfiguration>) builder).Build();
+        configuration.Recording.Should().Be(
+            record ? InMemoryRecordingOptions.Unbounded : InMemoryRecordingOptions.Off
+        );
+    }
+
+    [Fact]
+    public void RecordMessages_MaxPerTopicConfiguresBoundedRecording()
+    {
+        InMemoryTopologyBuilder builder = new ();
+
+        builder.RecordMessages(maxPerTopic: 3);
+
+        var configuration = ((IBuildable<InMemoryTopologyConfiguration>) builder).Build();
+        configuration.Recording.Should().Be(InMemoryRecordingOptions.Bounded(3));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void RecordMessages_RejectsInvalidMaxPerTopic(int maxPerTopic)
+    {
+        InMemoryTopologyBuilder builder = new ();
+
+        var act = () => builder.RecordMessages(maxPerTopic);
+
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("maxPerTopic");
+    }
+
+    [Fact]
     public void DirectionSpecificInterfaces_ForwardShutdownTimeout()
     {
         InMemoryTopologyBuilder outboundBuilder = new ();
@@ -107,6 +166,23 @@ public sealed class InMemoryBuilderTests
         ((IBuildable<InMemoryTopologyConfiguration>) inboundBuilder).Build().ShutdownTimeout
            .Should()
            .Be(TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public void DirectionSpecificInterfaces_ForwardRecordMessages()
+    {
+        InMemoryTopologyBuilder outboundBuilder = new ();
+        InMemoryTopologyBuilder inboundBuilder = new ();
+
+        ((IInMemoryOutboundTopologyBuilder) outboundBuilder).RecordMessages(false);
+        ((IInMemoryInboundTopologyBuilder) inboundBuilder).RecordMessages(maxPerTopic: 2);
+
+        ((IBuildable<InMemoryTopologyConfiguration>) outboundBuilder).Build().Recording
+           .Should()
+           .Be(InMemoryRecordingOptions.Off);
+        ((IBuildable<InMemoryTopologyConfiguration>) inboundBuilder).Build().Recording
+           .Should()
+           .Be(InMemoryRecordingOptions.Bounded(2));
     }
 
     [Fact]

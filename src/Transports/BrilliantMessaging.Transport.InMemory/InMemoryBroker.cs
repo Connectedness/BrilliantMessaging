@@ -29,6 +29,7 @@ public sealed class InMemoryBroker
     private readonly Lock _idleLock = new ();
     private readonly ILogger _logger;
     private readonly MessageDelegate _pipeline;
+    private readonly InMemoryRecordingOptions _recording;
 
     private readonly ConcurrentDictionary<string, ConcurrentQueue<InMemoryTransportMessage>> _recordings =
         new (StringComparer.Ordinal);
@@ -54,6 +55,7 @@ public sealed class InMemoryBroker
         IServiceScopeFactory serviceScopeFactory,
         IInMemoryDelayScheduler scheduler,
         TimeSpan shutdownTimeout,
+        InMemoryRecordingOptions recording,
         ILogger? logger
     )
     {
@@ -63,6 +65,7 @@ public sealed class InMemoryBroker
         _serviceScopeFactory = serviceScopeFactory;
         _scheduler = scheduler;
         _shutdownTimeout = shutdownTimeout;
+        _recording = recording;
         _logger = logger ?? NullLogger.Instance;
 
         Dictionary<string, IReadOnlyList<InMemoryConsumerRoute>> routesByTopic = new (StringComparer.Ordinal);
@@ -90,6 +93,29 @@ public sealed class InMemoryBroker
         }
 
         return _recordings.TryGetValue(topic, out var recorded) ? recorded.ToArray() : [];
+    }
+
+    /// <summary>
+    /// Clears all recorded messages from all topics.
+    /// </summary>
+    public void ClearRecordings()
+    {
+        _recordings.Clear();
+    }
+
+    /// <summary>
+    /// Clears all recorded messages for the given topic.
+    /// </summary>
+    /// <param name="topic">The topic whose recordings should be cleared.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="topic" /> is null or whitespace.</exception>
+    public void ClearRecordings(string topic)
+    {
+        if (string.IsNullOrWhiteSpace(topic))
+        {
+            throw new ArgumentException("The value cannot be null or whitespace.", nameof(topic));
+        }
+
+        _recordings.TryRemove(topic, out _);
     }
 
     /// <summary>
@@ -311,8 +337,18 @@ public sealed class InMemoryBroker
 
     private void Record(string topic, InMemoryTransportMessage message)
     {
+        if (!_recording.Enabled)
+        {
+            return;
+        }
+
         var recorded = _recordings.GetOrAdd(topic, static _ => new ConcurrentQueue<InMemoryTransportMessage>());
         recorded.Enqueue(message);
+
+        if (_recording.MaxPerTopic is { } maxPerTopic)
+        {
+            while (recorded.Count > maxPerTopic && recorded.TryDequeue(out _)) { }
+        }
     }
 
     private void ScheduleRetry(

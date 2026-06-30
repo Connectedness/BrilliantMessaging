@@ -30,6 +30,7 @@ public sealed class InMemoryTopologyBuilder
     private readonly ImmutableArray<string>.Builder _topics = ImmutableArray.CreateBuilder<string>();
     private readonly HashSet<string> _topicSet = new (StringComparer.Ordinal);
 
+    private InMemoryRecordingOptions _recording = InMemoryRecordingOptions.Unbounded;
     private TimeSpan _shutdownTimeout = DefaultShutdownTimeout;
 
     /// <inheritdoc />
@@ -39,7 +40,8 @@ public sealed class InMemoryTopologyBuilder
             _topics.ToImmutable(),
             _targets.ToImmutable(),
             _consumers.ToImmutable(),
-            _shutdownTimeout
+            _shutdownTimeout,
+            _recording
         );
     }
 
@@ -61,6 +63,21 @@ public sealed class InMemoryTopologyBuilder
         return ShutdownTimeout(timeout);
     }
 
+    IInMemoryInboundTopologyBuilder IInMemoryInboundTopologyBuilder.RecordMessages()
+    {
+        return RecordMessages();
+    }
+
+    IInMemoryInboundTopologyBuilder IInMemoryInboundTopologyBuilder.RecordMessages(bool record)
+    {
+        return RecordMessages(record);
+    }
+
+    IInMemoryInboundTopologyBuilder IInMemoryInboundTopologyBuilder.RecordMessages(int maxPerTopic)
+    {
+        return RecordMessages(maxPerTopic);
+    }
+
     IInMemoryOutboundTopologyBuilder IInMemoryOutboundTopologyBuilder.Topic(string topic)
     {
         return Topic(topic);
@@ -76,6 +93,21 @@ public sealed class InMemoryTopologyBuilder
     IInMemoryOutboundTopologyBuilder IInMemoryOutboundTopologyBuilder.ShutdownTimeout(TimeSpan timeout)
     {
         return ShutdownTimeout(timeout);
+    }
+
+    IInMemoryOutboundTopologyBuilder IInMemoryOutboundTopologyBuilder.RecordMessages()
+    {
+        return RecordMessages();
+    }
+
+    IInMemoryOutboundTopologyBuilder IInMemoryOutboundTopologyBuilder.RecordMessages(bool record)
+    {
+        return RecordMessages(record);
+    }
+
+    IInMemoryOutboundTopologyBuilder IInMemoryOutboundTopologyBuilder.RecordMessages(int maxPerTopic)
+    {
+        return RecordMessages(maxPerTopic);
     }
 
     /// <summary>
@@ -166,6 +198,41 @@ public sealed class InMemoryTopologyBuilder
         }
 
         _shutdownTimeout = timeout;
+        return this;
+    }
+
+    /// <summary>
+    /// Records every routed message for inspection through <see cref="InMemoryBroker.GetMessages" />.
+    /// </summary>
+    /// <returns>The same builder for chaining.</returns>
+    public InMemoryTopologyBuilder RecordMessages()
+    {
+        _recording = InMemoryRecordingOptions.Unbounded;
+        return this;
+    }
+
+    /// <summary>
+    /// Enables or disables routed-message recording. Passing <see langword="true" /> is equivalent to
+    /// <see cref="RecordMessages()" />.
+    /// </summary>
+    /// <param name="record"><see langword="true" /> to record every routed message; <see langword="false" /> to disable recording.</param>
+    /// <returns>The same builder for chaining.</returns>
+    public InMemoryTopologyBuilder RecordMessages(bool record)
+    {
+        _recording = record ? InMemoryRecordingOptions.Unbounded : InMemoryRecordingOptions.Off;
+        return this;
+    }
+
+    /// <summary>
+    /// Records at most <paramref name="maxPerTopic" /> routed messages per topic for inspection through
+    /// <see cref="InMemoryBroker.GetMessages" />.
+    /// </summary>
+    /// <param name="maxPerTopic">The maximum number of recorded messages retained per topic. The value must be positive.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxPerTopic" /> is not positive.</exception>
+    public InMemoryTopologyBuilder RecordMessages(int maxPerTopic)
+    {
+        _recording = InMemoryRecordingOptions.Bounded(maxPerTopic);
         return this;
     }
 }

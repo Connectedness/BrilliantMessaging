@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
@@ -50,6 +51,30 @@ public sealed class InMemoryTransportTests
     }
 
     [Fact]
+    public async Task PublishMessageAsync_WhenRecordingDisabled_DispatchesButDoesNotRecordOrCreateTopicState()
+    {
+        await using var host = await InMemoryTestHost
+           .StartAsync(
+                builder => WithContracts(builder)
+                   .AddInMemoryTopology(
+                        topology => topology
+                           .RecordMessages(false)
+                           .Topic("orders")
+                           .Publish<OrderPlaced>(target => target.ToTopic("orders"))
+                           .Consume("orders", consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>())
+                    )
+            );
+
+        await host.Publisher
+           .PublishMessageAsync(new OrderPlaced { OrderId = "order-1" }, cancellationToken: CancellationToken);
+        await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+
+        host.Probe!.Invocations.Should().ContainSingle();
+        host.Broker.GetMessages("orders").Should().BeEmpty();
+        GetRecordingTopicCount(host.Broker).Should().Be(0);
+    }
+
+    [Fact]
     public async Task PublishRawAsync_RecordsSerializedBodyHeadersContentTypeAndMessageId()
     {
         await using var serviceProvider = CreateOutboundOnlyServiceProvider();
@@ -81,6 +106,98 @@ public sealed class InMemoryTransportTests
         recorded.MessageId.Should().Be("raw-message-id");
         recorded.Headers.Should().ContainKey("x-custom").WhoseValue.Should().Be("custom-value");
         recorded.Headers.Should().ContainKey("x-null").WhoseValue.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ClearRecordings_RemovesRecordedMessagesForAllTopics()
+    {
+        await using var serviceProvider = CreateTwoTopicOutboundOnlyServiceProvider();
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var topology = serviceProvider.GetRequiredService<Topology>();
+        var broker = serviceProvider.GetRequiredService<InMemoryBroker>();
+
+        await publisher.PublishMessageAsync(
+            new OrderPlaced { OrderId = "placed" },
+            topology.GetRequiredTarget<OrderPlaced>(),
+            cancellationToken: CancellationToken
+        );
+        await publisher.PublishMessageAsync(
+            new OrderShipped { OrderId = "shipped" },
+            topology.GetRequiredTarget<OrderShipped>(),
+            cancellationToken: CancellationToken
+        );
+
+        broker.GetMessages("orders").Should().ContainSingle();
+        broker.GetMessages("shipments").Should().ContainSingle();
+
+        broker.ClearRecordings();
+
+        broker.GetMessages("orders").Should().BeEmpty();
+        broker.GetMessages("shipments").Should().BeEmpty();
+        GetRecordingTopicCount(broker).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ClearRecordings_RemovesRecordedMessagesForSingleTopic()
+    {
+        await using var serviceProvider = CreateTwoTopicOutboundOnlyServiceProvider();
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var topology = serviceProvider.GetRequiredService<Topology>();
+        var broker = serviceProvider.GetRequiredService<InMemoryBroker>();
+
+        await publisher.PublishMessageAsync(
+            new OrderPlaced { OrderId = "placed" },
+            topology.GetRequiredTarget<OrderPlaced>(),
+            cancellationToken: CancellationToken
+        );
+        await publisher.PublishMessageAsync(
+            new OrderShipped { OrderId = "shipped" },
+            topology.GetRequiredTarget<OrderShipped>(),
+            cancellationToken: CancellationToken
+        );
+
+        broker.ClearRecordings("orders");
+        broker.ClearRecordings("missing");
+
+        broker.GetMessages("orders").Should().BeEmpty();
+        broker.GetMessages("shipments").Should().ContainSingle();
+        GetRecordingTopicCount(broker).Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ClearRecordings_RejectsBlankTopic(string? topic)
+    {
+        using var serviceProvider = CreateOutboundOnlyServiceProvider();
+        var broker = serviceProvider.GetRequiredService<InMemoryBroker>();
+
+        var act = () => broker.ClearRecordings(topic!);
+
+        act.Should().Throw<ArgumentException>().WithParameterName("topic");
+    }
+
+    [Fact]
+    public async Task PublishRawAsync_WhenRecordingBounded_RetainsNewestMessagesPerTopic()
+    {
+        await using var serviceProvider = CreateOutboundOnlyServiceProvider(
+            configureTopology: static topology => topology.RecordMessages(maxPerTopic: 2)
+        );
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        var target = serviceProvider.GetRequiredService<Topology>().GetRequiredTarget<OrderPlaced>();
+        var broker = serviceProvider.GetRequiredService<InMemoryBroker>();
+
+        await publisher.PublishRawAsync(CreateRawMessage(EmptyHeaders(), "first"), target, CancellationToken);
+        await publisher.PublishRawAsync(CreateRawMessage(EmptyHeaders(), "second"), target, CancellationToken);
+        await publisher.PublishRawAsync(CreateRawMessage(EmptyHeaders(), "third"), target, CancellationToken);
+        await publisher.PublishRawAsync(CreateRawMessage(EmptyHeaders(), "fourth"), target, CancellationToken);
+        await broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+
+        broker.GetMessages("orders")
+           .Select(static message => message.MessageId)
+           .Should()
+           .Equal("third", "fourth");
     }
 
     [Fact]
@@ -212,6 +329,26 @@ public sealed class InMemoryTransportTests
         var deadLetter = host.Broker.GetMessages("orders.dead").Should().ContainSingle().Which;
         deadLetter.Body.ToArray().Should().Equal(message.Body);
         deadLetter.Headers.Should().NotContainKey("cloudEvents:type");
+    }
+
+    [Fact]
+    public async Task DeadLetterRepublish_WhenRecordingDisabled_DoesNotRecordDeadLetterTopic()
+    {
+        await using var host = await CreateDeadLetteringHostAsync(
+            WithContracts,
+            static topology => topology.RecordMessages(false)
+        );
+        host.Probe!.OnHandle = static _ => new RejectMessageException("poison");
+
+        await host.Publisher.PublishMessageAsync(
+            new OrderPlaced { OrderId = "poison" },
+            cancellationToken: CancellationToken
+        );
+        await host.Broker.DrainUntilIdleAsync(Timeout, CancellationToken);
+
+        host.Probe.Invocations.Should().ContainSingle();
+        host.Broker.GetMessages("orders.dead").Should().BeEmpty();
+        GetRecordingTopicCount(host.Broker).Should().Be(0);
     }
 
     [Fact]
@@ -884,39 +1021,55 @@ public sealed class InMemoryTransportTests
     }
 
     private static Task<InMemoryTestHost> CreateDeadLetteringHostAsync(
-        Func<BrilliantMessagingBuilder, BrilliantMessagingBuilder> configureContracts
+        Func<BrilliantMessagingBuilder, BrilliantMessagingBuilder> configureContracts,
+        Action<InMemoryTopologyBuilder>? configureTopology = null
     )
     {
         return InMemoryTestHost.StartAsync(
             builder => configureContracts(builder)
                .AddInMemoryTopology(
-                    topology => topology
-                       .Topic("orders")
-                       .Topic("orders.dead")
-                       .Publish<OrderPlaced>(target => target.ToTopic("orders"))
-                       .Consume(
-                            "orders",
-                            consumer => consumer
-                               .OnFailure(failure => failure.DeadLetterTo("orders.dead"))
-                               .Handle<OrderPlaced, OrderPlacedHandler>()
-                        )
+                    topology =>
+                    {
+                        configureTopology?.Invoke(topology);
+                        topology
+                           .Topic("orders")
+                           .Topic("orders.dead")
+                           .Publish<OrderPlaced>(target => target.ToTopic("orders"))
+                           .Consume(
+                                "orders",
+                                consumer => consumer
+                                   .OnFailure(failure => failure.DeadLetterTo("orders.dead"))
+                                   .Handle<OrderPlaced, OrderPlacedHandler>()
+                            );
+                    }
                 )
         );
     }
 
-    private static SerializedMessage CreateRawMessage(IReadOnlyDictionary<string, string?> headers)
+    private static SerializedMessage CreateRawMessage(
+        IReadOnlyDictionary<string, string?> headers,
+        string messageId = "raw-message"
+    )
     {
         return new SerializedMessage(
             "{}"u8.ToArray(),
             "application/json",
             null,
             headers,
-            "raw-message",
+            messageId,
             null
         );
     }
 
-    private static ServiceProvider CreateOutboundOnlyServiceProvider(FixedEnvelopeMessageSerializer? serializer = null)
+    private static IReadOnlyDictionary<string, string?> EmptyHeaders()
+    {
+        return new Dictionary<string, string?>(StringComparer.Ordinal);
+    }
+
+    private static ServiceProvider CreateOutboundOnlyServiceProvider(
+        FixedEnvelopeMessageSerializer? serializer = null,
+        Action<InMemoryTopologyBuilder>? configureTopology = null
+    )
     {
         ServiceCollection services = new ();
         if (serializer is not null)
@@ -928,6 +1081,7 @@ public sealed class InMemoryTransportTests
            .AddInMemoryTopology(
                 topology =>
                 {
+                    configureTopology?.Invoke(topology);
                     topology.Topic("orders");
                     topology.Publish<OrderPlaced>(
                         target =>
@@ -943,6 +1097,29 @@ public sealed class InMemoryTransportTests
             );
 
         return services.BuildServiceProvider();
+    }
+
+    private static ServiceProvider CreateTwoTopicOutboundOnlyServiceProvider()
+    {
+        ServiceCollection services = new ();
+        WithContracts(services.AddBrilliantMessaging().UseCloudEvents(static options => options.Source = "/tests"))
+           .AddInMemoryTopology(
+                static topology => topology
+                   .Topic("orders")
+                   .Topic("shipments")
+                   .Publish<OrderPlaced>(target => target.ToTopic("orders"))
+                   .Publish<OrderShipped>(target => target.ToTopic("shipments"))
+            );
+
+        return services.BuildServiceProvider();
+    }
+
+    private static int GetRecordingTopicCount(InMemoryBroker broker)
+    {
+        var recordings = typeof(InMemoryBroker)
+           .GetField("_recordings", BindingFlags.Instance | BindingFlags.NonPublic)!
+           .GetValue(broker)!;
+        return (int) recordings.GetType().GetProperty("Count")!.GetValue(recordings)!;
     }
 
     private static BrilliantMessagingBuilder WithContractsAndLegacyOrderPlacedAlias(BrilliantMessagingBuilder builder)

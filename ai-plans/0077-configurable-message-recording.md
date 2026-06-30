@@ -21,18 +21,18 @@ for exact-count assertions, and the truncation behavior of the bounded mode is e
 
 ## Acceptance Criteria
 
-- [ ] Recording is controlled at the topology level by a single `RecordMessages` setting with three modes: off (`RecordMessages(false)`), unbounded (`RecordMessages()`, the default), and bounded (`RecordMessages(maxPerTopic: N)`).
-- [ ] When recording is disabled, `GetMessages` returns an empty list and the internal recordings dictionary stays empty (the topic key is never created).
-- [ ] In bounded mode, each topic retains at most N recorded messages; once the cap is reached the oldest recorded message is evicted as newer ones arrive.
-- [ ] The default (and the parameterless `RecordMessages()`) remains unbounded record-all; bounded truncation never happens unless explicitly opted in.
-- [ ] `maxPerTopic` is validated (must be positive); an invalid value throws `ArgumentOutOfRangeException`.
-- [ ] `InMemoryBroker` exposes a way to clear recorded messages, both for all topics and for a single topic.
-- [ ] New public APIs are XML-documented and follow the repository's explicit `using` convention.
-- [ ] `docs/in-memory-transport.md` documents the three `RecordMessages` modes (off / unbounded / bounded), the bounded-mode truncation caveat, and the `ClearRecordings` API; the existing memory-growth caveat is updated to reference disabling or bounding recording.
-- [ ] Automated tests cover the disabled-recording and clear paths.
-- [ ] Automated tests cover bounded-mode eviction: a topic capped at N retains exactly N messages after more than N are routed, dropping the oldest in routing order (asserted after `DrainUntilIdleAsync` so trimming has settled).
-- [ ] Automated tests confirm the recording setting governs the dead-letter republish path, not just normal routing: with recording off, `GetMessages(deadLetterTopic)` stays empty after a message is dead-lettered (and, optionally, a bounded dead-letter topic is capped the same way).
-- [ ] Release builds stay warning-clean with `TreatWarningsAsErrors`.
+- [x] Recording is controlled at the topology level by a single `RecordMessages` setting with three modes: off (`RecordMessages(false)`), unbounded (`RecordMessages()`, the default), and bounded (`RecordMessages(maxPerTopic: N)`).
+- [x] When recording is disabled, `GetMessages` returns an empty list and the internal recordings dictionary stays empty (the topic key is never created).
+- [x] In bounded mode, each topic retains at most N recorded messages; once the cap is reached the oldest recorded message is evicted as newer ones arrive.
+- [x] The default (and the parameterless `RecordMessages()`) remains unbounded record-all; bounded truncation never happens unless explicitly opted in.
+- [x] `maxPerTopic` is validated (must be positive); an invalid value throws `ArgumentOutOfRangeException`.
+- [x] `InMemoryBroker` exposes a way to clear recorded messages, both for all topics and for a single topic.
+- [x] New public APIs are XML-documented and follow the repository's explicit `using` convention.
+- [x] `docs/in-memory-transport.md` documents the three `RecordMessages` modes (off / unbounded / bounded), the bounded-mode truncation caveat, and the `ClearRecordings` API; the existing memory-growth caveat is updated to reference disabling or bounding recording.
+- [x] Automated tests cover the disabled-recording and clear paths.
+- [x] Automated tests cover bounded-mode eviction: a topic capped at N retains exactly N messages after more than N are routed, dropping the oldest in routing order (asserted after `DrainUntilIdleAsync` so trimming has settled).
+- [x] Automated tests confirm the recording setting governs the dead-letter republish path, not just normal routing: with recording off, `GetMessages(deadLetterTopic)` stays empty after a message is dead-lettered (and, optionally, a bounded dead-letter topic is capped the same way).
+- [x] Release builds stay warning-clean with `TreatWarningsAsErrors`.
 
 ## Technical Details
 
