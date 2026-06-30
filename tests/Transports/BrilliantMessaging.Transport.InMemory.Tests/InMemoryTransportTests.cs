@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.InMemory.Inbound;
 using BrilliantMessaging.Transport.InMemory.Outbound;
 using BrilliantMessaging.Transport.InMemory.Tests.TestSupport;
 using FluentAssertions;
@@ -1116,10 +1118,11 @@ public sealed class InMemoryTransportTests
 
     private static int GetRecordingTopicCount(InMemoryBroker broker)
     {
-        var recordings = typeof(InMemoryBroker)
-           .GetField("_recordings", BindingFlags.Instance | BindingFlags.NonPublic)!
-           .GetValue(broker)!;
-        return (int) recordings.GetType().GetProperty("Count")!.GetValue(recordings)!;
+        var recordings =
+            (ConcurrentDictionary<string, ConcurrentQueue<InMemoryTransportMessage>>) typeof(InMemoryBroker)
+               .GetField("_recordings", BindingFlags.Instance | BindingFlags.NonPublic)!
+               .GetValue(broker)!;
+        return recordings.Count;
     }
 
     private static BrilliantMessagingBuilder WithContractsAndLegacyOrderPlacedAlias(BrilliantMessagingBuilder builder)
