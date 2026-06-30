@@ -24,6 +24,7 @@
     <Folder Name="/src/Transports/">
         <Project
             Path="src/Transports/BrilliantMessaging.Transport.InMemory/BrilliantMessaging.Transport.InMemory.csproj" />
+        <Project Path="src/Transports/BrilliantMessaging.Transport.Nats/BrilliantMessaging.Transport.Nats.csproj" />
         <Project Path="src/Transports/BrilliantMessaging.Transport.RabbitMq/BrilliantMessaging.Transport.RabbitMq.csproj" />
     </Folder>
     <Folder Name="/tests/">
@@ -35,6 +36,8 @@
     <Folder Name="/tests/Transports/">
         <Project
             Path="tests/Transports/BrilliantMessaging.Transport.InMemory.Tests/BrilliantMessaging.Transport.InMemory.Tests.csproj" />
+        <Project
+            Path="tests/Transports/BrilliantMessaging.Transport.Nats.Tests/BrilliantMessaging.Transport.Nats.Tests.csproj" />
         <Project Path="tests/Transports/BrilliantMessaging.Transport.RabbitMq.Tests/BrilliantMessaging.Transport.RabbitMq.Tests.csproj" />
     </Folder>
 </Solution>

@@ -14,6 +14,7 @@
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.9.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.301" />
     <PackageVersion Include="Microsoft.Testing.Platform" Version="2.3.2" />
+    <PackageVersion Include="NATS.Net" Version="2.8.2" />
     <PackageVersion Include="OpenTelemetry" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Api" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.16.0" />
@@ -24,6 +25,7 @@
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Channels" Version="10.0.10" />
     <PackageVersion Include="System.Text.Json" Version="10.0.10" />
+    <PackageVersion Include="Testcontainers.Nats" Version="4.12.0" />
     <PackageVersion Include="Testcontainers.RabbitMq" Version="4.13.0" />
     <PackageVersion Include="Ulid" Version="1.4.1" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />

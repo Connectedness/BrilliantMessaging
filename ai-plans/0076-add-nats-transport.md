@@ -10,35 +10,35 @@ This transport is delivered as a single package and a single pull request. Altho
 
 ## Acceptance Criteria
 
-- [ ] A NATS transport package is added to the solution for JetStream-backed messaging.
-- [ ] The package is named `BrilliantMessaging.Transport.Nats` and exposes `AddNatsTopology`, `AddNatsOutboundTopology`, and `AddNatsInboundTopology` entry points.
-- [ ] The public API and documentation make clear that this plan implements JetStream-backed NATS messaging only, while core NATS pub/sub is out of scope.
-- [ ] The transport exposes direction-specific `INatsOutboundTopologyBuilder` and `INatsInboundTopologyBuilder` interfaces so publish-only and consume-only registrations only expose the relevant configuration surface.
-- [ ] The transport exposes connection configuration (server URI and the credentials/options needed by `NATS.Net`) on the shared resource configuration, so applications and tests can target their own NATS endpoint.
-- [ ] `AddNatsInboundTopology` uses a default inbound topology name that does not collide with the default outbound topology name.
-- [ ] Outbound messages can be published to explicit NATS subjects via `ToSubject(...)`.
-- [ ] Outbound configuration supports named targets and target-level serializer overrides, matching the existing real broker transport pattern.
-- [ ] Streams can be declared with explicit subject patterns, and inbound consumers can bind durable JetStream consumers to streams and optional filter subjects.
-- [ ] Inbound configuration supports the existing pipeline customization, deserialization middleware replacement, named handlers, manual acknowledgement, handler-level deserializer overrides, and handler-level acknowledgement options. Any of these parity features that JetStream genuinely cannot support is documented as unsupported with the reason rather than left unaddressed.
-- [ ] JetStream publishing awaits server acknowledgement.
-- [ ] Outbound targets can opt into JetStream deduplication (default off); when enabled, the target sets the NATS `Nats-Msg-Id` header to the CloudEvents `id`, and the documentation states that effective once-only delivery also requires a stream duplicate window covering the subject.
-- [ ] The transport uses CloudEvents binary content mode over NATS headers.
-- [ ] Published and consumed messages flow through the normal BrilliantMessaging serialization, CloudEvents metadata, trace context, inbound inspection, deserialization middleware, acknowledgement middleware, and diagnostics path.
-- [ ] Successful handler completion acknowledges the JetStream message.
-- [ ] Handler failure triggers JetStream negative acknowledgement (with delay where supported) so the message is redelivered per the retry/backoff policy and delivery count.
-- [ ] `RetryMessageException` maps to a delayed negative acknowledgement consistent with the existing transport semantics.
-- [ ] `RejectMessageException` routes the message to the configured dead-letter destination and settles the original without further redelivery.
-- [ ] Retry exhaustion routes the message to the configured dead-letter destination.
-- [ ] Dead-letter routing republishes to the configured dead-letter subject or stream, awaits the publish acknowledgement, and only then settles the original message, consistent with the RabbitMQ and in-memory transports.
-- [ ] Long-running handlers are kept in-flight automatically: the transport periodically sends JetStream `AckProgress` for in-flight messages (on by default, opt-out), so a handler slower than `AckWait` is not redelivered prematurely.
-- [ ] Stream and consumer policy knobs (`AckWait`, `MaxDeliver`, `MaxAckPending`, storage, retention, replicas, and duplicate window) are configurable on the topology builder.
-- [ ] Stream and consumer topology can be provisioned idempotently by the framework, with an assert-only mode for externally managed JetStream infrastructure.
-- [ ] Topology validation catches duplicate streams or consumers, invalid subjects, missing stream references, consumers without handlers, dead-letter subjects not covered by a stream, invalid policy values, and incompatible assert-only topology.
-- [ ] `README.md` gains a short NATS transport section with a simple configuration example, in the same style as the in-memory transport section.
-- [ ] A dedicated NATS transport documentation page under `docs` covers setup, configuration, topology examples, JetStream reliability semantics, deduplication, retry and dead-letter behavior, ordering and long-running handler caveats, the default NATS maximum message size, reliance on `NATS.Net`'s built-in reconnection, and the Core NATS non-goal.
-- [ ] Unit tests cover builder validation, topology compilation, acknowledgement mapping, and header/body translation.
-- [ ] Integration tests use `Testcontainers.Nats` with JetStream enabled and cover publish/consume, stream and durable consumer provisioning, publish acknowledgement, retry/redelivery, and dead-letter republish behavior.
-- [ ] Release builds stay warning-clean with `TreatWarningsAsErrors`.
+- [x] A NATS transport package is added to the solution for JetStream-backed messaging.
+- [x] The package is named `BrilliantMessaging.Transport.Nats` and exposes `AddNatsTopology`, `AddNatsOutboundTopology`, and `AddNatsInboundTopology` entry points.
+- [x] The public API and documentation make clear that this plan implements JetStream-backed NATS messaging only, while core NATS pub/sub is out of scope.
+- [x] The transport exposes direction-specific `INatsOutboundTopologyBuilder` and `INatsInboundTopologyBuilder` interfaces so publish-only and consume-only registrations only expose the relevant configuration surface.
+- [x] The transport exposes connection configuration (server URI and the credentials/options needed by `NATS.Net`) on the shared resource configuration, so applications and tests can target their own NATS endpoint.
+- [x] `AddNatsInboundTopology` uses a default inbound topology name that does not collide with the default outbound topology name.
+- [x] Outbound messages can be published to explicit NATS subjects via `ToSubject(...)`.
+- [x] Outbound configuration supports named targets and target-level serializer overrides, matching the existing real broker transport pattern.
+- [x] Streams can be declared with explicit subject patterns, and inbound consumers can bind durable JetStream consumers to streams and optional filter subjects.
+- [x] Inbound configuration supports the existing pipeline customization, deserialization middleware replacement, named handlers, manual acknowledgement, handler-level deserializer overrides, and handler-level acknowledgement options. Any of these parity features that JetStream genuinely cannot support is documented as unsupported with the reason rather than left unaddressed.
+- [x] JetStream publishing awaits server acknowledgement.
+- [x] Outbound targets can opt into JetStream deduplication (default off); when enabled, the target sets the NATS `Nats-Msg-Id` header to the CloudEvents `id`, and the documentation states that effective once-only delivery also requires a stream duplicate window covering the subject.
+- [x] The transport uses CloudEvents binary content mode over NATS headers.
+- [x] Published and consumed messages flow through the normal BrilliantMessaging serialization, CloudEvents metadata, trace context, inbound inspection, deserialization middleware, acknowledgement middleware, and diagnostics path.
+- [x] Successful handler completion acknowledges the JetStream message.
+- [x] Handler failure triggers JetStream negative acknowledgement (with delay where supported) so the message is redelivered per the retry/backoff policy and delivery count.
+- [x] `RetryMessageException` maps to a delayed negative acknowledgement consistent with the existing transport semantics.
+- [x] `RejectMessageException` routes the message to the configured dead-letter destination and settles the original without further redelivery.
+- [x] Retry exhaustion routes the message to the configured dead-letter destination.
+- [x] Dead-letter routing republishes to the configured dead-letter subject or stream, awaits the publish acknowledgement, and only then settles the original message, consistent with the RabbitMQ and in-memory transports.
+- [x] Long-running handlers are kept in-flight automatically: the transport periodically sends JetStream `AckProgress` for in-flight messages (on by default, opt-out), so a handler slower than `AckWait` is not redelivered prematurely.
+- [x] Stream and consumer policy knobs (`AckWait`, `MaxDeliver`, `MaxAckPending`, storage, retention, replicas, and duplicate window) are configurable on the topology builder.
+- [x] Stream and consumer topology can be provisioned idempotently by the framework, with an assert-only mode for externally managed JetStream infrastructure.
+- [x] Topology validation catches duplicate streams or consumers, invalid subjects, missing stream references, consumers without handlers, dead-letter subjects not covered by a stream, invalid policy values, and incompatible assert-only topology.
+- [x] `README.md` gains a short NATS transport section with a simple configuration example, in the same style as the in-memory transport section.
+- [x] A dedicated NATS transport documentation page under `docs` covers setup, configuration, topology examples, JetStream reliability semantics, deduplication, retry and dead-letter behavior, ordering and long-running handler caveats, the default NATS maximum message size, reliance on `NATS.Net`'s built-in reconnection, and the Core NATS non-goal.
+- [x] Unit tests cover builder validation, topology compilation, acknowledgement mapping, and header/body translation.
+- [x] Integration tests use `Testcontainers.Nats` with JetStream enabled and cover publish/consume, stream and durable consumer provisioning, publish acknowledgement, retry/redelivery, and dead-letter republish behavior.
+- [x] Release builds stay warning-clean with `TreatWarningsAsErrors`.
 
 ## Technical Details
 
