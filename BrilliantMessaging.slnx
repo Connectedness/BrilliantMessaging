@@ -22,6 +22,8 @@
         <Project Path="benchmarks/BrilliantMessaging.Benchmarks/BrilliantMessaging.Benchmarks.csproj" />
     </Folder>
     <Folder Name="/src/Transports/">
+        <Project
+            Path="src/Transports/BrilliantMessaging.Transport.InMemory/BrilliantMessaging.Transport.InMemory.csproj" />
         <Project Path="src/Transports/BrilliantMessaging.Transport.RabbitMq/BrilliantMessaging.Transport.RabbitMq.csproj" />
     </Folder>
     <Folder Name="/tests/">
@@ -31,6 +33,8 @@
         <Project Path="tests/BrilliantMessaging.OpenTelemetry.Tests/BrilliantMessaging.OpenTelemetry.Tests.csproj" />
     </Folder>
     <Folder Name="/tests/Transports/">
+        <Project
+            Path="tests/Transports/BrilliantMessaging.Transport.InMemory.Tests/BrilliantMessaging.Transport.InMemory.Tests.csproj" />
         <Project Path="tests/Transports/BrilliantMessaging.Transport.RabbitMq.Tests/BrilliantMessaging.Transport.RabbitMq.Tests.csproj" />
     </Folder>
 </Solution>
