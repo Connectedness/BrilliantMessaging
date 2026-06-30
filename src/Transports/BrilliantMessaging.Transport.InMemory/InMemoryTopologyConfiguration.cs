@@ -13,13 +13,13 @@ namespace BrilliantMessaging.Transport.InMemory;
 /// <param name="Targets">The outbound target declarations.</param>
 /// <param name="Consumers">The inbound consumer declarations.</param>
 /// <param name="ShutdownTimeout">The graceful shutdown timeout for the topology runtime.</param>
-/// <param name="Recording">The routed-message recording behavior for the topology broker.</param>
+/// <param name="RecordingOptions">The routed-message recording behavior for the topology broker.</param>
 public sealed record InMemoryTopologyConfiguration(
     ImmutableArray<string> Topics,
     ImmutableArray<InMemoryOutboundTargetDefinition> Targets,
     ImmutableArray<InMemoryInboundConsumerDefinition> Consumers,
     TimeSpan ShutdownTimeout,
-    InMemoryRecordingOptions Recording
+    InMemoryRecordingOptions RecordingOptions
 )
 {
     /// <summary>

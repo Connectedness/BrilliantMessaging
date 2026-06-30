@@ -94,7 +94,7 @@ public sealed class InMemoryTopologyCompiler
             _serviceScopeFactory,
             _scheduler,
             configuration.ShutdownTimeout,
-            configuration.Recording,
+            configuration.RecordingOptions,
             _loggerFactory.CreateLogger<InMemoryBroker>()
         );
 

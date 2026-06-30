@@ -99,7 +99,7 @@ public sealed class InMemoryBuilderTests
 
         var configuration = ((IBuildable<InMemoryTopologyConfiguration>) builder).Build();
 
-        configuration.Recording.Should().Be(InMemoryRecordingOptions.Unbounded);
+        configuration.RecordingOptions.Should().Be(InMemoryRecordingOptions.Unbounded);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class InMemoryBuilderTests
         builder.RecordMessages(false).RecordMessages();
 
         var configuration = ((IBuildable<InMemoryTopologyConfiguration>) builder).Build();
-        configuration.Recording.Should().Be(InMemoryRecordingOptions.Unbounded);
+        configuration.RecordingOptions.Should().Be(InMemoryRecordingOptions.Unbounded);
     }
 
     [Theory]
@@ -123,7 +123,7 @@ public sealed class InMemoryBuilderTests
         builder.RecordMessages(record);
 
         var configuration = ((IBuildable<InMemoryTopologyConfiguration>) builder).Build();
-        configuration.Recording.Should().Be(
+        configuration.RecordingOptions.Should().Be(
             record ? InMemoryRecordingOptions.Unbounded : InMemoryRecordingOptions.Off
         );
     }
@@ -136,7 +136,7 @@ public sealed class InMemoryBuilderTests
         builder.RecordMessages(maxPerTopic: 3);
 
         var configuration = ((IBuildable<InMemoryTopologyConfiguration>) builder).Build();
-        configuration.Recording.Should().Be(InMemoryRecordingOptions.Bounded(3));
+        configuration.RecordingOptions.Should().Be(InMemoryRecordingOptions.Bounded(3));
     }
 
     [Theory]
@@ -177,10 +177,10 @@ public sealed class InMemoryBuilderTests
         ((IInMemoryOutboundTopologyBuilder) outboundBuilder).RecordMessages(false);
         ((IInMemoryInboundTopologyBuilder) inboundBuilder).RecordMessages(maxPerTopic: 2);
 
-        ((IBuildable<InMemoryTopologyConfiguration>) outboundBuilder).Build().Recording
+        ((IBuildable<InMemoryTopologyConfiguration>) outboundBuilder).Build().RecordingOptions
            .Should()
            .Be(InMemoryRecordingOptions.Off);
-        ((IBuildable<InMemoryTopologyConfiguration>) inboundBuilder).Build().Recording
+        ((IBuildable<InMemoryTopologyConfiguration>) inboundBuilder).Build().RecordingOptions
            .Should()
            .Be(InMemoryRecordingOptions.Bounded(2));
     }

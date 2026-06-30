@@ -30,7 +30,7 @@ public sealed class InMemoryTopologyBuilder
     private readonly ImmutableArray<string>.Builder _topics = ImmutableArray.CreateBuilder<string>();
     private readonly HashSet<string> _topicSet = new (StringComparer.Ordinal);
 
-    private InMemoryRecordingOptions _recording = InMemoryRecordingOptions.Unbounded;
+    private InMemoryRecordingOptions _recordingOptions = InMemoryRecordingOptions.Unbounded;
     private TimeSpan _shutdownTimeout = DefaultShutdownTimeout;
 
     /// <inheritdoc />
@@ -41,7 +41,7 @@ public sealed class InMemoryTopologyBuilder
             _targets.ToImmutable(),
             _consumers.ToImmutable(),
             _shutdownTimeout,
-            _recording
+            _recordingOptions
         );
     }
 
@@ -207,7 +207,7 @@ public sealed class InMemoryTopologyBuilder
     /// <returns>The same builder for chaining.</returns>
     public InMemoryTopologyBuilder RecordMessages()
     {
-        _recording = InMemoryRecordingOptions.Unbounded;
+        _recordingOptions = InMemoryRecordingOptions.Unbounded;
         return this;
     }
 
@@ -219,7 +219,7 @@ public sealed class InMemoryTopologyBuilder
     /// <returns>The same builder for chaining.</returns>
     public InMemoryTopologyBuilder RecordMessages(bool record)
     {
-        _recording = record ? InMemoryRecordingOptions.Unbounded : InMemoryRecordingOptions.Off;
+        _recordingOptions = record ? InMemoryRecordingOptions.Unbounded : InMemoryRecordingOptions.Off;
         return this;
     }
 
@@ -232,7 +232,7 @@ public sealed class InMemoryTopologyBuilder
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxPerTopic" /> is not positive.</exception>
     public InMemoryTopologyBuilder RecordMessages(int maxPerTopic)
     {
-        _recording = InMemoryRecordingOptions.Bounded(maxPerTopic);
+        _recordingOptions = InMemoryRecordingOptions.Bounded(maxPerTopic);
         return this;
     }
 }
