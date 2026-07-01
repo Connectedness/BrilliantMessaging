@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using BrilliantMessaging.Transport.Nats.Tests.TestSupport;
@@ -45,5 +46,18 @@ public sealed class NatsConnectionProviderIntegrationTests : IAsyncLifetime
 
         second.Should().BeSameAs(first);
         invocations.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetJetStreamAsync_AfterCachedContextAndDispose_ThrowsObjectDisposedException()
+    {
+        var url = _fixture.ConnectionString;
+        NatsConnectionProvider provider = new (_ => Task.FromResult(new NatsOpts { Url = url }));
+        await provider.GetJetStreamAsync(TestContext.Current.CancellationToken);
+        await provider.DisposeAsync();
+
+        var act = () => provider.GetJetStreamAsync(TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ObjectDisposedException>();
     }
 }

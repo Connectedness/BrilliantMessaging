@@ -54,6 +54,11 @@ public sealed class NatsConnectionProvider : IAsyncDisposable
     /// </summary>
     public async Task<NatsJSContext> GetJetStreamAsync(CancellationToken cancellationToken = default)
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(NatsConnectionProvider));
+        }
+
         if (_jetStream is not null)
         {
             return _jetStream;
