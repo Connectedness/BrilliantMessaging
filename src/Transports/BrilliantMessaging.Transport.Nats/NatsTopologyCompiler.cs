@@ -412,6 +412,7 @@ public sealed class NatsTopologyCompiler
 
         foreach (var consumer in configuration.Consumers)
         {
+            HashSet<Type> handlerMessageTypes = new ();
             if (!streamNames.Contains(consumer.StreamName))
             {
                 errors.Add(
@@ -433,6 +434,13 @@ public sealed class NatsTopologyCompiler
 
             foreach (var handler in consumer.Handlers)
             {
+                if (!handlerMessageTypes.Add(handler.MessageType))
+                {
+                    errors.Add(
+                        $"NATS consumer '{consumer.DurableName}' configures multiple handlers for message '{handler.MessageType.FullName}'."
+                    );
+                }
+
                 if (!messageContractRegistry.TryGetDiscriminator(handler.MessageType, out _))
                 {
                     errors.Add(

@@ -199,6 +199,40 @@ public sealed class NatsTopologyCompilerTests
     }
 
     [Fact]
+    public async Task Compile_RejectsDuplicateHandlersForTheSameMessageType()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                           .Handle<OrderPlaced, DuplicateOrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure
+        var act = () => provider.GetRequiredService<NatsTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should()
+           .Contain(
+                error => error.Contains(
+                    "configures multiple handlers for message 'BrilliantMessaging.Transport.Nats.Tests.TestSupport.OrderPlaced'",
+                    StringComparison.Ordinal
+                )
+            );
+    }
+
+    [Fact]
     public async Task Compile_RejectsUnregisteredDeserializer()
     {
         ServiceCollection services = new ();

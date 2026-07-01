@@ -27,6 +27,18 @@ public sealed class OrderPlacedHandler : IMessageHandler<OrderPlaced>
     }
 }
 
+public sealed class DuplicateOrderPlacedHandler : IMessageHandler<OrderPlaced>
+{
+    public Task HandleAsync(
+        OrderPlaced message,
+        IncomingMessageContext context,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return Task.CompletedTask;
+    }
+}
+
 public sealed class OrderCancelledHandler : IMessageHandler<OrderCancelled>
 {
     public Task HandleAsync(
