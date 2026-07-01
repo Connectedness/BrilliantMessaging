@@ -219,6 +219,13 @@ public static class NatsTransportModule
 
     private static bool IsServiceRegistered(IServiceProvider serviceProvider, Type serviceType)
     {
+        var serviceProviderIsService = serviceProvider.GetService<IServiceProviderIsService>();
+
+        if (serviceProviderIsService is not null)
+        {
+            return serviceProviderIsService.IsService(serviceType);
+        }
+
         return serviceProvider.GetService(serviceType) is not null;
     }
 }
