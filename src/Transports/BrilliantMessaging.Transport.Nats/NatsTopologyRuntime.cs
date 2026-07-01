@@ -193,16 +193,17 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
 
         var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var token = source.Token;
         var interval = TimeSpan.FromTicks(Math.Max(TimeSpan.FromSeconds(1).Ticks, ackWait.Ticks / 3));
         var task = Task.Run(
             async () =>
             {
-                while (!source.IsCancellationRequested)
+                while (!token.IsCancellationRequested)
                 {
                     try
                     {
-                        await Task.Delay(interval, source.Token).ConfigureAwait(false);
-                        await message.AckProgressAsync(cancellationToken: source.Token).ConfigureAwait(false);
+                        await Task.Delay(interval, token).ConfigureAwait(false);
+                        await message.AckProgressAsync(cancellationToken: token).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
@@ -237,7 +238,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         await message.AckTerminateAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task PublishDeadLetterAsync(
+    private async Task<bool> PublishDeadLetterAsync(
         NatsInboundConsumer consumer,
         INatsJSMsg<byte[]> message,
         IReadOnlyDictionary<string, object?> headers,
@@ -246,7 +247,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
     {
         if (consumer.DeadLetterSubject is null)
         {
-            return;
+            return false;
         }
 
         var jetStream = await _topology.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
@@ -260,6 +261,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
                 cancellationToken
             )
            .ConfigureAwait(false);
+        return true;
     }
 
     private static Dictionary<string, object?> GetHeaders(INatsJSMsg<byte[]> message)
