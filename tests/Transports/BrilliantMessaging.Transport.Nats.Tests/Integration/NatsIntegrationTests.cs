@@ -857,12 +857,10 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
 
         // Listen to every activity source so the publish opens a recorded producer activity, which
         // TraceContextHeaders.Inject then propagates onto the NATS wire as a traceparent header.
-        using ActivityListener listener = new ()
-        {
-            ShouldListenTo = static _ => true,
-            Sample = static (ref _) =>
-                ActivitySamplingResult.AllDataAndRecorded
-        };
+        using ActivityListener listener = new ();
+        listener.ShouldListenTo = static _ => true;
+        listener.Sample = static (ref _) =>
+            ActivitySamplingResult.AllDataAndRecorded;
         ActivitySource.AddActivityListener(listener);
 
         var target = provider.GetRequiredService<NatsTopology>().GetRequiredTarget<OrderPlaced>();
@@ -1017,7 +1015,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
     private static NatsHeaders GetHeaders(INatsJSMsg<byte[]> message)
     {
         message.Should().NotBeNull();
-        var natsMessage = (INatsMsg) message;
+        INatsMsg natsMessage = message;
         natsMessage.Headers.Should().NotBeNull();
         return natsMessage.Headers!;
     }
