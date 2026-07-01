@@ -114,6 +114,20 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
                 $"NATS stream '{stream.Name}' has duplicate window '{existing.DuplicateWindow}' on the server, but the topology declares '{duplicateWindow}'."
             );
         }
+
+        if (stream.MaxAge is { } maxAge && existing.MaxAge != maxAge)
+        {
+            mismatches.Add(
+                $"NATS stream '{stream.Name}' has max age '{existing.MaxAge}' on the server, but the topology declares '{maxAge}'."
+            );
+        }
+
+        if (stream.MaxMessageSize is { } maxMessageSize && existing.MaxMsgSize != maxMessageSize)
+        {
+            mismatches.Add(
+                $"NATS stream '{stream.Name}' has max message size {existing.MaxMsgSize} on the server, but the topology declares {maxMessageSize}."
+            );
+        }
     }
 
     private static void ValidateConsumerMatches(
@@ -143,11 +157,10 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
             );
         }
 
-        if (consumer.FilterSubject is { } filterSubject &&
-            !string.Equals(existing.FilterSubject, filterSubject, StringComparison.Ordinal))
+        if (!string.Equals(existing.FilterSubject, consumer.FilterSubject, StringComparison.Ordinal))
         {
             mismatches.Add(
-                $"NATS consumer '{consumer.DurableName}' has filter subject '{existing.FilterSubject}' on the server, but the topology declares '{filterSubject}'."
+                $"NATS consumer '{consumer.DurableName}' has filter subject '{existing.FilterSubject}' on the server, but the topology declares '{consumer.FilterSubject}'."
             );
         }
     }
