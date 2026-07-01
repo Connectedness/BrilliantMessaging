@@ -184,7 +184,8 @@ public sealed class InMemoryTopologyCompilerValidationTests
                 )
             ),
             ImmutableArray<InMemoryInboundConsumerDefinition>.Empty,
-            InMemoryTopologyBuilder.DefaultShutdownTimeout
+            InMemoryTopologyBuilder.DefaultShutdownTimeout,
+            InMemoryRecordingOptions.Unbounded
         );
 
         var act = () => compiler.Compile(Topology.DefaultName, configuration);

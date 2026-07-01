@@ -35,4 +35,27 @@ public interface IInMemoryInboundTopologyBuilder
     /// <returns>The same builder for chaining.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="timeout" /> is not positive and not infinite.</exception>
     IInMemoryInboundTopologyBuilder ShutdownTimeout(TimeSpan timeout);
+
+    /// <summary>
+    /// Records every routed message for inspection through <see cref="InMemoryBroker.GetMessages" />.
+    /// </summary>
+    /// <returns>The same builder for chaining.</returns>
+    IInMemoryInboundTopologyBuilder RecordMessages();
+
+    /// <summary>
+    /// Enables or disables routed-message recording. Passing <see langword="true" /> is equivalent to
+    /// <see cref="RecordMessages()" />.
+    /// </summary>
+    /// <param name="record"><see langword="true" /> to record every routed message; <see langword="false" /> to disable recording.</param>
+    /// <returns>The same builder for chaining.</returns>
+    IInMemoryInboundTopologyBuilder RecordMessages(bool record);
+
+    /// <summary>
+    /// Records at most <paramref name="maxPerTopic" /> routed messages per topic for inspection through
+    /// <see cref="InMemoryBroker.GetMessages" />.
+    /// </summary>
+    /// <param name="maxPerTopic">The maximum number of recorded messages retained per topic. The value must be positive.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxPerTopic" /> is not positive.</exception>
+    IInMemoryInboundTopologyBuilder RecordMessages(int maxPerTopic);
 }

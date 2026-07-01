@@ -126,6 +126,7 @@ Retry delays are scheduled through `IInMemoryDelayScheduler`. The default implem
 var broker = serviceProvider.GetRequiredService<InMemoryBroker>();
 
 IReadOnlyList<InMemoryTransportMessage> orders = broker.GetMessages("orders");
+broker.ClearRecordings("orders");
 await broker.DrainUntilIdleAsync(TimeSpan.FromSeconds(5), cancellationToken);
 ```
 
@@ -133,10 +134,36 @@ await broker.DrainUntilIdleAsync(TimeSpan.FromSeconds(5), cancellationToken);
 messages that were consumed. The returned `InMemoryTransportMessage` exposes the serialized body,
 headers, content type, message id, topic, and delivery attempt metadata.
 
-Recordings accumulate for the lifetime of the broker — that is, for the lifetime of the owning service
-provider. This is intentional so tests can inspect everything that was ever routed, but it means a
-long-running local-development host backed by the in-memory transport will retain every routed message
-in memory until the provider is disposed.
+Recording is controlled at the topology level. Pick one of the following modes — the calls are
+alternatives, not steps (a later call overrides an earlier one):
+
+```csharp
+builder.AddInMemoryTopology(memory =>
+{
+    memory.RecordMessages();                 // default: record every routed message
+    memory.RecordMessages(false);            // disable recording
+    memory.RecordMessages(maxPerTopic: 100); // keep the newest 100 per topic
+});
+```
+
+- `RecordMessages()` is the default. It records every routed message without a per-topic bound, so
+  `GetMessages(topic)` can be used for exact-count assertions in short-lived tests.
+- `RecordMessages(false)` disables recording. `GetMessages(topic)` returns an empty list and the broker
+  does not create per-topic recording state.
+- `RecordMessages(maxPerTopic: N)` keeps only the most recent `N` recorded messages per topic. When the
+  cap is reached, older recordings are evicted as newer messages arrive.
+
+Bounded recording is explicitly truncating: `GetMessages(topic)` returns only the most recent `N`
+messages for that topic, so exact-count assertions across more than `N` routed messages will not hold.
+Under concurrent routing, a topic may briefly exceed the cap before trimming settles.
+
+Recordings accumulate for the lifetime of the broker unless recording is disabled, bounded, or cleared.
+This is intentional so tests can inspect everything that was ever routed, but it means a long-running
+local-development host backed by the in-memory transport should disable recording, use bounded
+recording, or periodically clear recordings to avoid retaining every routed message in memory.
+
+`ClearRecordings()` removes recordings for all topics. `ClearRecordings(string topic)` removes
+recordings for one topic; clearing an unrecorded topic is a no-op.
 
 For named topologies, resolve the broker by topology key:
 
