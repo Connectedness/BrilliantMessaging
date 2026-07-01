@@ -57,9 +57,9 @@ custom reconnect settings, or any other `NATS.Net` connection option.
 Streams declare explicit subject patterns. Stream patterns may use NATS wildcards such as `*` and `>`.
 Outbound targets use literal subjects through `ToSubject(...)`; wildcards are rejected for publish subjects.
 
-Consumers are pull-based durable JetStream consumers. A consumer references a stream and durable name, can set an
-optional filter subject, and can configure `AckWait`, `MaxDeliver`, `MaxAckPending`, stream storage, retention,
-replicas, and duplicate window.
+Streams configure storage, retention, replicas, and duplicate windows. Consumers are pull-based durable JetStream
+consumers. A consumer references a stream and durable name, can set an optional filter subject, and can configure
+`AckWait`, `MaxDeliver`, and `MaxAckPending`.
 
 Brilliant Messaging provisions streams and durable consumers by default. Use
 `Provisioning(NatsTopologyProvisioningMode.AssertOnly)` when JetStream infrastructure is managed externally and
