@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Transport.Nats.Inbound;
 using BrilliantMessaging.Transport.Nats.Outbound;
@@ -158,14 +160,24 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
         catch (UnknownInboundMessageException)
         {
-            await DeadLetterOrTerminateAsync(consumer, message, headers, cancellationToken).ConfigureAwait(false);
+            await DeadLetterOrTerminateAsync(consumer, message, transportMessage, headers, cancellationToken)
+               .ConfigureAwait(false);
             return;
         }
 
         if (inspectResult is null ||
             !consumer.EndpointsByDiscriminator.TryGetValue(inspectResult.Discriminator, out var endpoint))
         {
-            await DeadLetterOrTerminateAsync(consumer, message, headers, cancellationToken).ConfigureAwait(false);
+            await DeadLetterOrTerminateAsync(consumer, message, transportMessage, headers, cancellationToken)
+               .ConfigureAwait(false);
+            return;
+        }
+
+        if (endpoint.MessageType != inspectResult.MessageType &&
+            !endpoint.MessageType.IsAssignableFrom(inspectResult.MessageType))
+        {
+            await DeadLetterOrTerminateAsync(consumer, message, transportMessage, headers, cancellationToken)
+               .ConfigureAwait(false);
             return;
         }
 
@@ -191,7 +203,23 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         {
             Message = inspectResult.Message
         };
-        await _topology.Pipeline(context).ConfigureAwait(false);
+
+        try
+        {
+            await _topology.Pipeline(context).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // Settles at most once, so this is a no-op when FrameworkMessageAcknowledgementMiddleware already
+            // settled inside the pipeline; the safety net only matters for manual ack mode and for outer
+            // middleware that fault before settlement. The rethrow lets the consumer loop log the failure.
+            await acknowledgement.NackAsync(requeue: false, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
     }
 
     private IDisposable? StartAckProgress(
@@ -237,6 +265,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
     private async Task DeadLetterOrTerminateAsync(
         NatsInboundConsumer consumer,
         INatsJSMsg<byte[]> message,
+        NatsTransportMessage transportMessage,
         IReadOnlyDictionary<string, object?> headers,
         CancellationToken cancellationToken
     )
@@ -247,6 +276,19 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             consumer.DurableName,
             consumer.DeadLetterSubject is null ? "terminating it" : "dead-lettering it"
         );
+
+        // The pre-pipeline reject never reaches InboundDiagnosticsMiddleware, so the runtime owns this delivery's
+        // messaging.client.consumed.messages measurement and carries the bounded error.type. An unrecognized
+        // delivery classifies as _OTHER, matching ResolveErrorType(UnknownInboundMessageException).
+        var tags = new TagList
+        {
+            { MessagingSemanticConventions.MessagingSystem, transportMessage.MessagingSystem },
+            { MessagingSemanticConventions.MessagingOperationName, MessagingSemanticConventions.ProcessOperation },
+            { MessagingSemanticConventions.MessagingDestinationName, transportMessage.Source },
+            { MessagingSemanticConventions.ErrorType, MessagingSemanticConventions.ErrorTypeOther }
+        };
+        InboundDiagnostics.ConsumedMessages.Add(1, tags);
+
         await PublishDeadLetterAsync(consumer, message, headers, cancellationToken).ConfigureAwait(false);
         await message.AckTerminateAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
     }

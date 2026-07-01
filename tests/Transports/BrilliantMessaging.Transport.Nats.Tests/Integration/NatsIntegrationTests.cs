@@ -822,6 +822,164 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ManualAckHandlerExceptionDeadLettersViaOuterSafetyNet()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Publish<OrderPlaced>(target => target.ToSubject("orders.manual-throw"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-manual-throw-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.manual-throw")
+                           .MaxDeliver(5)
+                           .AckWait(TimeSpan.FromSeconds(30))
+                           .DeadLetterSubject("orders.dead")
+                           .Handle<OrderPlaced, ThrowingManualAckOrderPlacedHandler>(handler => handler.ManualAck())
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateConsumerAsync(
+            "ORDERS",
+            new ConsumerConfig("manual-throw-dead-inspector")
+            {
+                DurableName = "manual-throw-dead-inspector",
+                FilterSubject = "orders.dead",
+                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                DeliverPolicy = ConsumerConfigDeliverPolicy.All
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            var publisher = provider.GetRequiredService<IMessagePublisher>();
+            await publisher.PublishMessageAsync(
+                new OrderPlaced { OrderId = "order-manual-throw" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+            // AckWait is 30s, so a dead-letter arriving well within that window can only come from the outer
+            // safety-net nack (requeue: false) firing on the manual-mode handler exception - the framework
+            // acknowledgement middleware leaves manual-mode deliveries unsettled - rather than from an
+            // AckWait-timeout redelivery.
+            var deadLetter = await ReadSingleMessageAsync(
+                jetStream,
+                "ORDERS",
+                "manual-throw-dead-inspector",
+                TestContext.Current.CancellationToken
+            );
+
+            deadLetter.Subject.Should().Be("orders.dead");
+            HeaderValue(GetHeaders(deadLetter), "ce-type").Should().Be("tests.order.placed");
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task UnrecognizedDeliveryRecordsConsumedMessageMetricWithOtherErrorType()
+    {
+        using InboundDiagnosticsRecorder recorder = new ();
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-metric-unknown-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.metric-unknown")
+                           .MaxDeliver(1)
+                           .AckWait(TimeSpan.FromSeconds(1))
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            NatsHeaders headers = new ()
+            {
+                ["ce-type"] = "tests.unknown",
+                ["message-id"] = "message-metric-unknown"
+            };
+            await jetStream.PublishAsync(
+                "orders.metric-unknown",
+                "unknown"u8.ToArray(),
+                serializer: null,
+                opts: null,
+                headers,
+                TestContext.Current.CancellationToken
+            );
+
+            var measurement = await WaitForConsumedMeasurementAsync(
+                recorder,
+                "orders.metric-unknown",
+                TimeSpan.FromSeconds(15),
+                TestContext.Current.CancellationToken
+            );
+
+            TagValue(measurement, MessagingSemanticConventions.MessagingSystem).Should().Be("nats");
+            TagValue(measurement, MessagingSemanticConventions.MessagingOperationName)
+               .Should()
+               .Be(MessagingSemanticConventions.ProcessOperation);
+            TagValue(measurement, MessagingSemanticConventions.ErrorType)
+               .Should()
+               .Be(MessagingSemanticConventions.ErrorTypeOther);
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
     public async Task TypedPublishMapsCloudEventMetadataAndTraceContextForNatsWire()
     {
         ServiceCollection services = new ();
@@ -1023,6 +1181,51 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
     private static string? HeaderValue(NatsHeaders headers, string name)
     {
         return headers.TryGetValue(name, out var value) ? value.ToString() : null;
+    }
+
+    private static async Task<KeyValuePair<string, object?>[]> WaitForConsumedMeasurementAsync(
+        InboundDiagnosticsRecorder recorder,
+        string destination,
+        TimeSpan timeout,
+        CancellationToken cancellationToken
+    )
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var measurement = recorder
+               .SnapshotConsumedMessages()
+               .FirstOrDefault(
+                    tags => string.Equals(
+                        TagValue(tags, MessagingSemanticConventions.MessagingDestinationName),
+                        destination,
+                        StringComparison.Ordinal
+                    )
+                );
+            if (measurement is not null)
+            {
+                return measurement;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+        }
+
+        throw new TimeoutException(
+            $"Timed out waiting for a consumed-messages measurement for destination '{destination}'."
+        );
+    }
+
+    private static string? TagValue(KeyValuePair<string, object?>[] tags, string key)
+    {
+        foreach (var tag in tags)
+        {
+            if (string.Equals(tag.Key, key, StringComparison.Ordinal))
+            {
+                return tag.Value?.ToString();
+            }
+        }
+
+        return null;
     }
 
     private sealed class ExtensionEmittingSerializer : IMessageSerializer
@@ -1428,6 +1631,18 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
         )
         {
             throw new InvalidOperationException("Simulated handler failure.");
+        }
+    }
+
+    private sealed class ThrowingManualAckOrderPlacedHandler : IMessageHandler<OrderPlaced>
+    {
+        public Task HandleAsync(
+            OrderPlaced message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            throw new InvalidOperationException("Simulated manual-ack handler failure.");
         }
     }
 
