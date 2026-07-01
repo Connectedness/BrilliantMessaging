@@ -7,22 +7,34 @@ using Microsoft.Extensions.DependencyInjection;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
-using Testcontainers.Nats;
 using Xunit;
 
 namespace BrilliantMessaging.Transport.Nats.Tests.Integration;
 
-public sealed class NatsTopologyProvisionerIntegrationTests
+[Collection<NatsCollection>]
+public sealed class NatsTopologyProvisionerIntegrationTests : IAsyncLifetime
 {
+    private readonly NatsFixture _fixture;
+
+    public NatsTopologyProvisionerIntegrationTests(NatsFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    public async ValueTask InitializeAsync()
+    {
+        await _fixture.ResetAsync(TestContext.Current.CancellationToken);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        return ValueTask.CompletedTask;
+    }
+
     [Fact]
     public async Task AssertOnlyProvisioningSucceedsWhenJetStreamResourcesAlreadyExist()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
-        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
         NatsJSContext jetStream = new (connection);
         await jetStream.CreateOrUpdateStreamAsync(
             new StreamConfig("ORDERS", ["orders.*"]),
@@ -48,7 +60,7 @@ public sealed class NatsTopologyProvisionerIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Provisioning(NatsTopologyProvisioningMode.AssertOnly)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Consume(
@@ -70,18 +82,13 @@ public sealed class NatsTopologyProvisionerIntegrationTests
     [Fact]
     public async Task AssertOnlyProvisioningFailsWhenJetStreamResourcesAreMissing()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         ServiceCollection services = new ();
         services.AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests")
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Provisioning(NatsTopologyProvisioningMode.AssertOnly)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Consume(
@@ -101,12 +108,7 @@ public sealed class NatsTopologyProvisionerIntegrationTests
     [Fact]
     public async Task AssertOnlyProvisioningReportsJetStreamResourceMismatches()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
-        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
         NatsJSContext jetStream = new (connection);
         await jetStream.CreateOrUpdateStreamAsync(
             new StreamConfig("ORDERS", ["orders.actual"])
@@ -140,7 +142,7 @@ public sealed class NatsTopologyProvisionerIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Provisioning(NatsTopologyProvisioningMode.AssertOnly)
                    .Stream(
                         "ORDERS",

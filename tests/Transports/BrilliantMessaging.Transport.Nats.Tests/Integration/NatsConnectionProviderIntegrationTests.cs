@@ -1,23 +1,36 @@
 using System.Threading;
 using System.Threading.Tasks;
+using BrilliantMessaging.Transport.Nats.Tests.TestSupport;
 using FluentAssertions;
 using NATS.Client.Core;
-using Testcontainers.Nats;
 using Xunit;
 
 namespace BrilliantMessaging.Transport.Nats.Tests.Integration;
 
-public sealed class NatsConnectionProviderIntegrationTests
+[Collection<NatsCollection>]
+public sealed class NatsConnectionProviderIntegrationTests : IAsyncLifetime
 {
+    private readonly NatsFixture _fixture;
+
+    public NatsConnectionProviderIntegrationTests(NatsFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    public async ValueTask InitializeAsync()
+    {
+        await _fixture.ResetAsync(TestContext.Current.CancellationToken);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        return ValueTask.CompletedTask;
+    }
+
     [Fact]
     public async Task GetJetStreamAsync_ReturnsCachedContextOnSubsequentCalls()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
-        var url = container.GetConnectionString();
+        var url = _fixture.ConnectionString;
         var invocations = 0;
         await using NatsConnectionProvider provider = new (
             _ =>
