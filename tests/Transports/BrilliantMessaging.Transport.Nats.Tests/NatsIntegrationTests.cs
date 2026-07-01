@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -860,6 +861,86 @@ public sealed class NatsIntegrationTests
             TestContext.Current.CancellationToken
         );
         redelivered.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TypedPublishMapsCloudEventMetadataAndTraceContextForNatsWire()
+    {
+        await using var container = new NatsBuilder("nats:2.11-alpine")
+           .WithCommand("-js")
+           .Build();
+        await container.StartAsync(TestContext.Current.CancellationToken);
+
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(container.GetConnectionString())
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Publish<OrderPlaced>(target => target.ToSubject("orders.typed"))
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateConsumerAsync(
+            "ORDERS",
+            new ConsumerConfig("typed-inspector")
+            {
+                DurableName = "typed-inspector",
+                FilterSubject = "orders.typed",
+                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                DeliverPolicy = ConsumerConfigDeliverPolicy.All
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        // Listen to every activity source so the publish opens a recorded producer activity, which
+        // TraceContextHeaders.Inject then propagates onto the NATS wire as a traceparent header.
+        using ActivityListener listener = new ()
+        {
+            ShouldListenTo = static _ => true,
+            Sample = static (ref _) =>
+                ActivitySamplingResult.AllDataAndRecorded
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var target = provider.GetRequiredService<NatsTopology>().GetRequiredTarget<OrderPlaced>();
+        var eventId = Guid.Parse("6f5e4d3c-2b1a-4009-8f7e-6d5c4b3a2190");
+        CloudEventMetadata metadata = new (eventId, DateTimeOffset.UtcNow, "orders/42");
+
+        await target.PublishAsync(
+            new OrderPlaced { OrderId = "order-typed" },
+            in metadata,
+            "tests.order.placed",
+            "https://schemas.example/order",
+            TestContext.Current.CancellationToken
+        );
+
+        var received = await ReadSingleMessageAsync(
+            jetStream,
+            "ORDERS",
+            "typed-inspector",
+            TestContext.Current.CancellationToken
+        );
+        received.Subject.Should().Be("orders.typed");
+        var headers = GetHeaders(received);
+        HeaderValue(headers, "ce-type").Should().Be("tests.order.placed");
+        HeaderValue(headers, "ce-id").Should().Be(eventId.ToString());
+        HeaderValue(headers, "ce-source").Should().Be("/tests");
+        HeaderValue(headers, "ce-subject").Should().Be("orders/42");
+        HeaderValue(headers, "ce-dataschema").Should().Be("https://schemas.example/order");
+        HeaderValue(headers, "ce-specversion").Should().Be("1.0");
+        HeaderValue(headers, "message-id").Should().Be(eventId.ToString());
+        HeaderValue(headers, "content-type").Should().Contain("json");
+        HeaderValue(headers, "traceparent").Should().StartWith("00-");
     }
 
     private static async Task<INatsJSMsg<byte[]>> ReadSingleMessageAsync(
