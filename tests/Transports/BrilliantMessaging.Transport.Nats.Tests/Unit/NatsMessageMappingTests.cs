@@ -93,7 +93,7 @@ public sealed class NatsMessageMappingTests
             _ =>
             {
                 operations.Add("dead-letter");
-                return Task.CompletedTask;
+                return Task.FromResult(true);
             }
         );
         message.OnTerminate = () => operations.Add("term");
@@ -102,6 +102,7 @@ public sealed class NatsMessageMappingTests
 
         operations.Should().Equal("dead-letter", "term");
         message.TermCount.Should().Be(1);
+        message.LastTerminateReason.Should().Be("Dead-lettered by Brilliant Messaging.");
     }
 
     [Fact]
@@ -117,7 +118,7 @@ public sealed class NatsMessageMappingTests
             _ =>
             {
                 operations.Add("dead-letter");
-                return Task.CompletedTask;
+                return Task.FromResult(true);
             }
         );
         message.OnTerminate = () => operations.Add("term");
@@ -127,6 +128,25 @@ public sealed class NatsMessageMappingTests
         message.NakCount.Should().Be(0);
         operations.Should().Equal("dead-letter", "term");
         message.TermCount.Should().Be(1);
+        message.LastTerminateReason.Should().Be("Dead-lettered by Brilliant Messaging.");
+    }
+
+    [Fact]
+    public async Task Acknowledgement_RejectWithoutDeadLetterUsesTerminateReason()
+    {
+        FakeJetStreamMessage message = new ();
+        NatsMessageAcknowledgement acknowledgement = new (
+            message,
+            TimeSpan.FromSeconds(2),
+            1,
+            5,
+            _ => Task.FromResult(false)
+        );
+
+        await acknowledgement.NackAsync(requeue: false, TestContext.Current.CancellationToken);
+
+        message.TermCount.Should().Be(1);
+        message.LastTerminateReason.Should().Be("Terminated by Brilliant Messaging.");
     }
 
     private sealed class FakeJetStreamMessage : INatsJSMsg<byte[]>
@@ -136,6 +156,7 @@ public sealed class NatsMessageMappingTests
         public int NakCount { get; private set; }
         public int TermCount { get; private set; }
         public TimeSpan? LastNakDelay { get; private set; }
+        public string? LastTerminateReason { get; private set; }
         public string Subject => "orders.placed";
         public int Size => Data.Length;
         public byte[] Data { get; } = "body"u8.ToArray();
@@ -178,6 +199,7 @@ public sealed class NatsMessageMappingTests
         public ValueTask AckTerminateAsync(AckOpts? opts = null, CancellationToken cancellationToken = default)
         {
             TermCount++;
+            LastTerminateReason = opts?.TerminateReason;
             OnTerminate?.Invoke();
             return ValueTask.CompletedTask;
         }

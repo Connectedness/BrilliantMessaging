@@ -11,7 +11,7 @@ namespace BrilliantMessaging.Transport.Nats.Inbound;
 /// </summary>
 public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
 {
-    private readonly Func<CancellationToken, Task> _deadLetterAsync;
+    private readonly Func<CancellationToken, Task<bool>> _deadLetterAsync;
     private readonly uint _deliveryAttempt;
     private readonly int _maxDeliver;
     private readonly INatsJSMsg<byte[]> _message;
@@ -26,7 +26,7 @@ public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
         TimeSpan nakDelay,
         uint deliveryAttempt,
         int maxDeliver,
-        Func<CancellationToken, Task> deadLetterAsync
+        Func<CancellationToken, Task<bool>> deadLetterAsync
     )
     {
         _message = message ?? throw new ArgumentNullException(nameof(message));
@@ -62,8 +62,13 @@ public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
             return;
         }
 
-        await _deadLetterAsync(cancellationToken).ConfigureAwait(false);
-        AckOpts terminate = new () { TerminateReason = "Dead-lettered by Brilliant Messaging." };
+        var deadLettered = await _deadLetterAsync(cancellationToken).ConfigureAwait(false);
+        AckOpts terminate = new ()
+        {
+            TerminateReason = deadLettered ?
+                "Dead-lettered by Brilliant Messaging." :
+                "Terminated by Brilliant Messaging."
+        };
         await _message.AckTerminateAsync(terminate, cancellationToken).ConfigureAwait(false);
     }
 }
