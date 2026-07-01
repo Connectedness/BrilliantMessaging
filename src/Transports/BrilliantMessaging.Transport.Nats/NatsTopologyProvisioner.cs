@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Outbound;
 using BrilliantMessaging.Transport.Nats.Inbound;
 using NATS.Client.JetStream.Models;
 
@@ -14,6 +16,12 @@ namespace BrilliantMessaging.Transport.Nats;
 /// </summary>
 public sealed class NatsTopologyProvisioner : ITopologyProvisioner
 {
+    // Topology provisioning is not a messaging operation, so it stays outside the OpenTelemetry messaging
+    // conventions and keeps the brilliantmessaging.* tag scheme alongside its brilliantmessaging.outbound.topology.provisioning.* instruments.
+    private const string TransportNameTagName = "brilliantmessaging.outbound.transport.name";
+
+    private const string OutcomeTagName = "brilliantmessaging.outbound.outcome";
+
     private readonly NatsTopology _topology;
 
     /// <summary>
@@ -27,44 +35,94 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
     /// <inheritdoc />
     public async Task ProvisionAsync(CancellationToken cancellationToken = default)
     {
-        var jetStream = await _topology.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
-        List<string> mismatches = [];
+        var outcome = "success";
+        var activity =
+            OutboundDiagnostics.ActivitySource.StartActivity("brilliantmessaging.outbound.topology.provision");
+        var startedTimestamp = Stopwatch.GetTimestamp();
+        KeyValuePair<string, object?>[] attemptTags =
+        [
+            new (TransportNameTagName, NatsTopology.TransportNameValue)
+        ];
 
-        foreach (var stream in _topology.Streams)
+        OutboundDiagnostics.TopologyProvisioningAttempts.Add(1, attemptTags);
+        activity?.SetTag(TransportNameTagName, NatsTopology.TransportNameValue);
+
+        try
         {
-            if (_topology.ProvisioningMode == NatsTopologyProvisioningMode.AssertOnly)
+            var jetStream = await _topology.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
+            List<string> mismatches = [];
+
+            foreach (var stream in _topology.Streams)
             {
-                var existing = await jetStream
-                   .GetStreamAsync(stream.Name, cancellationToken: cancellationToken)
+                if (_topology.ProvisioningMode == NatsTopologyProvisioningMode.AssertOnly)
+                {
+                    var existing = await jetStream
+                       .GetStreamAsync(stream.Name, cancellationToken: cancellationToken)
+                       .ConfigureAwait(false);
+                    ValidateStreamMatches(stream, existing.Info.Config, mismatches);
+                    continue;
+                }
+
+                await jetStream
+                   .CreateOrUpdateStreamAsync(ToStreamConfig(stream), cancellationToken)
                    .ConfigureAwait(false);
-                ValidateStreamMatches(stream, existing.Info.Config, mismatches);
-                continue;
             }
 
-            await jetStream
-               .CreateOrUpdateStreamAsync(ToStreamConfig(stream), cancellationToken)
-               .ConfigureAwait(false);
-        }
-
-        foreach (var consumer in _topology.Consumers)
-        {
-            if (_topology.ProvisioningMode == NatsTopologyProvisioningMode.AssertOnly)
+            foreach (var consumer in _topology.Consumers)
             {
-                var existing = await jetStream
-                   .GetConsumerAsync(consumer.StreamName, consumer.DurableName, cancellationToken)
+                if (_topology.ProvisioningMode == NatsTopologyProvisioningMode.AssertOnly)
+                {
+                    var existing = await jetStream
+                       .GetConsumerAsync(consumer.StreamName, consumer.DurableName, cancellationToken)
+                       .ConfigureAwait(false);
+                    ValidateConsumerMatches(consumer, existing.Info.Config, mismatches);
+                    continue;
+                }
+
+                await jetStream
+                   .CreateOrUpdateConsumerAsync(consumer.StreamName, ToConsumerConfig(consumer), cancellationToken)
                    .ConfigureAwait(false);
-                ValidateConsumerMatches(consumer, existing.Info.Config, mismatches);
-                continue;
             }
 
-            await jetStream
-               .CreateOrUpdateConsumerAsync(consumer.StreamName, ToConsumerConfig(consumer), cancellationToken)
-               .ConfigureAwait(false);
-        }
+            if (mismatches.Count > 0)
+            {
+                throw new TopologyValidationException(mismatches);
+            }
 
-        if (mismatches.Count > 0)
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            throw new TopologyValidationException(mismatches);
+            outcome = "cancelled";
+            activity?.SetTag(OutcomeTagName, outcome);
+            throw;
+        }
+        catch
+        {
+            outcome = "failure";
+            OutboundDiagnostics.TopologyProvisioningFailures.Add(
+                1,
+                new[]
+                {
+                    new KeyValuePair<string, object?>(TransportNameTagName, NatsTopology.TransportNameValue),
+                    new KeyValuePair<string, object?>(OutcomeTagName, outcome)
+                }
+            );
+            activity?.SetStatus(ActivityStatusCode.Error);
+            activity?.SetTag(OutcomeTagName, outcome);
+            throw;
+        }
+        finally
+        {
+            KeyValuePair<string, object?>[] durationTags =
+            [
+                new (TransportNameTagName, NatsTopology.TransportNameValue),
+                new (OutcomeTagName, outcome)
+            ];
+            var durationMilliseconds = (Stopwatch.GetTimestamp() - startedTimestamp) * 1000d / Stopwatch.Frequency;
+            OutboundDiagnostics.TopologyProvisioningDuration.Record(durationMilliseconds, durationTags);
+            activity?.SetTag(OutcomeTagName, outcome);
+            activity?.Dispose();
         }
     }
 
