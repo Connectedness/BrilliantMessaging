@@ -134,14 +134,17 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
     {
         var expected = ToStreamConfig(stream);
 
-        if (!existing.Subjects.OrderBy(static subject => subject, StringComparer.Ordinal)
+        var existingSubjects = existing.Subjects ?? [];
+        var expectedSubjects = expected.Subjects ?? [];
+
+        if (!existingSubjects.OrderBy(static subject => subject, StringComparer.Ordinal)
                .SequenceEqual(
-                    expected.Subjects.OrderBy(static subject => subject, StringComparer.Ordinal),
+                    expectedSubjects.OrderBy(static subject => subject, StringComparer.Ordinal),
                     StringComparer.Ordinal
                 ))
         {
             mismatches.Add(
-                $"NATS stream '{stream.Name}' has subjects [{string.Join(", ", existing.Subjects)}] on the server, but the topology declares [{string.Join(", ", expected.Subjects)}]."
+                $"NATS stream '{stream.Name}' has subjects [{string.Join(", ", existingSubjects)}] on the server, but the topology declares [{string.Join(", ", expectedSubjects)}]."
             );
         }
 

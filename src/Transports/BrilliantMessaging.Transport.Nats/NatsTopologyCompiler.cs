@@ -222,7 +222,7 @@ public sealed class NatsTopologyCompiler
         );
     }
 
-    private OutboundTarget CreateTarget(
+    private static OutboundTarget CreateTarget(
         NatsOutboundTargetDefinition definition,
         string targetName,
         string topologyName,
@@ -465,7 +465,7 @@ public sealed class NatsTopologyCompiler
         }
     }
 
-    internal static bool IsValidSubject(string subject, bool allowWildcards)
+    private static bool IsValidSubject(string subject, bool allowWildcards)
     {
         if (string.IsNullOrWhiteSpace(subject) || subject.Contains(' '))
         {
@@ -500,12 +500,12 @@ public sealed class NatsTopologyCompiler
         return true;
     }
 
-    internal static bool Covers(IReadOnlyList<string> patterns, string subject)
+    private static bool Covers(IReadOnlyList<string> patterns, string subject)
     {
         return patterns.Any(pattern => Covers(pattern, subject));
     }
 
-    internal static bool Covers(string pattern, string subject)
+    private static bool Covers(string pattern, string subject)
     {
         var patternTokens = pattern.Split('.');
         var subjectTokens = subject.Split('.');

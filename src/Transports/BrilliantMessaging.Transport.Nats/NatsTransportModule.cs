@@ -15,8 +15,8 @@ using NATS.Client.Core;
 namespace BrilliantMessaging.Transport.Nats;
 
 /// <summary>
-/// Provides <c>AddNats*Topology</c> extension methods for JetStream-backed NATS messaging. Core NATS pub/sub is
-/// not implemented by this package.
+/// Provides <c>AddNats*Topology</c> extension methods for JetStream-backed NATS messaging. This package does
+/// not implement core NATS pub/sub.
 /// </summary>
 public static class NatsTransportModule
 {

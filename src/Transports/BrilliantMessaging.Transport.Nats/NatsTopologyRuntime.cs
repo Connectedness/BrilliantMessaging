@@ -85,7 +85,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
         catch (Exception exception)
         {
-            _logger?.LogDebug(exception, "NATS topology '{Topology}' stopped with cancelled workers.", _topology.Name);
+            _logger?.LogDebug(exception, "NATS topology '{Topology}' stopped with cancelled workers", _topology.Name);
         }
         finally
         {
@@ -210,7 +210,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
                     }
                     catch (Exception exception)
                     {
-                        _logger?.LogDebug(exception, "NATS AckProgress failed.");
+                        _logger?.LogDebug(exception, "NATS AckProgress failed");
                     }
                 }
             },
@@ -228,7 +228,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
     )
     {
         _logger?.LogWarning(
-            "NATS topology '{Topology}' consumer '{Consumer}' received a message with no matching handler; {Action}.",
+            "NATS topology '{Topology}' consumer '{Consumer}' received a message with no matching handler; {Action}",
             _topology.Name,
             consumer.DurableName,
             consumer.DeadLetterSubject is null ? "terminating it" : "dead-lettering it"
