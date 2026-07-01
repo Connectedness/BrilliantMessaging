@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
@@ -181,8 +180,21 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
             headers[GetCloudEventsHeaderName(CloudEventAttributeNames.DataSchema)] = envelope.DataSchema;
         }
 
-        TraceContextHeaders.Inject(new NatsHeaderDictionary(headers));
+        InjectTraceContext(headers);
         return headers;
+    }
+
+    private static void InjectTraceContext(NatsHeaders headers)
+    {
+        // The W3C propagator only ever writes into the carrier, so a plain dictionary is a sufficient sink;
+        // its entries are then copied onto the NATS headers. This avoids adapting NatsHeaders to the full
+        // IDictionary surface the propagator's carrier type nominally requires but never exercises.
+        Dictionary<string, string?> traceHeaders = new (StringComparer.Ordinal);
+        TraceContextHeaders.Inject(traceHeaders);
+        foreach (var traceHeader in traceHeaders)
+        {
+            headers[traceHeader.Key] = traceHeader.Value;
+        }
     }
 
     private static string GetCloudEventsHeaderName(string attributeName)
@@ -198,57 +210,5 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
         ) ?
             $"{CloudEventsWireHeaderPrefix}{headerName.Substring(CloudEventsInboundMessageInspector.CloudEventsHeaderPrefix.Length)}" :
             headerName;
-    }
-
-    private sealed class NatsHeaderDictionary : IDictionary<string, object?>
-    {
-        private readonly NatsHeaders _headers;
-
-        public NatsHeaderDictionary(NatsHeaders headers)
-        {
-            _headers = headers;
-        }
-
-        public object? this[string key]
-        {
-            get => _headers.TryGetValue(key, out var value) ? value.ToString() : null;
-            set => _headers[key] = value?.ToString();
-        }
-
-        public ICollection<string> Keys => _headers.Keys;
-        public ICollection<object?> Values => throw new NotSupportedException();
-        public int Count => _headers.Count;
-        public bool IsReadOnly => false;
-        public void Add(string key, object? value) => _headers.Add(key, value?.ToString());
-        public void Add(KeyValuePair<string, object?> item) => Add(item.Key, item.Value);
-        public void Clear() => _headers.Clear();
-        public bool Contains(KeyValuePair<string, object?> item) => _headers.ContainsKey(item.Key);
-        public bool ContainsKey(string key) => _headers.ContainsKey(key);
-        public void CopyTo(KeyValuePair<string, object?>[] array, int arrayIndex) => throw new NotSupportedException();
-
-        public IEnumerator<KeyValuePair<string, object?>> GetEnumerator()
-        {
-            foreach (var header in _headers)
-            {
-                yield return new KeyValuePair<string, object?>(header.Key, header.Value.ToString());
-            }
-        }
-
-        public bool Remove(string key) => _headers.Remove(key);
-        public bool Remove(KeyValuePair<string, object?> item) => Remove(item.Key);
-
-        public bool TryGetValue(string key, out object? value)
-        {
-            if (_headers.TryGetValue(key, out var headerValue))
-            {
-                value = headerValue.ToString();
-                return true;
-            }
-
-            value = null;
-            return false;
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
