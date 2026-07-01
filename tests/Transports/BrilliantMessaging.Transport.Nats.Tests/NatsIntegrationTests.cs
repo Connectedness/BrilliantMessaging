@@ -943,6 +943,68 @@ public sealed class NatsIntegrationTests
         HeaderValue(headers, "traceparent").Should().StartWith("00-");
     }
 
+    [Fact]
+    public async Task TypedPublishMapsCloudEventExtensionsForNatsWire()
+    {
+        await using var container = new NatsBuilder("nats:2.11-alpine")
+           .WithCommand("-js")
+           .Build();
+        await container.StartAsync(TestContext.Current.CancellationToken);
+
+        ServiceCollection services = new ();
+        services.AddSingleton<ExtensionEmittingSerializer>();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(container.GetConnectionString())
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Publish<OrderPlaced>(
+                        target => target.ToSubject("orders.ext").WithSerializer<ExtensionEmittingSerializer>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateConsumerAsync(
+            "ORDERS",
+            new ConsumerConfig("ext-inspector")
+            {
+                DurableName = "ext-inspector",
+                FilterSubject = "orders.ext",
+                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                DeliverPolicy = ConsumerConfigDeliverPolicy.All
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        var target = provider.GetRequiredService<NatsTopology>().GetRequiredTarget<OrderPlaced>();
+
+        await target.PublishAsync(
+            new OrderPlaced { OrderId = "order-ext" },
+            TestContext.Current.CancellationToken
+        );
+
+        var received = await ReadSingleMessageAsync(
+            jetStream,
+            "ORDERS",
+            "ext-inspector",
+            TestContext.Current.CancellationToken
+        );
+        received.Subject.Should().Be("orders.ext");
+        var headers = GetHeaders(received);
+        HeaderValue(headers, "ce-type").Should().Be("tests.order.placed");
+        HeaderValue(headers, "ce-partitionkey").Should().Be("orders-42");
+        HeaderValue(headers, "ce-tenant").Should().Be("acme");
+    }
+
     private static async Task<INatsJSMsg<byte[]>> ReadSingleMessageAsync(
         NatsJSContext jetStream,
         string streamName,
@@ -1015,6 +1077,39 @@ public sealed class NatsIntegrationTests
     private static string? HeaderValue(NatsHeaders headers, string name)
     {
         return headers.TryGetValue(name, out var value) ? value.ToString() : null;
+    }
+
+    private sealed class ExtensionEmittingSerializer : IMessageSerializer
+    {
+        public ValueTask<CloudEventEnvelope> SerializeAsync<T>(
+            T message,
+            in CloudEventMetadata metadata,
+            string? type,
+            string? dataSchema,
+            CancellationToken cancellationToken = default
+        )
+        {
+            Dictionary<string, string?> extensions = new (StringComparer.Ordinal)
+            {
+                ["partitionkey"] = "orders-42",
+                ["tenant"] = "acme"
+            };
+
+            CloudEventEnvelope envelope = new (
+                "1.0",
+                metadata.Id.ToString(),
+                metadata.Source ?? "/tests",
+                type ?? "tests.order.placed",
+                metadata.Time,
+                metadata.Subject,
+                "application/json",
+                dataSchema,
+                "{}"u8.ToArray(),
+                extensions
+            );
+
+            return new ValueTask<CloudEventEnvelope>(envelope);
+        }
     }
 
     private sealed class RecordingProbe
