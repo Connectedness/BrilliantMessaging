@@ -211,6 +211,141 @@ public sealed class NatsIntegrationTests
     }
 
     [Fact]
+    public async Task AckProgressKeepsLongRunningHandlerInFlight()
+    {
+        await using var container = new NatsBuilder("nats:2.11-alpine")
+           .WithCommand("-js")
+           .Build();
+        await container.StartAsync(TestContext.Current.CancellationToken);
+
+        SlowHandlerProbe probe = new ();
+        ServiceCollection services = new ();
+        services.AddSingleton(probe);
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(container.GetConnectionString())
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Publish<OrderPlaced>(target => target.ToSubject("orders.slow"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-slow-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.slow")
+                           .Concurrency(2)
+                           .MaxDeliver(2)
+                           .AckWait(TimeSpan.FromSeconds(2))
+                           .Handle<OrderPlaced, SlowOrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            var publisher = provider.GetRequiredService<IMessagePublisher>();
+            await publisher.PublishMessageAsync(
+                new OrderPlaced { OrderId = "order-slow" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+            var attempt = await probe.WaitForCompletionAsync(
+                TimeSpan.FromSeconds(15),
+                TestContext.Current.CancellationToken
+            );
+            attempt.Should().Be(1);
+
+            await Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+            probe.InvocationCount.Should().Be(1);
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ManualAcknowledgementSettlesJetStreamMessage()
+    {
+        await using var container = new NatsBuilder("nats:2.11-alpine")
+           .WithCommand("-js")
+           .Build();
+        await container.StartAsync(TestContext.Current.CancellationToken);
+
+        ManualAckProbe probe = new ();
+        ServiceCollection services = new ();
+        services.AddSingleton(probe);
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(container.GetConnectionString())
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Publish<OrderPlaced>(target => target.ToSubject("orders.manual"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-manual-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.manual")
+                           .Concurrency(2)
+                           .MaxDeliver(2)
+                           .AckWait(TimeSpan.FromSeconds(1))
+                           .Handle<OrderPlaced, ManualAckOrderPlacedHandler>(handler => handler.ManualAck())
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            var publisher = provider.GetRequiredService<IMessagePublisher>();
+            await publisher.PublishMessageAsync(
+                new OrderPlaced { OrderId = "order-manual" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+            var attempt = await probe.WaitAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
+            attempt.Should().Be(1);
+
+            await Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+            probe.InvocationCount.Should().Be(1);
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
     public async Task SerializedPublishMapsCloudEventHeadersForNatsWire()
     {
         await using var container = new NatsBuilder("nats:2.11-alpine")
@@ -561,6 +696,67 @@ public sealed class NatsIntegrationTests
         }
     }
 
+    private sealed class SlowHandlerProbe
+    {
+        private readonly TaskCompletionSource<uint> _completed =
+            new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private int _seen;
+
+        public int InvocationCount => Volatile.Read(ref _seen);
+
+        public async Task ObserveAsync(IncomingMessageContext context, CancellationToken cancellationToken)
+        {
+            var seen = Interlocked.Increment(ref _seen);
+            if (seen == 1)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(3500), cancellationToken).ConfigureAwait(false);
+                _completed.TrySetResult(context.Transport.DeliveryAttempt);
+            }
+        }
+
+        public async Task<uint> WaitForCompletionAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            var delay = Task.Delay(timeout, cancellationToken);
+            var completed = await Task.WhenAny(_completed.Task, delay).ConfigureAwait(false);
+            if (completed == delay)
+            {
+                throw new TimeoutException("Timed out waiting for the slow NATS handler.");
+            }
+
+            return await _completed.Task.ConfigureAwait(false);
+        }
+    }
+
+    private sealed class ManualAckProbe
+    {
+        private readonly TaskCompletionSource<uint> _received =
+            new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private int _seen;
+
+        public int InvocationCount => Volatile.Read(ref _seen);
+
+        public async Task AckAndRecordAsync(IncomingMessageContext context, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _seen);
+            await context.Acknowledgement.AckAsync(cancellationToken).ConfigureAwait(false);
+            _received.TrySetResult(context.Transport.DeliveryAttempt);
+        }
+
+        public async Task<uint> WaitAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            var delay = Task.Delay(timeout, cancellationToken);
+            var completed = await Task.WhenAny(_received.Task, delay).ConfigureAwait(false);
+            if (completed == delay)
+            {
+                throw new TimeoutException("Timed out waiting for a manually acknowledged NATS message.");
+            }
+
+            return await _received.Task.ConfigureAwait(false);
+        }
+    }
+
     private sealed class RecordingOrderPlacedHandler : IMessageHandler<OrderPlaced>
     {
         private readonly RecordingProbe _probe;
@@ -578,6 +774,44 @@ public sealed class NatsIntegrationTests
         {
             _probe.Record(message);
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class SlowOrderPlacedHandler : IMessageHandler<OrderPlaced>
+    {
+        private readonly SlowHandlerProbe _probe;
+
+        public SlowOrderPlacedHandler(SlowHandlerProbe probe)
+        {
+            _probe = probe;
+        }
+
+        public Task HandleAsync(
+            OrderPlaced message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return _probe.ObserveAsync(context, cancellationToken);
+        }
+    }
+
+    private sealed class ManualAckOrderPlacedHandler : IMessageHandler<OrderPlaced>
+    {
+        private readonly ManualAckProbe _probe;
+
+        public ManualAckOrderPlacedHandler(ManualAckProbe probe)
+        {
+            _probe = probe;
+        }
+
+        public Task HandleAsync(
+            OrderPlaced message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return _probe.AckAndRecordAsync(context, cancellationToken);
         }
     }
 
