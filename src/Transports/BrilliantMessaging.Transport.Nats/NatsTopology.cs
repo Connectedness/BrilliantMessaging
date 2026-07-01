@@ -136,7 +136,8 @@ public sealed class NatsTopology : Topology, IAsyncDisposable
     }
 
     /// <summary>
-    /// Finds an endpoint for the subject and CloudEvents discriminator.
+    /// Finds an endpoint for the transport source and CloudEvents discriminator.
+    /// For NATS, the source is the consumer filter subject when one is configured, otherwise the durable name.
     /// </summary>
     public bool TryGetEndpoint(string source, string discriminator, out NatsInboundEndpoint endpoint)
     {
