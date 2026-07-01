@@ -6,12 +6,13 @@ using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Core.Messaging.Outbound;
 using BrilliantMessaging.Transport.Nats.Inbound;
+using BrilliantMessaging.Transport.Nats.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NATS.Client.Core;
 using Xunit;
 
-namespace BrilliantMessaging.Transport.Nats.Tests;
+namespace BrilliantMessaging.Transport.Nats.Tests.Unit;
 
 public sealed class NatsTopologyCompilerTests
 {

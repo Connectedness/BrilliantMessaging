@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using BrilliantMessaging.Abstractions;
 using BrilliantMessaging.Core.Messaging.Inbound;
 
-namespace BrilliantMessaging.Transport.Nats.Tests;
+namespace BrilliantMessaging.Transport.Nats.Tests.TestSupport;
 
 public sealed record OrderPlaced : BaseCloudEvent
 {

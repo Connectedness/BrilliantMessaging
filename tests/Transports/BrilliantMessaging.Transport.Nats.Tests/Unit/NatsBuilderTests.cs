@@ -4,10 +4,11 @@ using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Core.Messaging.Outbound;
 using BrilliantMessaging.Transport.Nats.Inbound;
 using BrilliantMessaging.Transport.Nats.Outbound;
+using BrilliantMessaging.Transport.Nats.Tests.TestSupport;
 using FluentAssertions;
 using Xunit;
 
-namespace BrilliantMessaging.Transport.Nats.Tests;
+namespace BrilliantMessaging.Transport.Nats.Tests.Unit;
 
 public sealed class NatsBuilderTests
 {
