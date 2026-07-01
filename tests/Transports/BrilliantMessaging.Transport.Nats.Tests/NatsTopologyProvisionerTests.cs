@@ -187,4 +187,89 @@ public sealed class NatsTopologyProvisionerTests
 
         await act.Should().ThrowAsync<Exception>();
     }
+
+    [Fact]
+    public async Task AssertOnlyProvisioningReportsJetStreamResourceMismatches()
+    {
+        await using var container = new NatsBuilder("nats:2.11-alpine")
+           .WithCommand("-js")
+           .Build();
+        await container.StartAsync(TestContext.Current.CancellationToken);
+
+        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateStreamAsync(
+            new StreamConfig("ORDERS", ["orders.actual"])
+            {
+                Storage = StreamConfigStorage.Memory,
+                Retention = StreamConfigRetention.Interest,
+                DuplicateWindow = TimeSpan.FromMinutes(1),
+                MaxAge = TimeSpan.FromMinutes(1),
+                MaxMsgSize = 128,
+                NumReplicas = 1
+            },
+            TestContext.Current.CancellationToken
+        );
+        await jetStream.CreateOrUpdateConsumerAsync(
+            "ORDERS",
+            new ConsumerConfig("orders-worker")
+            {
+                DurableName = "orders-worker",
+                FilterSubject = "orders.actual",
+                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                AckWait = TimeSpan.FromSeconds(5),
+                MaxDeliver = 2,
+                MaxAckPending = 64
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(container.GetConnectionString())
+                   .Provisioning(NatsTopologyProvisioningMode.AssertOnly)
+                   .Stream(
+                        "ORDERS",
+                        stream => stream
+                           .Subject("orders.expected")
+                           .Storage(NatsStreamStorage.File)
+                           .Retention(NatsStreamRetention.Limits)
+                           .DuplicateWindow(TimeSpan.FromMinutes(2))
+                           .MaxAge(TimeSpan.FromMinutes(2))
+                           .MaxMessageSize(256)
+                           .Replicas(2)
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer
+                           .AckWait(TimeSpan.FromSeconds(10))
+                           .MaxDeliver(5)
+                           .MaxAckPending(128)
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var provisioner = provider.GetRequiredService<ITopologyProvisioner>();
+        var act = () => provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+
+        var exception = await act.Should().ThrowAsync<TopologyValidationException>();
+        exception.Which.ValidationErrors.Should()
+           .Contain(error => error.Contains("subjects", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("storage", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("retention", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("replicas", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("duplicate window", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("max age", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("max message size", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("AckWait", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("MaxDeliver", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("MaxAckPending", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("filter subject", StringComparison.Ordinal));
+    }
 }
