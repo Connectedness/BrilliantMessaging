@@ -8,7 +8,7 @@ using NATS.Client.Core;
 using NATS.Client.JetStream;
 using Xunit;
 
-namespace BrilliantMessaging.Transport.Nats.Tests;
+namespace BrilliantMessaging.Transport.Nats.Tests.Unit;
 
 public sealed class NatsMessageMappingTests
 {

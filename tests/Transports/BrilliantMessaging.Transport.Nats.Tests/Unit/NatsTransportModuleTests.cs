@@ -2,11 +2,12 @@ using System;
 using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.Transport.Nats.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace BrilliantMessaging.Transport.Nats.Tests;
+namespace BrilliantMessaging.Transport.Nats.Tests.Unit;
 
 public sealed class NatsTransportModuleTests
 {

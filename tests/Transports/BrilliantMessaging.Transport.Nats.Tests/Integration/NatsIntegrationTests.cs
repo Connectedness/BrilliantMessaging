@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Core.Messaging.Outbound;
+using BrilliantMessaging.Transport.Nats.Tests.TestSupport;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NATS.Client.Core;
@@ -15,7 +16,7 @@ using NATS.Client.JetStream.Models;
 using Testcontainers.Nats;
 using Xunit;
 
-namespace BrilliantMessaging.Transport.Nats.Tests;
+namespace BrilliantMessaging.Transport.Nats.Tests.Integration;
 
 public sealed class NatsIntegrationTests
 {
