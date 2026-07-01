@@ -33,6 +33,7 @@ All packages target `netstandard2.0`, so they happily light up on modern .NET as
 | `BrilliantMessaging.Abstractions`       | The CloudEvents contracts: `ICloudEvent` and `BaseCloudEvent`.                                              |
 | `BrilliantMessaging.Core`               | Publishing, consuming, message contracts, the topology model, and DI wiring.                                |
 | `BrilliantMessaging.Transport.InMemory` | A process-local, non-durable transport for tests, samples, local development, and workflow experimentation. |
+| `BrilliantMessaging.Transport.Nats`     | The NATS transport for JetStream-backed streams, durable consumers, and subject publishing.                 |
 | `BrilliantMessaging.Transport.RabbitMq` | The RabbitMQ transport — exchanges, queues, bindings, publishers, and consumers.                            |
 | `BrilliantMessaging.OpenTelemetry`      | One-line registration of Brilliant Messaging tracing and metrics with the OpenTelemetry SDK.                |
 
@@ -48,6 +49,12 @@ The in-memory transport is useful for tests and local process-only scenarios:
 
 ```bash
 dotnet add package BrilliantMessaging.Transport.InMemory
+```
+
+Use NATS when you want JetStream streams and durable consumers:
+
+```bash
+dotnet add package BrilliantMessaging.Transport.Nats
 ```
 
 Want distributed traces and metrics? Add the optional observability integration
@@ -94,6 +101,44 @@ builder
 
 For the full builder API, routing rules, retry/dead-letter behavior, broker inspection hooks,
 drain semantics, and shutdown behavior, see [In-memory transport](docs/in-memory-transport.md).
+
+## NATS transport
+
+`BrilliantMessaging.Transport.Nats` implements JetStream-backed NATS messaging. Core NATS pub/sub is not part of
+this transport: publishing waits for JetStream acknowledgement, and consuming uses pull-based durable consumers
+with explicit acknowledgement.
+
+```csharp
+using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Transport.Nats;
+
+builder
+    .Services
+    .AddBrilliantMessaging()
+    .UseCloudEvents(options => options.Source = "/shop/orders")
+    .MapMessageContracts(contracts =>
+        contracts.Map<OrderPlaced>("shop.order.placed"))
+    .AddNatsTopology(nats =>
+    {
+        nats.UseServer("nats://localhost:4222");
+
+        nats.Stream("ORDERS", stream => stream
+            .Subject("orders.*")
+            .DuplicateWindow(TimeSpan.FromMinutes(2)));
+
+        nats.Publish<OrderPlaced>(target => target
+            .ToSubject("orders.placed")
+            .UseMessageIdDeduplication());
+
+        nats.Consume("ORDERS", "orders-worker", consumer => consumer
+            .FilterSubject("orders.placed")
+            .DeadLetterSubject("orders.dead")
+            .Handle<OrderPlaced, OrderPlacedHandler>());
+    });
+```
+
+For setup, topology options, reliability semantics, deduplication, retry and dead-letter behavior, ordering, and
+long-running handler caveats, see [NATS transport](docs/nats-transport.md).
 
 ## Quick start
 
