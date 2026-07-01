@@ -148,12 +148,22 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             (uint) (message.Metadata?.NumDelivered ?? 1)
         );
 
-        if (!transportMessage.TryGetHeaderString(
-                $"{CloudEventsInboundMessageInspector.CloudEventsHeaderPrefix}type",
-                out var discriminator
-            ) ||
-            discriminator is null ||
-            !consumer.EndpointsByDiscriminator.TryGetValue(discriminator, out var endpoint))
+        using var scope = _serviceScopeFactory.CreateScope();
+
+        var inspector = scope.ServiceProvider.GetRequiredService<CloudEventsInboundMessageInspector>();
+        InboundMessageInspectionResult? inspectResult;
+        try
+        {
+            inspectResult = await inspector.InspectAsync(transportMessage, cancellationToken).ConfigureAwait(false);
+        }
+        catch (UnknownInboundMessageException)
+        {
+            await DeadLetterOrTerminateAsync(consumer, message, headers, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (inspectResult is null ||
+            !consumer.EndpointsByDiscriminator.TryGetValue(inspectResult.Discriminator, out var endpoint))
         {
             await DeadLetterOrTerminateAsync(consumer, message, headers, cancellationToken).ConfigureAwait(false);
             return;
@@ -168,7 +178,6 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             token => PublishDeadLetterAsync(consumer, message, headers, token)
         );
 
-        using var scope = _serviceScopeFactory.CreateScope();
         using var progress = StartAckProgress(message, consumer.AckWait, cancellationToken);
         IncomingMessageContext context = new (
             transportMessage,
@@ -176,8 +185,12 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             scope.ServiceProvider,
             acknowledgement,
             cancellationToken,
-            endpoint.MessageType
-        );
+            inspectResult.MessageType,
+            inspectResult.Items
+        )
+        {
+            Message = inspectResult.Message
+        };
         await _topology.Pipeline(context).ConfigureAwait(false);
     }
 
