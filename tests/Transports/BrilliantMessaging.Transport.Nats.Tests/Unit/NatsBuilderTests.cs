@@ -110,10 +110,10 @@ public sealed class NatsBuilderTests
         definition.MaxAckPending.Should().Be(99);
         definition.DeadLetterSubject.Should().Be("orders.dead");
         var handler = definition.Handlers.Should().ContainSingle().Which;
-        handler.MessageType.Should().Be(typeof(OrderPlaced));
-        handler.HandlerType.Should().Be(typeof(OrderPlacedHandler));
+        handler.MessageType.Should().Be<OrderPlaced>();
+        handler.HandlerType.Should().Be<OrderPlacedHandler>();
         handler.AckMode.Should().Be(MessageAckMode.Manual);
-        handler.DeserializerType.Should().Be(typeof(PayloadCodecMessageDeserializer));
+        handler.DeserializerType.Should().Be<PayloadCodecMessageDeserializer>();
     }
 
     [Theory]

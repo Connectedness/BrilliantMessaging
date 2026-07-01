@@ -65,6 +65,7 @@ public sealed class NatsTopologyCompilerTests
             );
         await using var provider = services.BuildServiceProvider();
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => provider.GetRequiredService<NatsTopology>();
 
         act.Should().Throw<TopologyValidationException>()
@@ -94,6 +95,7 @@ public sealed class NatsTopologyCompilerTests
             );
         await using var provider = services.BuildServiceProvider();
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => provider.GetRequiredService<NatsTopology>();
 
         act.Should().Throw<TopologyValidationException>()
@@ -116,6 +118,7 @@ public sealed class NatsTopologyCompilerTests
             );
         await using var provider = services.BuildServiceProvider();
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => provider.GetRequiredService<NatsTopology>();
 
         act.Should().Throw<TopologyValidationException>()
@@ -143,6 +146,7 @@ public sealed class NatsTopologyCompilerTests
             );
         await using var provider = services.BuildServiceProvider();
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => provider.GetRequiredService<NatsTopology>();
 
         act.Should().Throw<TopologyValidationException>()
@@ -179,6 +183,7 @@ public sealed class NatsTopologyCompilerTests
             );
         await using var provider = services.BuildServiceProvider();
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => provider.GetRequiredService<NatsTopology>();
 
         act.Should().Throw<TopologyValidationException>()
@@ -214,6 +219,7 @@ public sealed class NatsTopologyCompilerTests
             );
         await using var provider = services.BuildServiceProvider();
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => provider.GetRequiredService<NatsTopology>();
 
         act.Should().Throw<TopologyValidationException>()
@@ -242,6 +248,7 @@ public sealed class NatsTopologyCompilerTests
             );
         await using var provider = services.BuildServiceProvider();
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => provider.GetRequiredService<NatsTopology>();
 
         act.Should().Throw<InvalidOperationException>()
@@ -269,7 +276,9 @@ public sealed class NatsTopologyCompilerTests
         NatsTopologyCompiler compiler = new (
             provider.GetRequiredService<IMessageContractRegistry>(),
             provider.GetRequiredService<IMessageSerializer>(),
+            // ReSharper disable once AccessToDisposedClosure
             serializerType => (IMessageSerializer?) provider.GetService(serializerType),
+            // ReSharper disable once AccessToDisposedClosure
             serviceType => provider.GetService(serviceType) is not null
         );
         NatsConnectionProvider connectionProvider = new (_ => Task.FromResult(new NatsOpts()));

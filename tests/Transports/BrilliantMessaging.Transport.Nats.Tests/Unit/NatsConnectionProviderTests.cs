@@ -22,6 +22,7 @@ public sealed class NatsConnectionProviderTests
     {
         await using NatsConnectionProvider provider = new (_ => Task.FromResult<NatsOpts>(null!));
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => provider.GetJetStreamAsync(TestContext.Current.CancellationToken);
 
         var exception = await act.Should().ThrowAsync<TopologyValidationException>();
@@ -63,6 +64,7 @@ public sealed class NatsConnectionProviderTests
         };
         await using NatsConnectionProvider provider = new (_ => Task.FromResult(options));
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => provider.GetJetStreamAsync(TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<NatsException>();

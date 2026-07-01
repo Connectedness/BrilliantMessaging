@@ -136,7 +136,7 @@ public sealed class NatsConfigurationBuilderTests
         configuration.MessageContractDialect!.GetDiscriminator(typeof(OrderPlaced)).Should().Be("local.order.placed");
         configuration.Streams.Should().ContainSingle().Which.Name.Should().Be("ORDERS");
         configuration.Consumers.Should().ContainSingle().Which.DurableName.Should().Be("orders-worker");
-        configuration.DeserializationMiddlewareType.Should().Be(typeof(PassThroughMiddleware));
+        configuration.DeserializationMiddlewareType.Should().Be<PassThroughMiddleware>();
         configuration.ShutdownTimeout.Should().Be(TimeSpan.FromSeconds(7));
         configuration.ProvisioningMode.Should().Be(NatsTopologyProvisioningMode.AssertOnly);
         configuration.AckProgressEnabled.Should().BeFalse();
@@ -243,7 +243,7 @@ public sealed class NatsConfigurationBuilderTests
         var configuration = ((IBuildable<NatsInboundHandlerConfiguration>) builder).Build();
 
         configuration.AckMode.Should().Be(MessageAckMode.Auto);
-        configuration.DeserializerType.Should().Be(typeof(RecordingDeserializer));
+        configuration.DeserializerType.Should().Be<RecordingDeserializer>();
     }
 
     [Fact]
