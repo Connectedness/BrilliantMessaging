@@ -13,21 +13,33 @@ using Microsoft.Extensions.DependencyInjection;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
-using Testcontainers.Nats;
 using Xunit;
 
 namespace BrilliantMessaging.Transport.Nats.Tests.Integration;
 
-public sealed class NatsIntegrationTests
+[Collection<NatsCollection>]
+public sealed class NatsIntegrationTests : IAsyncLifetime
 {
+    private readonly NatsFixture _fixture;
+
+    public NatsIntegrationTests(NatsFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    public async ValueTask InitializeAsync()
+    {
+        await _fixture.ResetAsync(TestContext.Current.CancellationToken);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        return ValueTask.CompletedTask;
+    }
+
     [Fact]
     public async Task PublishConsumeAndProvisionDurableConsumer()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         RecordingProbe probe = new ();
         ServiceCollection services = new ();
         services.AddSingleton(probe);
@@ -36,7 +48,7 @@ public sealed class NatsIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.placed"))
                    .Consume(
@@ -84,11 +96,6 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task HandlerFailureDeadLettersAndSettlesOriginal()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         RecordingProbe probe = new ();
         ServiceCollection services = new ();
         services.AddSingleton(probe);
@@ -97,7 +104,7 @@ public sealed class NatsIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.placed"))
                    .Consume(
@@ -153,11 +160,6 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task RetryableFailureIsRedelivered()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         RedeliveryProbe probe = new ();
         ServiceCollection services = new ();
         services.AddSingleton(probe);
@@ -166,7 +168,7 @@ public sealed class NatsIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.placed"))
                    .Consume(
@@ -215,11 +217,6 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task SingleConsumerDispatchesMultipleMessageTypesByCloudEventsDiscriminator()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         MultiMessageProbe probe = new ();
         ServiceCollection services = new ();
         services.AddSingleton(probe);
@@ -234,7 +231,7 @@ public sealed class NatsIntegrationTests
             )
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.multi"))
                    .Publish<OrderCancelled>(target => target.ToSubject("orders.multi"))
@@ -295,11 +292,6 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task AckProgressKeepsLongRunningHandlerInFlight()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         SlowHandlerProbe probe = new ();
         ServiceCollection services = new ();
         services.AddSingleton(probe);
@@ -308,7 +300,7 @@ public sealed class NatsIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.slow"))
                    .Consume(
@@ -364,11 +356,6 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task DisabledAckProgressAllowsLongRunningHandlerToBeRedelivered()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         NoProgressProbe probe = new ();
         ServiceCollection services = new ();
         services.AddSingleton(probe);
@@ -377,7 +364,7 @@ public sealed class NatsIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .AckProgress(false)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.no-progress"))
@@ -432,11 +419,6 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task ManualAcknowledgementSettlesJetStreamMessage()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         ManualAckProbe probe = new ();
         ServiceCollection services = new ();
         services.AddSingleton(probe);
@@ -445,7 +427,7 @@ public sealed class NatsIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.manual"))
                    .Consume(
@@ -498,11 +480,6 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task ManualAcknowledgementWithoutSettlementIsRedelivered()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         ManualNoAckProbe probe = new ();
         ServiceCollection services = new ();
         services.AddSingleton(probe);
@@ -511,7 +488,7 @@ public sealed class NatsIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.unsettled"))
                    .Consume(
@@ -564,18 +541,13 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task SerializedPublishMapsCloudEventHeadersForNatsWire()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         ServiceCollection services = new ();
         services.AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests")
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.raw").UseMessageIdDeduplication())
             );
@@ -586,7 +558,7 @@ public sealed class NatsIntegrationTests
             await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
         }
 
-        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
         NatsJSContext jetStream = new (connection);
         await jetStream.CreateOrUpdateConsumerAsync(
             "ORDERS",
@@ -636,18 +608,13 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task MessageIdDeduplicationStoresOnlyOneMessageForSameCloudEventId()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         ServiceCollection services = new ();
         services.AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests")
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream(
                         "ORDERS",
                         stream => stream.Subject("orders.*").DuplicateWindow(TimeSpan.FromMinutes(1))
@@ -663,7 +630,7 @@ public sealed class NatsIntegrationTests
             await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
         }
 
-        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
         NatsJSContext jetStream = new (connection);
         await jetStream.CreateOrUpdateConsumerAsync(
             "ORDERS",
@@ -700,18 +667,13 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task UnknownDiscriminatorIsDeadLetteredAndOriginalDeliveryIsTerminated()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         ServiceCollection services = new ();
         services.AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests")
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Consume(
                         "ORDERS",
@@ -729,7 +691,7 @@ public sealed class NatsIntegrationTests
             await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
         }
 
-        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
         NatsJSContext jetStream = new (connection);
         await jetStream.CreateOrUpdateConsumerAsync(
             "ORDERS",
@@ -788,18 +750,13 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task UnknownDiscriminatorWithoutDeadLetterTerminatesOriginalDelivery()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         ServiceCollection services = new ();
         services.AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests")
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Consume(
                         "ORDERS",
@@ -818,7 +775,7 @@ public sealed class NatsIntegrationTests
             await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
         }
 
-        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
         NatsJSContext jetStream = new (connection);
         var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
         foreach (var runtime in runtimes)
@@ -867,18 +824,13 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task TypedPublishMapsCloudEventMetadataAndTraceContextForNatsWire()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         ServiceCollection services = new ();
         services.AddBrilliantMessaging()
            .UseCloudEvents(options => options.Source = "/tests")
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.typed"))
             );
@@ -889,7 +841,7 @@ public sealed class NatsIntegrationTests
             await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
         }
 
-        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
         NatsJSContext jetStream = new (connection);
         await jetStream.CreateOrUpdateConsumerAsync(
             "ORDERS",
@@ -947,11 +899,6 @@ public sealed class NatsIntegrationTests
     [Fact]
     public async Task TypedPublishMapsCloudEventExtensionsForNatsWire()
     {
-        await using var container = new NatsBuilder("nats:2.11-alpine")
-           .WithCommand("-js")
-           .Build();
-        await container.StartAsync(TestContext.Current.CancellationToken);
-
         ServiceCollection services = new ();
         services.AddSingleton<ExtensionEmittingSerializer>();
         services.AddBrilliantMessaging()
@@ -959,7 +906,7 @@ public sealed class NatsIntegrationTests
            .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
            .AddNatsTopology(
                 topology => topology
-                   .UseServer(container.GetConnectionString())
+                   .UseServer(_fixture.ConnectionString)
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Publish<OrderPlaced>(
                         target => target.ToSubject("orders.ext").WithSerializer<ExtensionEmittingSerializer>()
@@ -972,7 +919,7 @@ public sealed class NatsIntegrationTests
             await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
         }
 
-        await using NatsConnection connection = new (new NatsOpts { Url = container.GetConnectionString() });
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
         NatsJSContext jetStream = new (connection);
         await jetStream.CreateOrUpdateConsumerAsync(
             "ORDERS",
