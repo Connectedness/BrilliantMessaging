@@ -306,7 +306,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
 
         var jetStream = await _topology.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
-        await jetStream
+        var acknowledgement = await jetStream
            .PublishAsync(
                 consumer.DeadLetterSubject,
                 message.Data,
@@ -316,6 +316,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
                 cancellationToken
             )
            .ConfigureAwait(false);
+        acknowledgement.EnsureSuccess();
         return true;
     }
 
