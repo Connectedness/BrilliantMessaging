@@ -96,7 +96,7 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
         var acknowledgement = await jetStream
            .PublishAsync(
                 _subject,
-                envelope.Data.ToArray(),
+                envelope.Data,
                 serializer: null,
                 options,
                 headers,
