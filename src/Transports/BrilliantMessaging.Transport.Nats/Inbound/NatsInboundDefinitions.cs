@@ -16,6 +16,7 @@ public sealed record NatsInboundConsumerDefinition(
     int MaxDeliver,
     int MaxAckPending,
     string? DeadLetterSubject,
+    RedeliveryClassifier? RedeliveryClassifier,
     ImmutableArray<NatsInboundHandlerDefinition> Handlers
 );
 

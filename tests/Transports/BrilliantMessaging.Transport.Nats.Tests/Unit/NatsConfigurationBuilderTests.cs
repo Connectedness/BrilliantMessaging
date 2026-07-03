@@ -221,10 +221,12 @@ public sealed class NatsConfigurationBuilderTests
 
         var definition = ((IBuildable<NatsInboundConsumerDefinition>) builder).Build();
 
+        definition.RedeliveryClassifier.Should().NotBeNull();
+        definition.RedeliveryClassifier!.ShouldRetry(new TimeoutException()).Should().BeTrue();
+        definition.RedeliveryClassifier.ShouldRetry(new ApplicationException()).Should().BeFalse();
+
         var defaultHandler = definition.Handlers[0];
-        defaultHandler.RedeliveryClassifier.Should().NotBeNull();
-        defaultHandler.RedeliveryClassifier!.ShouldRetry(new TimeoutException()).Should().BeTrue();
-        defaultHandler.RedeliveryClassifier.ShouldRetry(new ApplicationException()).Should().BeFalse();
+        defaultHandler.RedeliveryClassifier.Should().BeNull();
 
         var overrideHandler = definition.Handlers[1];
         overrideHandler.EndpointName.Should().Be("cancelled");

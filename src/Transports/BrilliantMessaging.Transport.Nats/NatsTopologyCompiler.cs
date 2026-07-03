@@ -119,7 +119,14 @@ public sealed class NatsTopologyCompiler
             {
                 var discriminator = messageContractRegistry.GetDiscriminator(handler.MessageType);
                 var endpointName = handler.EndpointName ?? $"{consumer.DurableName}:{discriminator}";
-                var endpoint = CreateEndpoint(handler, topologyName, source, endpointName, discriminator);
+                var endpoint = CreateEndpoint(
+                    handler,
+                    consumer.RedeliveryClassifier,
+                    topologyName,
+                    source,
+                    endpointName,
+                    discriminator
+                );
                 endpointsByDiscriminator.Add(discriminator, endpoint);
                 endpointsByName.Add(endpoint.Name, endpoint);
                 dispatchIndex.Add(new InboundEndpointSelectionKey(source, discriminator), endpoint);
@@ -188,6 +195,7 @@ public sealed class NatsTopologyCompiler
 
     private NatsInboundEndpoint CreateEndpoint(
         NatsInboundHandlerDefinition handler,
+        RedeliveryClassifier? consumerRedeliveryClassifier,
         string topologyName,
         string source,
         string endpointName,
@@ -197,12 +205,13 @@ public sealed class NatsTopologyCompiler
         var closedMethod = CreateEndpointMethod.MakeGenericMethod(handler.MessageType);
         return (NatsInboundEndpoint) closedMethod.Invoke(
             null,
-            [handler, topologyName, source, endpointName, discriminator]
+            [handler, consumerRedeliveryClassifier, topologyName, source, endpointName, discriminator]
         )!;
     }
 
     private static NatsInboundEndpoint CreateEndpointCore<TMessage>(
         NatsInboundHandlerDefinition handler,
+        RedeliveryClassifier? consumerRedeliveryClassifier,
         string topologyName,
         string source,
         string endpointName,
@@ -218,7 +227,7 @@ public sealed class NatsTopologyCompiler
             discriminator,
             handler.HandlerInvocation,
             handler.AckMode,
-            handler.RedeliveryClassifier ?? RedeliveryClassifier.RetryUnlessPoison
+            handler.RedeliveryClassifier ?? consumerRedeliveryClassifier ?? RedeliveryClassifier.RetryUnlessPoison
         );
     }
 

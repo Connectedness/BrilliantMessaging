@@ -45,6 +45,7 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
             _maxDeliver,
             _maxAckPending,
             _deadLetterSubject,
+            _redeliveryClassifier,
             _handlers.ToImmutable()
         );
     }
@@ -183,7 +184,7 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
                 MessageHandlerInvocation.Create<TMessage, THandler>(),
                 configuration.DeserializerType,
                 configuration.AckMode,
-                configuration.RedeliveryClassifier ?? _redeliveryClassifier
+                configuration.RedeliveryClassifier
             )
         );
         return this;
