@@ -20,6 +20,8 @@ namespace BrilliantMessaging.Transport.Nats;
 /// </summary>
 public sealed class NatsTopologyRuntime : ITopologyRuntime
 {
+    private static readonly TimeSpan ConsumerRecoveryDelay = TimeSpan.FromSeconds(1);
+
     private readonly ILogger<NatsTopologyRuntime>? _logger;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly NatsTopology _topology;
@@ -99,23 +101,43 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
 
     private async Task RunConsumerAsync(NatsInboundConsumer configuredConsumer, CancellationToken cancellationToken)
     {
-        var jetStream = await _topology.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
-        var consumer = await jetStream
-           .GetConsumerAsync(configuredConsumer.StreamName, configuredConsumer.DurableName, cancellationToken)
-           .ConfigureAwait(false);
         NatsJSConsumeOpts options = new ()
         {
             MaxMsgs = 512,
             Expires = TimeSpan.FromSeconds(30)
         };
 
-        await foreach (var message in consumer
-                          .ConsumeAsync<byte[]>(serializer: null, options, cancellationToken)
-                          .ConfigureAwait(false))
+        while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                await DispatchAsync(configuredConsumer, message, cancellationToken).ConfigureAwait(false);
+                var jetStream = await _topology.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
+                var consumer = await jetStream
+                   .GetConsumerAsync(configuredConsumer.StreamName, configuredConsumer.DurableName, cancellationToken)
+                   .ConfigureAwait(false);
+
+                await foreach (var message in consumer
+                                  .ConsumeAsync<byte[]>(serializer: null, options, cancellationToken)
+                                  .ConfigureAwait(false))
+                {
+                    try
+                    {
+                        await DispatchAsync(configuredConsumer, message, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger?.LogError(
+                            exception,
+                            "NATS topology '{Topology}' consumer '{Consumer}' failed while processing a message",
+                            _topology.Name,
+                            configuredConsumer.DurableName
+                        );
+                    }
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -123,13 +145,15 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             }
             catch (Exception exception)
             {
-                _logger?.LogError(
+                _logger?.LogWarning(
                     exception,
-                    "NATS topology '{Topology}' consumer '{Consumer}' failed while processing a message",
+                    "NATS topology '{Topology}' consumer '{Consumer}' consume loop failed; restarting",
                     _topology.Name,
                     configuredConsumer.DurableName
                 );
             }
+
+            await Task.Delay(ConsumerRecoveryDelay, cancellationToken).ConfigureAwait(false);
         }
     }
 
