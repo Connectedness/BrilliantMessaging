@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
@@ -27,7 +26,6 @@ public sealed class NatsTopology : Topology, IAsyncDisposable
     public const string DefaultInboundName = "default-nats-inbound";
 
     private readonly NatsConnectionProvider _connectionProvider;
-    private readonly IReadOnlyDictionary<InboundEndpointSelectionKey, NatsInboundEndpoint> _dispatchIndex;
     private int _disposed;
 
     /// <summary>
@@ -41,7 +39,6 @@ public sealed class NatsTopology : Topology, IAsyncDisposable
         IReadOnlyList<OutboundTarget> targets,
         IReadOnlyList<NatsInboundConsumer> consumers,
         IReadOnlyList<NatsInboundEndpoint> endpoints,
-        IReadOnlyDictionary<InboundEndpointSelectionKey, NatsInboundEndpoint> dispatchIndex,
         MessageDelegate pipeline,
         TimeSpan shutdownTimeout,
         NatsTopologyProvisioningMode provisioningMode,
@@ -55,7 +52,6 @@ public sealed class NatsTopology : Topology, IAsyncDisposable
         Targets = targets ?? throw new ArgumentNullException(nameof(targets));
         Consumers = consumers ?? throw new ArgumentNullException(nameof(consumers));
         Endpoints = endpoints ?? throw new ArgumentNullException(nameof(endpoints));
-        _dispatchIndex = dispatchIndex ?? throw new ArgumentNullException(nameof(dispatchIndex));
         Pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
         ShutdownTimeout = shutdownTimeout;
         ProvisioningMode = provisioningMode;
@@ -108,12 +104,6 @@ public sealed class NatsTopology : Topology, IAsyncDisposable
     /// </summary>
     public bool AckProgressEnabled { get; }
 
-    /// <summary>
-    /// Gets the consumers grouped by stream.
-    /// </summary>
-    public IEnumerable<IGrouping<string, NatsInboundConsumer>> ConsumersByStream =>
-        Consumers.GroupBy(static consumer => consumer.StreamName, StringComparer.Ordinal);
-
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
@@ -133,14 +123,5 @@ public sealed class NatsTopology : Topology, IAsyncDisposable
     )
     {
         return _connectionProvider.GetJetStreamAsync(cancellationToken);
-    }
-
-    /// <summary>
-    /// Finds an endpoint for the transport source and CloudEvents discriminator.
-    /// For NATS, the source is the consumer filter subject when one is configured, otherwise the durable name.
-    /// </summary>
-    public bool TryGetEndpoint(string source, string discriminator, out NatsInboundEndpoint endpoint)
-    {
-        return _dispatchIndex.TryGetValue(new InboundEndpointSelectionKey(source, discriminator), out endpoint!);
     }
 }

@@ -74,9 +74,8 @@ public sealed class NatsTopologyCompiler
 
         var pipeline = BuildPipeline(configuration);
         Dictionary<string, InboundEndpoint> endpointsByName = new (StringComparer.Ordinal);
-        Dictionary<InboundEndpointSelectionKey, NatsInboundEndpoint> dispatchIndex = new ();
         var consumers =
-            CompileConsumers(topologyName, configuration, effectiveRegistry, endpointsByName, dispatchIndex);
+            CompileConsumers(topologyName, configuration, effectiveRegistry, endpointsByName);
         var (targets, defaultTargets, namedTargets) = CompileTargets(
             topologyName,
             configuration,
@@ -93,7 +92,6 @@ public sealed class NatsTopologyCompiler
             targets,
             consumers,
             consumers.SelectMany(static consumer => consumer.EndpointsByDiscriminator.Values).Distinct().ToList(),
-            dispatchIndex,
             pipeline,
             configuration.ShutdownTimeout,
             configuration.ProvisioningMode,
@@ -106,8 +104,7 @@ public sealed class NatsTopologyCompiler
         string topologyName,
         NatsTopologyConfiguration configuration,
         IMessageContractRegistry messageContractRegistry,
-        IDictionary<string, InboundEndpoint> endpointsByName,
-        IDictionary<InboundEndpointSelectionKey, NatsInboundEndpoint> dispatchIndex
+        IDictionary<string, InboundEndpoint> endpointsByName
     )
     {
         List<NatsInboundConsumer> consumers = [];
@@ -129,7 +126,6 @@ public sealed class NatsTopologyCompiler
                 );
                 endpointsByDiscriminator.Add(discriminator, endpoint);
                 endpointsByName.Add(endpoint.Name, endpoint);
-                dispatchIndex.Add(new InboundEndpointSelectionKey(source, discriminator), endpoint);
             }
 
             consumers.Add(
