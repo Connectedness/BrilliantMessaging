@@ -9,6 +9,7 @@ using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Core.Messaging.Outbound;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
+using NATS.Client.JetStream.Models;
 
 namespace BrilliantMessaging.Transport.Nats.Outbound;
 
@@ -66,7 +67,7 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
         var headers = CreateHeaders(message.Headers, message.ContentType, message.ContentEncoding, message.MessageId);
         var options = CreatePublishOptions(message.MessageId);
         var jetStream = await _connectionProvider.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
-        await jetStream
+        var acknowledgement = await jetStream
            .PublishAsync(
                 _subject,
                 message.Body,
@@ -76,6 +77,7 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
                 cancellationToken
             )
            .ConfigureAwait(false);
+        EnsureAccepted(acknowledgement);
     }
 
     /// <inheritdoc />
@@ -91,7 +93,7 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
         var headers = CreateCloudEventHeaders(envelope);
         var options = CreatePublishOptions(envelope.Id);
         var jetStream = await _connectionProvider.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
-        await jetStream
+        var acknowledgement = await jetStream
            .PublishAsync(
                 _subject,
                 envelope.Data.ToArray(),
@@ -101,6 +103,15 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
                 cancellationToken
             )
            .ConfigureAwait(false);
+        EnsureAccepted(acknowledgement);
+    }
+
+    private void EnsureAccepted(PubAckResponse acknowledgement)
+    {
+        if (acknowledgement.Error is not null || !acknowledgement.Duplicate || !_messageIdDeduplication)
+        {
+            acknowledgement.EnsureSuccess();
+        }
     }
 
     private NatsJSPubOpts? CreatePublishOptions(string? messageId)
