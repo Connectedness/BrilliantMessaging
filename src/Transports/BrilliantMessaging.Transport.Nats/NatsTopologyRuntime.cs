@@ -174,7 +174,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             (uint) (message.Metadata?.NumDelivered ?? 1)
         );
 
-        using var scope = _serviceScopeFactory.CreateScope();
+        await using var scope = _serviceScopeFactory.CreateAsyncScope();
 
         var inspector = scope.ServiceProvider.GetRequiredService<CloudEventsInboundMessageInspector>();
         InboundMessageInspectionResult? inspectResult;
