@@ -137,6 +137,7 @@ public sealed class NatsTopologyCompiler
                     consumer.AckWait,
                     consumer.MaxDeliver,
                     consumer.MaxAckPending,
+                    consumer.MaxBufferedMessages,
                     consumer.DeadLetterSubject,
                     endpointsByDiscriminator
                 )

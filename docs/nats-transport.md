@@ -59,7 +59,7 @@ Outbound targets use literal subjects through `ToSubject(...)`; wildcards are re
 
 Streams configure storage, retention, replicas, and duplicate windows. Consumers are pull-based durable JetStream
 consumers. A consumer references a stream and durable name, can set an optional filter subject, and can configure
-`AckWait`, `MaxDeliver`, and `MaxAckPending`.
+`AckWait`, `MaxDeliver`, `MaxAckPending`, and `MaxBufferedMessages`.
 
 Brilliant Messaging provisions streams and durable consumers by default. Use
 `Provisioning(NatsTopologyProvisioningMode.AssertOnly)` when JetStream infrastructure is managed externally and
@@ -99,6 +99,15 @@ consumers, retries, delayed redelivery, or dead-letter routing are involved.
 Long-running handlers are kept in-flight by periodic JetStream `AckProgress` while the handler runs. This is on
 by default and can be disabled with `AckProgress(false)`. If it is disabled, size `AckWait` to cover the slowest
 handler.
+
+Each consumer worker pulls up to `MaxBufferedMessages` messages (default 8) into a client-side buffer and
+dispatches them sequentially. Only the message currently in a handler is heartbeated; buffered messages keep
+counting against `AckWait` from the moment the server delivered them. Size the buffer so that
+`MaxBufferedMessages × worst-case handler duration` stays well below `AckWait`, otherwise buffered messages are
+redelivered while their first delivery is still queued, causing duplicate processing. Larger buffers only hide
+fetch round-trip latency; they do not increase processing throughput — use `Concurrency` for that. The total
+client-side buffer per consumer is `Concurrency × MaxBufferedMessages`, and the server additionally caps
+outstanding deliveries at `MaxAckPending`.
 
 NATS server maximum payload is 1 MB by default. Increase the server limit and stream policy deliberately before
 publishing larger messages.

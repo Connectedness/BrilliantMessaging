@@ -34,6 +34,7 @@ public sealed class NatsTopologyCompilerTests
                         "orders-worker",
                         consumer => consumer
                            .FilterSubject("orders.placed")
+                           .MaxBufferedMessages(16)
                            .DeadLetterSubject("orders.dead")
                            .Handle<OrderPlaced, OrderPlacedHandler>()
                     )
@@ -46,7 +47,9 @@ public sealed class NatsTopologyCompilerTests
         topology.Streams.Should().ContainSingle().Which.Subjects.Should().Contain("orders.*");
         topology.GetRequiredTarget<OrderPlaced>().Name.Should().Contain("orders.placed");
         topology.GetRequiredTarget<OrderPlaced>("audit").Name.Should().Be("audit");
-        topology.Consumers.Should().ContainSingle().Which.DurableName.Should().Be("orders-worker");
+        var compiledConsumer = topology.Consumers.Should().ContainSingle().Which;
+        compiledConsumer.DurableName.Should().Be("orders-worker");
+        compiledConsumer.MaxBufferedMessages.Should().Be(16);
         topology.Endpoints.Should().ContainSingle().Which.Discriminator.Should().Be("tests.order.placed");
     }
 
@@ -363,6 +366,7 @@ public sealed class NatsTopologyCompilerTests
             TimeSpan.FromSeconds(17),
             9,
             42,
+            16,
             "orders.dead",
             new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal)
         );

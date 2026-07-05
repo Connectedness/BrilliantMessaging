@@ -15,6 +15,7 @@ public sealed record NatsInboundConsumerDefinition(
     TimeSpan AckWait,
     int MaxDeliver,
     int MaxAckPending,
+    int MaxBufferedMessages,
     string? DeadLetterSubject,
     RedeliveryClassifier? RedeliveryClassifier,
     ImmutableArray<NatsInboundHandlerDefinition> Handlers

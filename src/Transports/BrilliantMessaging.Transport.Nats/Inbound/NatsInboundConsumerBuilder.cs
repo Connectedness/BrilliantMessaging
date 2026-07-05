@@ -21,6 +21,7 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
     private string? _deadLetterSubject;
     private string? _filterSubject;
     private int _maxAckPending = 1024;
+    private int _maxBufferedMessages = NatsTopologyBuilderDefaults.DefaultMaxBufferedMessages;
     private int _maxDeliver = 5;
     private RedeliveryClassifier? _redeliveryClassifier;
 
@@ -44,6 +45,7 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
             _ackWait,
             _maxDeliver,
             _maxAckPending,
+            _maxBufferedMessages,
             _deadLetterSubject,
             _redeliveryClassifier,
             _handlers.ToImmutable()
@@ -116,6 +118,26 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
         }
 
         _maxAckPending = maxAckPending;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets how many messages each worker buffers client-side per pull request. Buffered messages are not
+    /// heartbeated while they wait for the sequential dispatch loop, so keep
+    /// <c>maxBufferedMessages × worst-case handler duration</c> well below AckWait to avoid redeliveries.
+    /// </summary>
+    public NatsInboundConsumerBuilder MaxBufferedMessages(int maxBufferedMessages)
+    {
+        if (maxBufferedMessages <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxBufferedMessages),
+                maxBufferedMessages,
+                "The value must be positive."
+            );
+        }
+
+        _maxBufferedMessages = maxBufferedMessages;
         return this;
     }
 

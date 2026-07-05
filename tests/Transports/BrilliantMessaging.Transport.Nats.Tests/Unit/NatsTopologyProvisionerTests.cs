@@ -161,6 +161,7 @@ public sealed class NatsTopologyProvisionerTests
             TimeSpan.FromSeconds(30),
             5,
             1024,
+            8,
             null,
             new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal)
         );

@@ -112,9 +112,12 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         CancellationToken cancellationToken
     )
     {
+        // MaxMsgs bounds the client-side buffer per worker. Buffered messages are not heartbeated (only the
+        // in-flight one gets AckProgress), so a large buffer would let the tail exceed AckWait while waiting
+        // for the sequential dispatch loop.
         NatsJSConsumeOpts options = new ()
         {
-            MaxMsgs = 512,
+            MaxMsgs = configuredConsumer.MaxBufferedMessages,
             Expires = TimeSpan.FromSeconds(30)
         };
 

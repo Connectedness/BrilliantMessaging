@@ -109,6 +109,14 @@ public static class NatsTopologyBuilderDefaults
     public const string DefaultServerUrl = "nats://localhost:4222";
 
     /// <summary>
+    /// The default number of messages a consumer worker buffers client-side per pull request. Buffered
+    /// messages are not heartbeated while they wait for the sequential dispatch loop, so their AckWait
+    /// keeps running from server delivery; the default is deliberately small to keep the last buffered
+    /// message well within AckWait for typical handler durations.
+    /// </summary>
+    public const int DefaultMaxBufferedMessages = 8;
+
+    /// <summary>
     /// The default graceful shutdown timeout for inbound topology runtimes.
     /// </summary>
     public static readonly TimeSpan DefaultShutdownTimeout = TimeSpan.FromSeconds(30);

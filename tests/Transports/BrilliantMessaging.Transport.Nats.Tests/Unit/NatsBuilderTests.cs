@@ -94,6 +94,7 @@ public sealed class NatsBuilderTests
            .AckWait(TimeSpan.FromSeconds(10))
            .MaxDeliver(7)
            .MaxAckPending(99)
+           .MaxBufferedMessages(16)
            .DeadLetterSubject("orders.dead")
            .Handle<OrderPlaced, OrderPlacedHandler>(
                 handler => handler.ManualAck().WithDeserializer<PayloadCodecMessageDeserializer>()
@@ -108,12 +109,23 @@ public sealed class NatsBuilderTests
         definition.AckWait.Should().Be(TimeSpan.FromSeconds(10));
         definition.MaxDeliver.Should().Be(7);
         definition.MaxAckPending.Should().Be(99);
+        definition.MaxBufferedMessages.Should().Be(16);
         definition.DeadLetterSubject.Should().Be("orders.dead");
         var handler = definition.Handlers.Should().ContainSingle().Which;
         handler.MessageType.Should().Be<OrderPlaced>();
         handler.HandlerType.Should().Be<OrderPlacedHandler>();
         handler.AckMode.Should().Be(MessageAckMode.Manual);
         handler.DeserializerType.Should().Be<PayloadCodecMessageDeserializer>();
+    }
+
+    [Fact]
+    public void InboundConsumerBuilder_DefaultsMaxBufferedMessages()
+    {
+        NatsInboundConsumerBuilder builder = new ("ORDERS", "orders-worker");
+
+        var definition = ((IBuildable<NatsInboundConsumerDefinition>) builder).Build();
+
+        definition.MaxBufferedMessages.Should().Be(NatsTopologyBuilderDefaults.DefaultMaxBufferedMessages);
     }
 
     [Theory]

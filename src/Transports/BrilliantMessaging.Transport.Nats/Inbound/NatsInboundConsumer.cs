@@ -19,6 +19,7 @@ public sealed class NatsInboundConsumer
         TimeSpan ackWait,
         int maxDeliver,
         int maxAckPending,
+        int maxBufferedMessages,
         string? deadLetterSubject,
         IReadOnlyDictionary<string, NatsInboundEndpoint> endpointsByDiscriminator
     )
@@ -30,6 +31,7 @@ public sealed class NatsInboundConsumer
         AckWait = ackWait;
         MaxDeliver = maxDeliver;
         MaxAckPending = maxAckPending;
+        MaxBufferedMessages = maxBufferedMessages;
         DeadLetterSubject = deadLetterSubject;
         EndpointsByDiscriminator = endpointsByDiscriminator;
     }
@@ -68,6 +70,11 @@ public sealed class NatsInboundConsumer
     /// Gets JetStream MaxAckPending.
     /// </summary>
     public int MaxAckPending { get; }
+
+    /// <summary>
+    /// Gets the number of messages each worker buffers client-side per pull request.
+    /// </summary>
+    public int MaxBufferedMessages { get; }
 
     /// <summary>
     /// Gets the dead-letter subject.

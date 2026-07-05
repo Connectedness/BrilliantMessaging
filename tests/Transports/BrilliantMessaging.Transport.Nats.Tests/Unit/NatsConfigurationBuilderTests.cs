@@ -259,6 +259,7 @@ public sealed class NatsConfigurationBuilderTests
         Action ackWait = () => consumerBuilder.AckWait(TimeSpan.Zero);
         Action maxDeliver = () => consumerBuilder.MaxDeliver(0);
         Action maxAckPending = () => consumerBuilder.MaxAckPending(0);
+        Action maxBufferedMessages = () => consumerBuilder.MaxBufferedMessages(0);
         Action deadLetter = () => consumerBuilder.DeadLetterSubject(" ");
         Action consumerRedelivery = () => consumerBuilder.WithRedelivery(null!);
         Action abstractHandler = () => consumerBuilder.Handle<OrderPlaced, AbstractOrderPlacedHandler>();
@@ -271,6 +272,7 @@ public sealed class NatsConfigurationBuilderTests
         ackWait.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("ackWait");
         maxDeliver.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("maxDeliver");
         maxAckPending.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("maxAckPending");
+        maxBufferedMessages.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("maxBufferedMessages");
         deadLetter.Should().Throw<ArgumentException>().WithParameterName("subject");
         consumerRedelivery.Should().Throw<ArgumentNullException>().WithParameterName("configure");
         abstractHandler.Should().Throw<ArgumentException>().WithParameterName("THandler");
