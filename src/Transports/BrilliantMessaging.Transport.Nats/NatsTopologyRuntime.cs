@@ -57,9 +57,16 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         _stopping = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         foreach (var consumer in _topology.Consumers)
         {
+            var slots = new InFlightSlot[consumer.Concurrency];
             for (var i = 0; i < consumer.Concurrency; i++)
             {
-                _workers.Add(RunConsumerAsync(consumer, _stopping.Token));
+                slots[i] = new InFlightSlot();
+                _workers.Add(RunConsumerAsync(consumer, slots[i], _stopping.Token));
+            }
+
+            if (_topology.AckProgressEnabled)
+            {
+                _workers.Add(RunAckProgressAsync(consumer, slots, _stopping.Token));
             }
         }
 
@@ -99,7 +106,11 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
     }
 
-    private async Task RunConsumerAsync(NatsInboundConsumer configuredConsumer, CancellationToken cancellationToken)
+    private async Task RunConsumerAsync(
+        NatsInboundConsumer configuredConsumer,
+        InFlightSlot slot,
+        CancellationToken cancellationToken
+    )
     {
         NatsJSConsumeOpts options = new ()
         {
@@ -122,7 +133,8 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
                 {
                     try
                     {
-                        await DispatchAsync(configuredConsumer, message, cancellationToken).ConfigureAwait(false);
+                        await DispatchAsync(configuredConsumer, message, slot, cancellationToken)
+                           .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
@@ -160,6 +172,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
     private async Task DispatchAsync(
         NatsInboundConsumer consumer,
         INatsJSMsg<byte[]> message,
+        InFlightSlot slot,
         CancellationToken cancellationToken
     )
     {
@@ -214,7 +227,6 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             token => PublishDeadLetterAsync(consumer, message, headers, token)
         );
 
-        using var progress = StartAckProgress(message, consumer.AckWait, cancellationToken);
         IncomingMessageContext context = new (
             transportMessage,
             endpoint,
@@ -228,6 +240,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             Message = inspectResult.Message
         };
 
+        slot.Enter(message);
         try
         {
             await _topology.Pipeline(context).ConfigureAwait(false);
@@ -244,46 +257,45 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             await acknowledgement.NackAsync(requeue: false, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
+        finally
+        {
+            slot.Exit();
+        }
     }
 
-    private IDisposable? StartAckProgress(
-        INatsJSMsg<byte[]> message,
-        TimeSpan ackWait,
+    private async Task RunAckProgressAsync(
+        NatsInboundConsumer consumer,
+        InFlightSlot[] slots,
         CancellationToken cancellationToken
     )
     {
-        if (!_topology.AckProgressEnabled)
+        var interval = TimeSpan.FromTicks(Math.Max(TimeSpan.FromSeconds(1).Ticks, consumer.AckWait.Ticks / 3));
+        while (!cancellationToken.IsCancellationRequested)
         {
-            return null;
-        }
-
-        var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var token = source.Token;
-        var interval = TimeSpan.FromTicks(Math.Max(TimeSpan.FromSeconds(1).Ticks, ackWait.Ticks / 3));
-        var task = Task.Run(
-            async () =>
+            await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
+            foreach (var slot in slots)
             {
-                while (!token.IsCancellationRequested)
+                if (slot.Current is not { } inFlight)
                 {
-                    try
-                    {
-                        await Task.Delay(interval, token).ConfigureAwait(false);
-                        await message.AckProgressAsync(cancellationToken: token).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        return;
-                    }
-                    catch (Exception exception)
-                    {
-                        _logger?.LogDebug(exception, "NATS AckProgress failed");
-                    }
+                    continue;
                 }
-            },
-            CancellationToken.None
-        );
 
-        return new ProgressLease(source, task);
+                try
+                {
+                    await inFlight.AckProgressAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    // Can race with settlement: progress on an already-settled delivery is rejected by the
+                    // server, which is harmless here.
+                    _logger?.LogDebug(exception, "NATS AckProgress failed");
+                }
+            }
+        }
     }
 
     private async Task DeadLetterOrTerminateAsync(
@@ -400,22 +412,18 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         return TimeSpan.FromMilliseconds(cappedMilliseconds);
     }
 
-    private sealed class ProgressLease : IDisposable
+    /// <summary>
+    /// Holds the single message a sequential worker currently has in flight, so the per-consumer AckProgress
+    /// loop can heartbeat it. Volatile access suffices: the loop only needs an eventually-current view.
+    /// </summary>
+    private sealed class InFlightSlot
     {
-        private readonly CancellationTokenSource _source;
-        private readonly Task _task;
+        private INatsJSMsg<byte[]>? _message;
 
-        public ProgressLease(CancellationTokenSource source, Task task)
-        {
-            _source = source;
-            _task = task;
-        }
+        public INatsJSMsg<byte[]>? Current => Volatile.Read(ref _message);
 
-        public void Dispose()
-        {
-            _source.Cancel();
-            _source.Dispose();
-            _ = _task.Exception;
-        }
+        public void Enter(INatsJSMsg<byte[]> message) => Volatile.Write(ref _message, message);
+
+        public void Exit() => Volatile.Write(ref _message, null);
     }
 }
