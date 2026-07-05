@@ -71,4 +71,19 @@ public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
         };
         await _message.AckTerminateAsync(terminate, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Returns the message to the stream for immediate redelivery without consuming the retry policy:
+    /// no NAK delay, no MaxDeliver check, no dead-lettering. Intended for deliveries interrupted by
+    /// shutdown rather than failed by the handler.
+    /// </summary>
+    public async Task RequeueAsync(CancellationToken cancellationToken = default)
+    {
+        if (Interlocked.Exchange(ref _settled, 1) != 0)
+        {
+            return;
+        }
+
+        await _message.NakAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
 }

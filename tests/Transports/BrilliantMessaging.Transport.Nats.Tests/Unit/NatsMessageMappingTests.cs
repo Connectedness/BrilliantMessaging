@@ -81,6 +81,63 @@ public sealed class NatsMessageMappingTests
     }
 
     [Fact]
+    public async Task Acknowledgement_RequeueSendsImmediateNakEvenAtFinalDeliveryAttempt()
+    {
+        FakeJetStreamMessage message = new ();
+        NatsMessageAcknowledgement acknowledgement = new (
+            message,
+            TimeSpan.FromSeconds(2),
+            5,
+            5,
+            _ => throw new InvalidOperationException()
+        );
+
+        await acknowledgement.RequeueAsync(TestContext.Current.CancellationToken);
+
+        message.NakCount.Should().Be(1);
+        message.LastNakDelay.Should().BeNull();
+        message.TermCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Acknowledgement_RequeueIsNoOpWhenAlreadySettled()
+    {
+        FakeJetStreamMessage message = new ();
+        NatsMessageAcknowledgement acknowledgement = new (
+            message,
+            TimeSpan.FromSeconds(2),
+            1,
+            5,
+            _ => throw new InvalidOperationException()
+        );
+
+        await acknowledgement.AckAsync(TestContext.Current.CancellationToken);
+        await acknowledgement.RequeueAsync(TestContext.Current.CancellationToken);
+
+        message.AckCount.Should().Be(1);
+        message.NakCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Acknowledgement_RequeueSettlesTheDelivery()
+    {
+        FakeJetStreamMessage message = new ();
+        NatsMessageAcknowledgement acknowledgement = new (
+            message,
+            TimeSpan.FromSeconds(2),
+            1,
+            5,
+            _ => throw new InvalidOperationException()
+        );
+
+        await acknowledgement.RequeueAsync(TestContext.Current.CancellationToken);
+        await acknowledgement.AckAsync(TestContext.Current.CancellationToken);
+
+        message.NakCount.Should().Be(1);
+        message.AckCount.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Acknowledgement_RejectPublishesDeadLetterBeforeTerminate()
     {
         FakeJetStreamMessage message = new ();

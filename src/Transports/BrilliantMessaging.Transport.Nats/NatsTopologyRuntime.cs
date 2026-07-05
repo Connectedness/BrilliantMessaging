@@ -250,6 +250,10 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            // Shutdown interrupted the delivery; without settling it the message would stall for the full
+            // AckWait before another instance picks it up. Requeue bypasses the NAK delay and MaxDeliver
+            // handling because the delivery was interrupted, not failed.
+            await acknowledgement.RequeueAsync(CancellationToken.None).ConfigureAwait(false);
             throw;
         }
         catch
