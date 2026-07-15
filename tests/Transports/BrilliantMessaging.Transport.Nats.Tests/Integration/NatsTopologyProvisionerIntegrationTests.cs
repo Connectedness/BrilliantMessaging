@@ -102,7 +102,48 @@ public sealed class NatsTopologyProvisionerIntegrationTests : IAsyncLifetime
         var provisioner = provider.GetRequiredService<ITopologyProvisioner>();
         var act = () => provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<Exception>();
+        var exception = await act.Should().ThrowAsync<TopologyValidationException>();
+        exception.Which.ValidationErrors.Should()
+           .Contain(error => error.Contains("stream 'ORDERS' was not found", StringComparison.Ordinal))
+           .And.Contain(
+                error => error.Contains("consumer 'orders-worker' was not found", StringComparison.Ordinal)
+            );
+    }
+
+    [Fact]
+    public async Task AssertOnlyProvisioningReportsMissingConsumerOnExistingStream()
+    {
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateStreamAsync(
+            new StreamConfig("ORDERS", ["orders.*"]),
+            TestContext.Current.CancellationToken
+        );
+
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Provisioning(NatsTopologyProvisioningMode.AssertOnly)
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var provisioner = provider.GetRequiredService<ITopologyProvisioner>();
+        var act = () => provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+
+        var exception = await act.Should().ThrowAsync<TopologyValidationException>();
+        var validationError = exception.Which.ValidationErrors.Should().ContainSingle().Which;
+        validationError.Should()
+           .Be("NATS consumer 'orders-worker' was not found on stream 'ORDERS', but the topology declares it.");
     }
 
     [Fact]

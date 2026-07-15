@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Outbound;
 using BrilliantMessaging.Transport.Nats.Inbound;
+using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
 
 namespace BrilliantMessaging.Transport.Nats;
@@ -21,6 +22,11 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
     private const string TransportNameTagName = "brilliantmessaging.outbound.transport.name";
 
     private const string OutcomeTagName = "brilliantmessaging.outbound.outcome";
+
+    // JetStream API error codes (ApiError.ErrCode), see https://docs.nats.io/reference/reference-protocols/nats_api_reference
+    private const int StreamNotFoundErrorCode = 10059;
+
+    private const int ConsumerNotFoundErrorCode = 10014;
 
     private readonly NatsTopology _topology;
 
@@ -56,10 +62,20 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
             {
                 if (_topology.ProvisioningMode == NatsTopologyProvisioningMode.AssertOnly)
                 {
-                    var existing = await jetStream
-                       .GetStreamAsync(stream.Name, cancellationToken: cancellationToken)
-                       .ConfigureAwait(false);
-                    ValidateStreamMatches(stream, existing.Info.Config, mismatches);
+                    try
+                    {
+                        var existing = await jetStream
+                           .GetStreamAsync(stream.Name, cancellationToken: cancellationToken)
+                           .ConfigureAwait(false);
+                        ValidateStreamMatches(stream, existing.Info.Config, mismatches);
+                    }
+                    catch (NatsJSApiException exception) when (exception.Error.ErrCode == StreamNotFoundErrorCode)
+                    {
+                        mismatches.Add(
+                            $"NATS stream '{stream.Name}' was not found on the server, but the topology declares it."
+                        );
+                    }
+
                     continue;
                 }
 
@@ -72,10 +88,22 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
             {
                 if (_topology.ProvisioningMode == NatsTopologyProvisioningMode.AssertOnly)
                 {
-                    var existing = await jetStream
-                       .GetConsumerAsync(consumer.StreamName, consumer.DurableName, cancellationToken)
-                       .ConfigureAwait(false);
-                    ValidateConsumerMatches(consumer, existing.Info.Config, mismatches);
+                    try
+                    {
+                        var existing = await jetStream
+                           .GetConsumerAsync(consumer.StreamName, consumer.DurableName, cancellationToken)
+                           .ConfigureAwait(false);
+                        ValidateConsumerMatches(consumer, existing.Info.Config, mismatches);
+                    }
+                    // The consumer lookup fails with StreamNotFound when the whole stream is absent.
+                    catch (NatsJSApiException exception)
+                        when (exception.Error.ErrCode is ConsumerNotFoundErrorCode or StreamNotFoundErrorCode)
+                    {
+                        mismatches.Add(
+                            $"NATS consumer '{consumer.DurableName}' was not found on stream '{consumer.StreamName}', but the topology declares it."
+                        );
+                    }
+
                     continue;
                 }
 
