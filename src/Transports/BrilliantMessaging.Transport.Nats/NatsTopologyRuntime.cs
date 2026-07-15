@@ -94,9 +94,27 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         {
             throw;
         }
+        catch (TimeoutException)
+        {
+            _logger?.LogWarning(
+                "NATS topology '{Topology}' workers did not stop within {ShutdownTimeout}; in-flight deliveries will be redelivered after AckWait",
+                _topology.Name,
+                _topology.ShutdownTimeout
+            );
+        }
+        catch (OperationCanceledException exception)
+        {
+            // Workers are cancelled via the internal _stopping token, so their cancellation never matches
+            // the StopAsync token filter above; it is the expected graceful shutdown outcome.
+            _logger?.LogDebug(exception, "NATS topology '{Topology}' stopped with cancelled workers", _topology.Name);
+        }
         catch (Exception exception)
         {
-            _logger?.LogDebug(exception, "NATS topology '{Topology}' stopped with cancelled workers", _topology.Name);
+            _logger?.LogWarning(
+                exception,
+                "NATS topology '{Topology}' workers faulted during shutdown",
+                _topology.Name
+            );
         }
         finally
         {
