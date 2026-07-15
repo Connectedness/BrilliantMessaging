@@ -108,10 +108,12 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
 
     private void EnsureAccepted(PubAckResponse acknowledgement)
     {
-        if (acknowledgement.Error is not null || !acknowledgement.Duplicate || !_messageIdDeduplication)
+        if (_messageIdDeduplication && acknowledgement is { Error: null, Duplicate: true })
         {
-            acknowledgement.EnsureSuccess();
+            return;
         }
+
+        acknowledgement.EnsureSuccess();
     }
 
     private NatsJSPubOpts? CreatePublishOptions(string? messageId)
