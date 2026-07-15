@@ -332,8 +332,15 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         };
         InboundDiagnostics.ConsumedMessages.Add(1, tags);
 
-        await PublishDeadLetterAsync(consumer, message, headers, cancellationToken).ConfigureAwait(false);
-        await message.AckTerminateAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        var deadLettered = await PublishDeadLetterAsync(consumer, message, headers, cancellationToken)
+           .ConfigureAwait(false);
+        AckOpts terminate = new ()
+        {
+            TerminateReason = deadLettered ?
+                NatsMessageAcknowledgement.DeadLetteredTerminateReason :
+                NatsMessageAcknowledgement.TerminatedTerminateReason
+        };
+        await message.AckTerminateAsync(terminate, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<bool> PublishDeadLetterAsync(
