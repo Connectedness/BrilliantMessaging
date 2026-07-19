@@ -292,6 +292,7 @@ public sealed class NatsTopologyCompiler
         ValidateStreams(configuration.Streams, errors);
         ValidateTargets(configuration.Targets, messageContractRegistry, errors);
         ValidateConsumers(configuration, streamNames, messageContractRegistry, errors);
+        ValidateWorkQueueConsumers(configuration, errors);
 
         if (configuration.CreateOptions is null)
         {
@@ -547,6 +548,68 @@ public sealed class NatsTopologyCompiler
         return consumer.FilterSubject is null ||
                (IsValidSubject(consumer.FilterSubject, allowWildcards: true) &&
                 Covers(consumer.FilterSubject, subject));
+    }
+
+    private static void ValidateWorkQueueConsumers(
+        NatsTopologyConfiguration configuration,
+        ICollection<string> errors
+    )
+    {
+        foreach (var streamGroup in configuration.Streams.GroupBy(
+                     static stream => stream.Name,
+                     StringComparer.Ordinal
+                 ))
+        {
+            if (streamGroup.Count() != 1)
+            {
+                continue;
+            }
+
+            var stream = streamGroup.Single();
+            if (stream.Retention != NatsStreamRetention.WorkQueue ||
+                !IsValidResourceName(stream.Name) ||
+                stream.Subjects.Count == 0 ||
+                stream.Subjects.Any(subject => !IsValidSubject(subject, allowWildcards: true)))
+            {
+                continue;
+            }
+
+            var consumers = configuration.Consumers
+               .Where(consumer => string.Equals(consumer.StreamName, stream.Name, StringComparison.Ordinal))
+               .Where(
+                    consumer => consumer.FilterSubject is null ||
+                                IsValidSubject(consumer.FilterSubject, allowWildcards: true)
+                )
+               .ToList();
+            for (var firstIndex = 0; firstIndex < consumers.Count; firstIndex++)
+            {
+                for (var secondIndex = firstIndex + 1; secondIndex < consumers.Count; secondIndex++)
+                {
+                    var first = consumers[firstIndex];
+                    var second = consumers[secondIndex];
+                    if (!ConsumerFiltersOverlap(first.FilterSubject, second.FilterSubject))
+                    {
+                        continue;
+                    }
+
+                    errors.Add(
+                        $"NATS WorkQueue stream '{stream.Name}' has overlapping consumers '{first.DurableName}' (filter '{DescribeConsumerFilter(first.FilterSubject)}') and '{second.DurableName}' (filter '{DescribeConsumerFilter(second.FilterSubject)}'). WorkQueue consumer filters must not overlap."
+                    );
+                }
+            }
+        }
+    }
+
+    private static bool ConsumerFiltersOverlap(string? firstFilter, string? secondFilter)
+    {
+        return firstFilter is null ||
+               secondFilter is null ||
+               SubjectPatternsOverlap(firstFilter, secondFilter);
+    }
+
+    private static string DescribeConsumerFilter(string? filterSubject)
+    {
+        return filterSubject ?? "<all stream subjects>";
     }
 
     private static bool IsValidSubject(string subject, bool allowWildcards)

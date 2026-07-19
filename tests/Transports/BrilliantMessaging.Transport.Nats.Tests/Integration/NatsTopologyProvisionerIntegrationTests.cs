@@ -116,6 +116,59 @@ public sealed class NatsTopologyProvisionerIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CreateOrUpdateProvisioningAllowsDisjointWorkQueueConsumers()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream(
+                        "ORDERS",
+                        stream => stream
+                           .Subject("orders.>")
+                           .Retention(NatsStreamRetention.WorkQueue)
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-us",
+                        consumer => consumer
+                           .FilterSubject("orders.us.*")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-eu",
+                        consumer => consumer
+                           .FilterSubject("orders.eu.*")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var provisioner = provider.GetRequiredService<ITopologyProvisioner>();
+        await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        var usConsumer = await jetStream.GetConsumerAsync(
+            "ORDERS",
+            "orders-us",
+            TestContext.Current.CancellationToken
+        );
+        var euConsumer = await jetStream.GetConsumerAsync(
+            "ORDERS",
+            "orders-eu",
+            TestContext.Current.CancellationToken
+        );
+
+        usConsumer.Info.Config.FilterSubject.Should().Be("orders.us.*");
+        euConsumer.Info.Config.FilterSubject.Should().Be("orders.eu.*");
+    }
+
+    [Fact]
     public async Task AssertOnlyProvisioningFailsWhenJetStreamResourcesAreMissing()
     {
         ServiceCollection services = new ();

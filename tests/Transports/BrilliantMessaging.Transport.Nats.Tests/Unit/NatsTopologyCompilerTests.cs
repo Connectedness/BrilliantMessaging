@@ -277,6 +277,197 @@ public sealed class NatsTopologyCompilerTests
             );
     }
 
+    [Theory]
+    [InlineData("orders.created", "orders.created")]
+    [InlineData("orders.*", "orders.>")]
+    [InlineData(null, "orders.created")]
+    [InlineData(null, null)]
+    public async Task Compile_RejectsOverlappingWorkQueueConsumers(
+        string? firstFilterSubject,
+        string? secondFilterSubject
+    )
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology =>
+                {
+                    topology
+                       .UseServer("nats://localhost:4222")
+                       .Stream(
+                            "ORDERS",
+                            stream => stream
+                               .Subject("orders.>")
+                               .Retention(NatsStreamRetention.WorkQueue)
+                        );
+                    topology.Consume(
+                        "ORDERS",
+                        "orders-first",
+                        consumer =>
+                        {
+                            if (firstFilterSubject is not null)
+                            {
+                                consumer.FilterSubject(firstFilterSubject);
+                            }
+
+                            consumer.Handle<OrderPlaced, OrderPlacedHandler>();
+                        }
+                    );
+                    topology.Consume(
+                        "ORDERS",
+                        "orders-second",
+                        consumer =>
+                        {
+                            if (secondFilterSubject is not null)
+                            {
+                                consumer.FilterSubject(secondFilterSubject);
+                            }
+
+                            consumer.Handle<OrderPlaced, OrderPlacedHandler>();
+                        }
+                    );
+                }
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure
+        var act = () => provider.GetRequiredService<NatsTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should()
+           .Contain(
+                error => error.Contains("NATS WorkQueue stream 'ORDERS'", StringComparison.Ordinal) &&
+                         error.Contains("'orders-first'", StringComparison.Ordinal) &&
+                         error.Contains("'orders-second'", StringComparison.Ordinal) &&
+                         error.Contains("must not overlap", StringComparison.Ordinal)
+            );
+    }
+
+    [Fact]
+    public async Task Compile_AllowsDisjointWorkQueueConsumers()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream(
+                        "ORDERS",
+                        stream => stream
+                           .Subject("orders.>")
+                           .Retention(NatsStreamRetention.WorkQueue)
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-us",
+                        consumer => consumer
+                           .FilterSubject("orders.us.*")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-eu",
+                        consumer => consumer
+                           .FilterSubject("orders.eu.*")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var topology = provider.GetRequiredService<NatsTopology>();
+
+        topology.Consumers.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Compile_DoesNotReportWorkQueueOverlapForInvalidFilter()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream(
+                        "ORDERS",
+                        stream => stream
+                           .Subject("orders.>")
+                           .Retention(NatsStreamRetention.WorkQueue)
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-invalid",
+                        consumer => consumer
+                           .FilterSubject("orders.>.created")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-valid",
+                        consumer => consumer
+                           .FilterSubject("orders.>")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure
+        var act = () => provider.GetRequiredService<NatsTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should()
+           .ContainSingle(
+                error => error.Contains("invalid filter subject 'orders.>.created'", StringComparison.Ordinal)
+            );
+    }
+
+    [Theory]
+    [InlineData(NatsStreamRetention.Limits)]
+    [InlineData(NatsStreamRetention.Interest)]
+    public async Task Compile_AllowsOverlappingConsumersForNonWorkQueueRetention(
+        NatsStreamRetention retention
+    )
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream(
+                        "ORDERS",
+                        stream => stream
+                           .Subject("orders.>")
+                           .Retention(retention)
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-first",
+                        consumer => consumer
+                           .FilterSubject("orders.*")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-second",
+                        consumer => consumer
+                           .FilterSubject("orders.>")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var topology = provider.GetRequiredService<NatsTopology>();
+
+        topology.Consumers.Should().HaveCount(2);
+    }
+
     [Fact]
     public async Task Compile_ReportsStreamValidationErrors()
     {
