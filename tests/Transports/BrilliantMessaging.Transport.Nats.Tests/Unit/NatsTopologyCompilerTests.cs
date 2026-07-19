@@ -112,6 +112,77 @@ public sealed class NatsTopologyCompilerTests
            .Contain(error => error.Contains("Dead-letter subject 'dead.orders'", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("orders.dead")]
+    public async Task Compile_RejectsDeadLetterSubjectSelectedByOriginatingConsumer(string? filterSubject)
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject("orders.>"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer =>
+                        {
+                            if (filterSubject is not null)
+                            {
+                                consumer.FilterSubject(filterSubject);
+                            }
+
+                            consumer
+                               .DeadLetterSubject("orders.dead")
+                               .Handle<OrderPlaced, OrderPlacedHandler>();
+                        }
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure
+        var act = () => provider.GetRequiredService<NatsTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should()
+           .Contain(
+                error => error.Contains(
+                    "Dead-letter subject 'orders.dead' for NATS consumer 'orders-worker' is selected by the same consumer",
+                    StringComparison.Ordinal
+                )
+            );
+    }
+
+    [Fact]
+    public async Task Compile_AllowsUnfilteredConsumerWhenDeadLetterSubjectUsesDifferentStream()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject("orders.placed"))
+                   .Stream("DEAD", stream => stream.Subject("orders.dead"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer
+                           .DeadLetterSubject("orders.dead")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var topology = provider.GetRequiredService<NatsTopology>();
+
+        topology.Consumers.Should().ContainSingle().Which.DeadLetterSubject.Should().Be("orders.dead");
+    }
+
     [Fact]
     public async Task Compile_ReportsStreamValidationErrors()
     {

@@ -101,6 +101,11 @@ durable consumer name, and the dead-letter subject, so a stream-wide duplicate w
 copy as a duplicate of the original nor stores a second copy when a retried delivery repeats the dead-letter
 publish. The original CloudEvents id remains available on the copy via the `ce-id` header.
 
+The originating consumer must not select its own dead-letter subject. When one stream captures both the live and
+dead-letter subjects, configure `FilterSubject(...)` so the durable excludes the dead-letter subject. An unfiltered
+originating consumer requires the dead-letter subject to be captured by a different declared stream; topology
+compilation rejects configurations that would feed dead-letter copies back into the same consumer.
+
 ## Reliability
 
 Consumption is at-least-once. Handlers should be idempotent. Ordering is not guaranteed once concurrent

@@ -479,21 +479,56 @@ public sealed class NatsTopologyCompiler
 
             if (consumer.DeadLetterSubject is not null)
             {
-                if (!IsValidSubject(consumer.DeadLetterSubject, allowWildcards: false))
+                var deadLetterSubjectIsValid = IsValidSubject(
+                    consumer.DeadLetterSubject,
+                    allowWildcards: false
+                );
+                if (!deadLetterSubjectIsValid)
                 {
                     errors.Add(
                         $"NATS consumer '{consumer.DurableName}' uses invalid dead-letter subject '{consumer.DeadLetterSubject}'."
                     );
                 }
 
-                if (!configuration.Streams.Any(stream => Covers(stream.Subjects, consumer.DeadLetterSubject)))
+                if (deadLetterSubjectIsValid &&
+                    !configuration.Streams.Any(stream => Covers(stream.Subjects, consumer.DeadLetterSubject)))
                 {
                     errors.Add(
                         $"Dead-letter subject '{consumer.DeadLetterSubject}' for NATS consumer '{consumer.DurableName}' is not covered by a declared stream."
                     );
                 }
+
+                if (deadLetterSubjectIsValid &&
+                    ConsumerSelectsSubject(configuration.Streams, consumer, consumer.DeadLetterSubject))
+                {
+                    errors.Add(
+                        $"Dead-letter subject '{consumer.DeadLetterSubject}' for NATS consumer '{consumer.DurableName}' is selected by the same consumer. Configure a filter that excludes the dead-letter subject or route it to a different stream."
+                    );
+                }
             }
         }
+    }
+
+    private static bool ConsumerSelectsSubject(
+        IReadOnlyList<NatsStreamDefinition> streams,
+        NatsInboundConsumerDefinition consumer,
+        string subject
+    )
+    {
+        var sourceStreamCoversSubject = streams.Any(
+            stream => string.Equals(stream.Name, consumer.StreamName, StringComparison.Ordinal) &&
+                      stream.Subjects.Any(
+                          pattern => IsValidSubject(pattern, allowWildcards: true) && Covers(pattern, subject)
+                      )
+        );
+        if (!sourceStreamCoversSubject)
+        {
+            return false;
+        }
+
+        return consumer.FilterSubject is null ||
+               (IsValidSubject(consumer.FilterSubject, allowWildcards: true) &&
+                Covers(consumer.FilterSubject, subject));
     }
 
     private static bool IsValidSubject(string subject, bool allowWildcards)
