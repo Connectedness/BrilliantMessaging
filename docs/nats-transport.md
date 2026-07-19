@@ -65,6 +65,17 @@ wildcards and must overlap at least one subject pattern declared by the referenc
 must not contain whitespace, control characters, `.`, `*`, `>`, `/`, or `\`. Stream replica counts must be between
 one and five.
 
+Choose stream retention according to its delivery semantics:
+
+- `Limits` retains messages until a configured age, count, or size limit removes them.
+- `Interest` retains messages only while matching consumers have interest. Provision consumers before publishing;
+  a message with no matching consumer is deleted immediately.
+- `WorkQueue` delivers each message to one consumer. Distinct consumers on the stream must use disjoint filters;
+  multiple workers processing the same work partition should share one durable consumer.
+
+Configured stream limits still apply to `Interest` and `WorkQueue` retention and can remove messages before they are
+processed.
+
 Brilliant Messaging provisions streams and durable consumers by default. Use
 `Provisioning(NatsTopologyProvisioningMode.AssertOnly)` when JetStream infrastructure is managed externally and
 the application should only assert that resources exist.
@@ -125,7 +136,12 @@ instead of waiting out `AckWait`. To make this possible, the JetStream consumer 
 configured attempts are exhausted, while the extra server-side headroom keeps interrupted deliveries
 redeliverable. Every delivery — interrupted or not — still counts toward the server's limit, so repeated
 interruptions of the same message eventually exhaust the headroom; at that point the message is dead-lettered
-with a distinct terminate reason rather than left stranded.
+with a distinct terminate reason rather than NAK'd again.
+
+That final-attempt handling requires the transport to receive and settle the delivery. If the process exits or
+otherwise fails to settle the final server attempt, JetStream reaches its server-side `MaxDeliver`, stops
+redelivery, and leaves the message stored. A retained `WorkQueue` message must then be removed manually through
+the JetStream API. Monitor JetStream maximum-delivery advisories so these messages receive operational attention.
 
 Each consumer worker pulls up to `MaxBufferedMessages` messages (default 8) into a client-side buffer and
 dispatches them sequentially. Only the message currently in a handler is heartbeated; buffered messages keep
