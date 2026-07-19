@@ -67,6 +67,15 @@ public sealed class NatsInboundConsumer
     public int MaxDeliver { get; }
 
     /// <summary>
+    /// Gets the MaxDeliver value provisioned on the JetStream consumer: twice <see cref="MaxDeliver" />.
+    /// Real handler failures are dead-lettered client-side once <see cref="MaxDeliver" /> attempts are
+    /// exhausted; the extra server-side headroom lets deliveries that were interrupted by shutdown be
+    /// redelivered instead of being dead-lettered or stranded, while still bounding redelivery of
+    /// messages whose consumer dies without settling them.
+    /// </summary>
+    public int ServerMaxDeliver => GetServerMaxDeliver(MaxDeliver);
+
+    /// <summary>
     /// Gets JetStream MaxAckPending.
     /// </summary>
     public int MaxAckPending { get; }
@@ -85,4 +94,14 @@ public sealed class NatsInboundConsumer
     /// Gets endpoints by CloudEvents discriminator.
     /// </summary>
     public IReadOnlyDictionary<string, NatsInboundEndpoint> EndpointsByDiscriminator { get; }
+
+    /// <summary>
+    /// Derives the server-side MaxDeliver (twice the configured value, saturating at
+    /// <see cref="int.MaxValue" />) so the provisioner and the acknowledgement adapter apply the same
+    /// shutdown-interruption headroom.
+    /// </summary>
+    public static int GetServerMaxDeliver(int maxDeliver)
+    {
+        return maxDeliver > int.MaxValue / 2 ? int.MaxValue : maxDeliver * 2;
+    }
 }

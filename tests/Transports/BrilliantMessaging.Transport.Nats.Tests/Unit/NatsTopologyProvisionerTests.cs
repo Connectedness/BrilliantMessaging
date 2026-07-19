@@ -172,4 +172,25 @@ public sealed class NatsTopologyProvisionerTests
         config.DeliverPolicy.Should().Be(ConsumerConfigDeliverPolicy.All);
         config.AckPolicy.Should().Be(ConsumerConfigAckPolicy.Explicit);
     }
+
+    [Fact]
+    public void ToConsumerConfig_ProvisionsDoubledMaxDeliverAsShutdownInterruptionHeadroom()
+    {
+        NatsInboundConsumer consumer = new (
+            "ORDERS",
+            "orders-worker",
+            null,
+            1,
+            TimeSpan.FromSeconds(30),
+            5,
+            1024,
+            8,
+            null,
+            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal)
+        );
+
+        var config = NatsTopologyProvisioner.ToConsumerConfig(consumer);
+
+        config.MaxDeliver.Should().Be(10);
+    }
 }

@@ -1106,6 +1106,200 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ShutdownInterruptedDeliveryOnFinalAttemptIsRedeliveredAndProcessed()
+    {
+        InterruptionProbe probe = new ();
+        ServiceCollection services = new ();
+        services.AddSingleton(probe);
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Publish<OrderPlaced>(target => target.ToSubject("orders.interrupted"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-interrupted-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.interrupted")
+                           .MaxDeliver(1)
+                           .AckWait(TimeSpan.FromSeconds(30))
+                           .DeadLetterSubject("orders.dead")
+                           .Handle<OrderPlaced, InterruptibleOrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateConsumerAsync(
+            "ORDERS",
+            new ConsumerConfig("interrupted-dead-inspector")
+            {
+                DurableName = "interrupted-dead-inspector",
+                FilterSubject = "orders.dead",
+                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                DeliverPolicy = ConsumerConfigDeliverPolicy.All
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        try
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StartAsync(TestContext.Current.CancellationToken);
+            }
+
+            var publisher = provider.GetRequiredService<IMessagePublisher>();
+            await publisher.PublishMessageAsync(
+                new OrderPlaced { OrderId = "order-interrupted" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+            await probe.WaitForStartAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
+
+            // MaxDeliver is 1, so this stop interrupts the delivery on its final configured attempt.
+            // The interruption must not consume the retry policy: after a restart the message has to be
+            // processed normally instead of being dead-lettered.
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StartAsync(TestContext.Current.CancellationToken);
+            }
+
+            var processed = await probe.WaitForSuccessAsync(
+                TimeSpan.FromSeconds(15),
+                TestContext.Current.CancellationToken
+            );
+            processed.OrderId.Should().Be("order-interrupted");
+
+            var deadLetters = await ReadMessagesAsync(
+                jetStream,
+                "ORDERS",
+                "interrupted-dead-inspector",
+                1,
+                TimeSpan.FromSeconds(2),
+                TestContext.Current.CancellationToken
+            );
+            deadLetters.Should().BeEmpty();
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ShutdownInterruptionsBeyondServerHeadroomDeadLetterTheDelivery()
+    {
+        BlockingProbe probe = new ();
+        ServiceCollection services = new ();
+        services.AddSingleton(probe);
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Publish<OrderPlaced>(target => target.ToSubject("orders.storm"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-storm-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.storm")
+                           .MaxDeliver(1)
+                           .AckWait(TimeSpan.FromSeconds(30))
+                           .DeadLetterSubject("orders.dead")
+                           .Handle<OrderPlaced, BlockingOrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateConsumerAsync(
+            "ORDERS",
+            new ConsumerConfig("storm-dead-inspector")
+            {
+                DurableName = "storm-dead-inspector",
+                FilterSubject = "orders.dead",
+                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                DeliverPolicy = ConsumerConfigDeliverPolicy.All
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        try
+        {
+            var publisher = provider.GetRequiredService<IMessagePublisher>();
+
+            // MaxDeliver(1) provisions a server-side limit of 2, so the second interruption exhausts the
+            // redelivery headroom and must dead-letter the message instead of stranding it with a NAK the
+            // server would ignore.
+            for (var cycle = 0; cycle < 2; cycle++)
+            {
+                foreach (var runtime in runtimes)
+                {
+                    await runtime.StartAsync(TestContext.Current.CancellationToken);
+                }
+
+                if (cycle == 0)
+                {
+                    await publisher.PublishMessageAsync(
+                        new OrderPlaced { OrderId = "order-storm" },
+                        cancellationToken: TestContext.Current.CancellationToken
+                    );
+                }
+
+                await probe.WaitForStartAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
+                foreach (var runtime in runtimes)
+                {
+                    await runtime.StopAsync(CancellationToken.None);
+                }
+            }
+
+            var deadLetter = await ReadSingleMessageAsync(
+                jetStream,
+                "ORDERS",
+                "storm-dead-inspector",
+                TestContext.Current.CancellationToken
+            );
+            deadLetter.Subject.Should().Be("orders.dead");
+            probe.Invocations.Should().Be(2);
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
     public async Task UnknownDiscriminatorIsDeadLetteredAndOriginalDeliveryIsTerminated()
     {
         ServiceCollection services = new ();
@@ -2111,6 +2305,95 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
         )
         {
             throw new InvalidOperationException("Simulated manual-ack handler failure.");
+        }
+    }
+
+    private sealed class InterruptionProbe
+    {
+        private readonly TaskCompletionSource _started = new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private readonly TaskCompletionSource<OrderPlaced> _succeeded =
+            new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private int _invocations;
+
+        public async Task HandleAsync(OrderPlaced message, CancellationToken cancellationToken)
+        {
+            if (Interlocked.Increment(ref _invocations) == 1)
+            {
+                _started.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                return;
+            }
+
+            _succeeded.TrySetResult(message);
+        }
+
+        public Task WaitForStartAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            return _started.Task.WaitAsync(timeout, cancellationToken);
+        }
+
+        public Task<OrderPlaced> WaitForSuccessAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            return _succeeded.Task.WaitAsync(timeout, cancellationToken);
+        }
+    }
+
+    private sealed class InterruptibleOrderPlacedHandler : IMessageHandler<OrderPlaced>
+    {
+        private readonly InterruptionProbe _probe;
+
+        public InterruptibleOrderPlacedHandler(InterruptionProbe probe)
+        {
+            _probe = probe;
+        }
+
+        public Task HandleAsync(
+            OrderPlaced message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return _probe.HandleAsync(message, cancellationToken);
+        }
+    }
+
+    private sealed class BlockingProbe
+    {
+        private readonly SemaphoreSlim _started = new (0);
+
+        public int Invocations;
+
+        public async Task HandleAsync(CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref Invocations);
+            _started.Release();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
+
+        public Task WaitForStartAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            return _started.WaitAsync(timeout, cancellationToken);
+        }
+    }
+
+    private sealed class BlockingOrderPlacedHandler : IMessageHandler<OrderPlaced>
+    {
+        private readonly BlockingProbe _probe;
+
+        public BlockingOrderPlacedHandler(BlockingProbe probe)
+        {
+            _probe = probe;
+        }
+
+        public Task HandleAsync(
+            OrderPlaced message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return _probe.HandleAsync(cancellationToken);
         }
     }
 

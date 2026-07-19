@@ -81,7 +81,7 @@ public sealed class NatsMessageMappingTests
     }
 
     [Fact]
-    public async Task Acknowledgement_RequeueSendsImmediateNakEvenAtFinalDeliveryAttempt()
+    public async Task Acknowledgement_RequeueSendsShortDelayNakEvenAtFinalConfiguredAttempt()
     {
         FakeJetStreamMessage message = new ();
         NatsMessageAcknowledgement acknowledgement = new (
@@ -95,7 +95,7 @@ public sealed class NatsMessageMappingTests
         await acknowledgement.RequeueAsync(TestContext.Current.CancellationToken);
 
         message.NakCount.Should().Be(1);
-        message.LastNakDelay.Should().BeNull();
+        message.LastNakDelay.Should().Be(TimeSpan.FromSeconds(1));
         message.TermCount.Should().Be(0);
     }
 
@@ -204,6 +204,91 @@ public sealed class NatsMessageMappingTests
 
         message.TermCount.Should().Be(1);
         message.LastTerminateReason.Should().Be("Terminated by Brilliant Messaging.");
+    }
+
+    [Fact]
+    public async Task Acknowledgement_RequeueDeadLettersWhenServerRedeliveryHeadroomIsExhausted()
+    {
+        FakeJetStreamMessage message = new ();
+        List<string> operations = [];
+        NatsMessageAcknowledgement acknowledgement = new (
+            message,
+            TimeSpan.FromSeconds(2),
+            10,
+            5,
+            _ =>
+            {
+                operations.Add("dead-letter");
+                return Task.FromResult(true);
+            }
+        );
+        message.OnTerminate = () => operations.Add("term");
+
+        await acknowledgement.RequeueAsync(TestContext.Current.CancellationToken);
+
+        message.NakCount.Should().Be(0);
+        operations.Should().Equal("dead-letter", "term");
+        message.LastTerminateReason.Should().Be("Dead-lettered by Brilliant Messaging (shutdown interruption).");
+    }
+
+    [Fact]
+    public async Task Acknowledgement_NackWithRequeueDuringShutdownSendsShortDelayNak()
+    {
+        FakeJetStreamMessage message = new ();
+        NatsMessageAcknowledgement acknowledgement = new (
+            message,
+            TimeSpan.FromSeconds(2),
+            5,
+            5,
+            _ => throw new InvalidOperationException(),
+            new CancellationToken(canceled: true)
+        );
+
+        await acknowledgement.NackAsync(requeue: true, TestContext.Current.CancellationToken);
+
+        message.NakCount.Should().Be(1);
+        message.LastNakDelay.Should().Be(TimeSpan.FromSeconds(1));
+        message.TermCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Acknowledgement_NackWithRequeueDuringShutdownDeadLettersAtHeadroomLimit()
+    {
+        FakeJetStreamMessage message = new ();
+        NatsMessageAcknowledgement acknowledgement = new (
+            message,
+            TimeSpan.FromSeconds(2),
+            10,
+            5,
+            _ => Task.FromResult(true),
+            new CancellationToken(canceled: true)
+        );
+
+        await acknowledgement.NackAsync(requeue: true, TestContext.Current.CancellationToken);
+
+        message.NakCount.Should().Be(0);
+        message.TermCount.Should().Be(1);
+        message.LastTerminateReason.Should().Be("Dead-lettered by Brilliant Messaging (shutdown interruption).");
+    }
+
+    [Fact]
+    public async Task Acknowledgement_NackWithoutRequeueDuringShutdownStillRejects()
+    {
+        FakeJetStreamMessage message = new ();
+        NatsMessageAcknowledgement acknowledgement = new (
+            message,
+            TimeSpan.FromSeconds(2),
+            1,
+            5,
+            _ => Task.FromResult(true),
+            new CancellationToken(canceled: true)
+        );
+
+        await acknowledgement.NackAsync(requeue: false, TestContext.Current.CancellationToken);
+
+        message.NakCount.Should().Be(0);
+        message.TermCount.Should().Be(1);
+        message.LastTerminateReason.Should().Be("Dead-lettered by Brilliant Messaging.");
     }
 
     [Fact]

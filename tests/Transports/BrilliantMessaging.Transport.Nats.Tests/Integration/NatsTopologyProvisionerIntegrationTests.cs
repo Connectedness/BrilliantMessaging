@@ -48,7 +48,8 @@ public sealed class NatsTopologyProvisionerIntegrationTests : IAsyncLifetime
                 FilterSubject = "orders.placed",
                 AckPolicy = ConsumerConfigAckPolicy.Explicit,
                 AckWait = NatsTopologyBuilderDefaults.DefaultAckWait,
-                MaxDeliver = 5,
+                // 2 x the default MaxDeliver of 5: the server carries shutdown-interruption headroom.
+                MaxDeliver = 10,
                 MaxAckPending = 1024
             },
             TestContext.Current.CancellationToken

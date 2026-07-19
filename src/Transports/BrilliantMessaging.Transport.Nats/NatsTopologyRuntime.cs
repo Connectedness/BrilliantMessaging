@@ -280,7 +280,8 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             GetNakDelay(consumer, deliveryAttempt),
             deliveryAttempt,
             consumer.MaxDeliver,
-            token => PublishDeadLetterAsync(consumer, message, headers, token)
+            token => PublishDeadLetterAsync(consumer, message, headers, token),
+            shutdownToken: cancellationToken
         );
 
         IncomingMessageContext context = new (
@@ -303,9 +304,9 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // Shutdown interrupted the delivery; without settling it the message would stall for the full
-            // AckWait before another instance picks it up. Requeue bypasses the NAK delay and MaxDeliver
-            // handling because the delivery was interrupted, not failed.
+            // For auto-ack endpoints the acknowledgement middleware has already settled the interruption
+            // (immediate NAK, or dead-letter once the server-side redelivery headroom is exhausted); this
+            // requeue is the safety net for manual-ack handlers interrupted before they settled.
             await acknowledgement.RequeueAsync(CancellationToken.None).ConfigureAwait(false);
             throw;
         }

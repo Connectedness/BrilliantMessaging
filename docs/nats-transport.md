@@ -106,6 +106,15 @@ Long-running handlers are kept in-flight by periodic JetStream `AckProgress` whi
 by default and can be disabled with `AckProgress(false)`. If it is disabled, size `AckWait` to cover the slowest
 handler.
 
+Deliveries interrupted by shutdown are not treated as failures: they are NAK'd with a short delay — no retry
+backoff, no client-side `MaxDeliver` accounting — so another (or restarted) instance picks them up promptly
+instead of waiting out `AckWait`. To make this possible, the JetStream consumer is provisioned with
+`MaxDeliver` set to twice the configured value: real handler failures are dead-lettered client-side once the
+configured attempts are exhausted, while the extra server-side headroom keeps interrupted deliveries
+redeliverable. Every delivery — interrupted or not — still counts toward the server's limit, so repeated
+interruptions of the same message eventually exhaust the headroom; at that point the message is dead-lettered
+with a distinct terminate reason rather than left stranded.
+
 Each consumer worker pulls up to `MaxBufferedMessages` messages (default 8) into a client-side buffer and
 dispatches them sequentially. Only the message currently in a handler is heartbeated; buffered messages keep
 counting against `AckWait` from the moment the server delivered them. Size the buffer so that
