@@ -220,9 +220,24 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         {
             inspectResult = await _inspector.InspectAsync(transportMessage, cancellationToken).ConfigureAwait(false);
         }
-        catch (UnknownInboundMessageException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            await DeadLetterOrTerminateAsync(consumer, message, transportMessage, headers, cancellationToken)
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // Inspection is pure computation over the received headers, so any failure - unknown contract,
+            // missing required attribute, malformed timestamp - is deterministic malformation. Redelivery
+            // can never succeed; settling the message immediately prevents it from stranding once
+            // MaxDeliver is exhausted.
+            await DeadLetterOrTerminateAsync(
+                    consumer,
+                    message,
+                    transportMessage,
+                    headers,
+                    exception,
+                    cancellationToken
+                )
                .ConfigureAwait(false);
             return;
         }
@@ -230,7 +245,14 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         if (inspectResult is null ||
             !consumer.EndpointsByDiscriminator.TryGetValue(inspectResult.Discriminator, out var endpoint))
         {
-            await DeadLetterOrTerminateAsync(consumer, message, transportMessage, headers, cancellationToken)
+            await DeadLetterOrTerminateAsync(
+                    consumer,
+                    message,
+                    transportMessage,
+                    headers,
+                    inspectionFailure: null,
+                    cancellationToken
+                )
                .ConfigureAwait(false);
             return;
         }
@@ -238,7 +260,14 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         if (endpoint.MessageType != inspectResult.MessageType &&
             !endpoint.MessageType.IsAssignableFrom(inspectResult.MessageType))
         {
-            await DeadLetterOrTerminateAsync(consumer, message, transportMessage, headers, cancellationToken)
+            await DeadLetterOrTerminateAsync(
+                    consumer,
+                    message,
+                    transportMessage,
+                    headers,
+                    inspectionFailure: null,
+                    cancellationToken
+                )
                .ConfigureAwait(false);
             return;
         }
@@ -334,25 +363,46 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         INatsJSMsg<byte[]> message,
         NatsTransportMessage transportMessage,
         IReadOnlyDictionary<string, object?> headers,
+        Exception? inspectionFailure,
         CancellationToken cancellationToken
     )
     {
-        _logger?.LogWarning(
-            "NATS topology '{Topology}' consumer '{Consumer}' received a message with no matching handler; {Action}",
-            _topology.Name,
-            consumer.DurableName,
-            consumer.DeadLetterSubject is null ? "terminating it" : "dead-lettering it"
-        );
+        var action = consumer.DeadLetterSubject is null ? "terminating it" : "dead-lettering it";
+        if (inspectionFailure is null)
+        {
+            _logger?.LogWarning(
+                "NATS topology '{Topology}' consumer '{Consumer}' received a message with no matching handler; {Action}",
+                _topology.Name,
+                consumer.DurableName,
+                action
+            );
+        }
+        else
+        {
+            _logger?.LogWarning(
+                inspectionFailure,
+                "NATS topology '{Topology}' consumer '{Consumer}' received a message that failed inbound inspection; {Action}",
+                _topology.Name,
+                consumer.DurableName,
+                action
+            );
+        }
 
         // The pre-pipeline reject never reaches InboundDiagnosticsMiddleware, so the runtime owns this delivery's
-        // messaging.client.consumed.messages measurement and carries the bounded error.type. An unrecognized
-        // delivery classifies as _OTHER, matching ResolveErrorType(UnknownInboundMessageException).
+        // messaging.client.consumed.messages measurement and carries the bounded error.type, classified through
+        // the same ResolveErrorType mapping the middleware would apply. Unroutable deliveries without an
+        // exception classify as _OTHER.
         var tags = new TagList
         {
             { MessagingSemanticConventions.MessagingSystem, transportMessage.MessagingSystem },
             { MessagingSemanticConventions.MessagingOperationName, MessagingSemanticConventions.ProcessOperation },
             { MessagingSemanticConventions.MessagingDestinationName, transportMessage.Source },
-            { MessagingSemanticConventions.ErrorType, MessagingSemanticConventions.ErrorTypeOther }
+            {
+                MessagingSemanticConventions.ErrorType,
+                inspectionFailure is null ?
+                    MessagingSemanticConventions.ErrorTypeOther :
+                    MessagingSemanticConventions.ResolveErrorType(inspectionFailure)
+            }
         };
         InboundDiagnostics.ConsumedMessages.Add(1, tags);
 

@@ -991,6 +991,120 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
         }
     }
 
+    [Theory]
+    [InlineData("ce-id", null)]
+    [InlineData("ce-time", "not-a-timestamp")]
+    public async Task MalformedCloudEventWithKnownTypeIsDeadLetteredAndOriginalDeliveryIsTerminated(
+        string headerName,
+        string? headerValue
+    )
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-malformed-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.malformed")
+                           .MaxDeliver(3)
+                           .AckWait(TimeSpan.FromSeconds(30))
+                           .DeadLetterSubject("orders.dead")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateConsumerAsync(
+            "ORDERS",
+            new ConsumerConfig("malformed-dead-inspector")
+            {
+                DurableName = "malformed-dead-inspector",
+                FilterSubject = "orders.dead",
+                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                DeliverPolicy = ConsumerConfigDeliverPolicy.All
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            // A complete, valid envelope for the known contract, then broken in exactly one attribute.
+            NatsHeaders headers = new ()
+            {
+                ["ce-specversion"] = "1.0",
+                ["ce-id"] = "malformed-1",
+                ["ce-source"] = "/external-producer",
+                ["ce-type"] = "tests.order.placed",
+                ["ce-time"] = "2026-07-19T08:00:00Z",
+                ["content-type"] = "application/json"
+            };
+            if (headerValue is null)
+            {
+                headers.Remove(headerName);
+            }
+            else
+            {
+                headers[headerName] = headerValue;
+            }
+
+            await jetStream.PublishAsync(
+                "orders.malformed",
+                "malformed"u8.ToArray(),
+                serializer: null,
+                opts: null,
+                headers,
+                TestContext.Current.CancellationToken
+            );
+
+            // AckWait is 30s; the delivery settling well within that window proves the inspection failure
+            // was routed through dead-letter/terminate instead of stranding the message unsettled.
+            await WaitForNoAckPendingAsync(
+                jetStream,
+                "ORDERS",
+                "orders-malformed-worker",
+                TimeSpan.FromSeconds(10),
+                TestContext.Current.CancellationToken
+            );
+
+            var deadLetter = await ReadSingleMessageAsync(
+                jetStream,
+                "ORDERS",
+                "malformed-dead-inspector",
+                TestContext.Current.CancellationToken
+            );
+
+            deadLetter.Subject.Should().Be("orders.dead");
+            deadLetter.Data.Should().Equal("malformed"u8.ToArray());
+            HeaderValue(GetHeaders(deadLetter), "ce-type").Should().Be("tests.order.placed");
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
     [Fact]
     public async Task UnknownDiscriminatorIsDeadLetteredAndOriginalDeliveryIsTerminated()
     {

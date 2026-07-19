@@ -89,7 +89,9 @@ available.
 Successful automatic handler completion sends JetStream `Ack`. Retryable handler failure sends `Nak` with a
 delay. `RetryMessageException` is classified as retryable; `RejectMessageException` is classified as rejected.
 Rejected messages and retry exhaustion publish the original payload and headers to the configured dead-letter
-subject, wait for the JetStream publish acknowledgement, and then terminate the original message. The
+subject, wait for the JetStream publish acknowledgement, and then terminate the original message. Messages
+that cannot enter the pipeline at all — an unregistered CloudEvents type, no matching handler, or a malformed
+CloudEvents envelope — take the same dead-letter-then-terminate path immediately, without consuming retries. The
 dead-letter copy is published under a message id derived from the original id (or the stream sequence), the
 durable consumer name, and the dead-letter subject, so a stream-wide duplicate window neither suppresses the
 copy as a duplicate of the original nor stores a second copy when a retried delivery repeats the dead-letter
