@@ -665,6 +665,203 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task HandlerFailureDeadLettersWhenDeduplicationSharesTheStream()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream(
+                        "ORDERS",
+                        stream => stream.Subject("orders.*").DuplicateWindow(TimeSpan.FromMinutes(1))
+                    )
+                   .Publish<OrderPlaced>(
+                        target => target.ToSubject("orders.dedup-dead").UseMessageIdDeduplication()
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-dedup-dead-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.dedup-dead")
+                           .MaxDeliver(1)
+                           .DeadLetterSubject("orders.dead")
+                           .Handle<OrderPlaced, FailingOrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateConsumerAsync(
+            "ORDERS",
+            new ConsumerConfig("dedup-dead-inspector")
+            {
+                DurableName = "dedup-dead-inspector",
+                FilterSubject = "orders.dead",
+                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                DeliverPolicy = ConsumerConfigDeliverPolicy.All
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            var publisher = provider.GetRequiredService<IMessagePublisher>();
+            var eventId = Guid.Parse("0d0186a1-64f5-4d29-9bf5-2f4c19fbe905");
+            await publisher.PublishMessageAsync(
+                new OrderPlaced { Id = eventId, OrderId = "order-dedup-dead" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+            // The dead-letter subject lives in the same stream as the original, whose Nats-Msg-Id sits
+            // inside the duplicate window; only a copy published under a derived id can be stored.
+            var deadLetter = await ReadSingleMessageAsync(
+                jetStream,
+                "ORDERS",
+                "dedup-dead-inspector",
+                TestContext.Current.CancellationToken
+            );
+
+            deadLetter.Subject.Should().Be("orders.dead");
+            var headers = GetHeaders(deadLetter);
+            HeaderValue(headers, "ce-id").Should().Be(eventId.ToString());
+            HeaderValue(headers, "Nats-Msg-Id")
+               .Should()
+               .Be($"{eventId}:dlq:orders-dedup-dead-worker:orders.dead");
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RetriedDeadLetterPublishTreatsStoredDuplicateAsSuccess()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream(
+                        "ORDERS",
+                        stream => stream.Subject("orders.*").DuplicateWindow(TimeSpan.FromMinutes(1))
+                    )
+                   .Publish<OrderPlaced>(
+                        target => target.ToSubject("orders.retry-dead").UseMessageIdDeduplication()
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-retry-dead-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.retry-dead")
+                           .MaxDeliver(1)
+                           .AckWait(TimeSpan.FromSeconds(30))
+                           .DeadLetterSubject("orders.dead")
+                           .Handle<OrderPlaced, FailingOrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        await jetStream.CreateOrUpdateConsumerAsync(
+            "ORDERS",
+            new ConsumerConfig("retry-dead-inspector")
+            {
+                DurableName = "retry-dead-inspector",
+                FilterSubject = "orders.dead",
+                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                DeliverPolicy = ConsumerConfigDeliverPolicy.All
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        // Simulates an earlier dead-letter publish whose subsequent terminate failed: the copy is already
+        // stored under the derived id (format pinned by NatsMessageMappingTests) when the redelivered
+        // original goes through the dead-letter sequence again.
+        var eventId = Guid.Parse("5b3ff6dc-8a04-4baf-95cd-71a0e5cb02b6");
+        var derivedMessageId = $"{eventId}:dlq:orders-retry-dead-worker:orders.dead";
+        var storedCopy = await jetStream.PublishAsync(
+            "orders.dead",
+            "stored-copy"u8.ToArray(),
+            serializer: null,
+            opts: new NatsJSPubOpts { MsgId = derivedMessageId },
+            headers: null,
+            TestContext.Current.CancellationToken
+        );
+        storedCopy.EnsureSuccess();
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            var publisher = provider.GetRequiredService<IMessagePublisher>();
+            await publisher.PublishMessageAsync(
+                new OrderPlaced { Id = eventId, OrderId = "order-retry-dead" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+            // The duplicate acknowledgement for the derived id must count as success so the original is
+            // terminated right away. AckWait is 30s, so pending clearing well within that window can only
+            // come from the terminate - a failed dead-letter publish would leave the delivery pending for
+            // the full AckWait.
+            await WaitForNoAckPendingAsync(
+                jetStream,
+                "ORDERS",
+                "orders-retry-dead-worker",
+                TimeSpan.FromSeconds(10),
+                TestContext.Current.CancellationToken
+            );
+
+            var deadLetters = await ReadMessagesAsync(
+                jetStream,
+                "ORDERS",
+                "retry-dead-inspector",
+                2,
+                TimeSpan.FromSeconds(2),
+                TestContext.Current.CancellationToken
+            );
+            deadLetters.Should().ContainSingle().Which.Data.Should().Equal("stored-copy"u8.ToArray());
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
     public async Task UnknownDiscriminatorIsDeadLetteredAndOriginalDeliveryIsTerminated()
     {
         ServiceCollection services = new ();
@@ -1168,6 +1365,33 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
         }
 
         return messages;
+    }
+
+    private static async Task WaitForNoAckPendingAsync(
+        NatsJSContext jetStream,
+        string streamName,
+        string durableName,
+        TimeSpan timeout,
+        CancellationToken cancellationToken
+    )
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var consumer = await jetStream
+               .GetConsumerAsync(streamName, durableName, cancellationToken)
+               .ConfigureAwait(false);
+            if (consumer.Info.NumAckPending == 0)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken).ConfigureAwait(false);
+        }
+
+        throw new TimeoutException(
+            $"Timed out waiting for consumer '{durableName}' to have no acknowledgements pending."
+        );
     }
 
     private static NatsHeaders GetHeaders(INatsJSMsg<byte[]> message)

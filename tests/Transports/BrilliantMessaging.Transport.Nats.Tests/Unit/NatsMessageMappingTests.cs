@@ -206,6 +206,75 @@ public sealed class NatsMessageMappingTests
         message.LastTerminateReason.Should().Be("Terminated by Brilliant Messaging.");
     }
 
+    [Fact]
+    public void DeadLetterMessageId_DerivesFromOriginalNatsMsgId()
+    {
+        FakeJetStreamMessage message = new ();
+        message.Headers!["Nats-Msg-Id"] = "event-1";
+
+        var messageId = NatsTopologyRuntime.GetDeadLetterMessageId(CreateConsumer("orders.dead"), message);
+
+        messageId.Should().Be("event-1:dlq:orders-worker:orders.dead");
+    }
+
+    [Fact]
+    public void DeadLetterMessageId_FallsBackToStreamSequenceWithoutOriginalNatsMsgId()
+    {
+        FakeJetStreamMessage message = new ()
+        {
+            Metadata = new NatsJSMsgMetadata(
+                new NatsJSSequencePair(42, 7),
+                1,
+                0,
+                DateTimeOffset.UtcNow,
+                "ORDERS",
+                "orders-worker",
+                string.Empty
+            )
+        };
+
+        var messageId = NatsTopologyRuntime.GetDeadLetterMessageId(CreateConsumer("orders.dead"), message);
+
+        messageId.Should().Be("ORDERS:42:dlq:orders-worker:orders.dead");
+    }
+
+    [Fact]
+    public void DeadLetterMessageId_IsNullWithoutDeadLetterSubject()
+    {
+        FakeJetStreamMessage message = new ();
+        message.Headers!["Nats-Msg-Id"] = "event-1";
+
+        var messageId = NatsTopologyRuntime.GetDeadLetterMessageId(CreateConsumer(null), message);
+
+        messageId.Should().BeNull();
+    }
+
+    [Fact]
+    public void DeadLetterMessageId_IsNullWithoutAnyStableIdSource()
+    {
+        FakeJetStreamMessage message = new ();
+
+        var messageId = NatsTopologyRuntime.GetDeadLetterMessageId(CreateConsumer("orders.dead"), message);
+
+        messageId.Should().BeNull();
+    }
+
+    private static NatsInboundConsumer CreateConsumer(string? deadLetterSubject)
+    {
+        return new NatsInboundConsumer(
+            "ORDERS",
+            "orders-worker",
+            "orders.placed",
+            1,
+            TimeSpan.FromSeconds(30),
+            5,
+            1024,
+            8,
+            deadLetterSubject,
+            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal)
+        );
+    }
+
     private sealed class FakeJetStreamMessage : INatsJSMsg<byte[]>
     {
         public Action? OnTerminate { get; set; }
@@ -219,7 +288,7 @@ public sealed class NatsMessageMappingTests
         public byte[] Data { get; } = "body"u8.ToArray();
         public NatsHeaders? Headers { get; } = new ();
         public INatsConnection Connection => null!;
-        public NatsJSMsgMetadata? Metadata => null;
+        public NatsJSMsgMetadata? Metadata { get; set; }
         public string ReplyTo => string.Empty;
         public NatsException? Error => null;
 

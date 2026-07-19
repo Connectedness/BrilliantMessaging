@@ -20,6 +20,8 @@ namespace BrilliantMessaging.Transport.Nats;
 /// </summary>
 public sealed class NatsTopologyRuntime : ITopologyRuntime
 {
+    private const string NatsMsgIdHeaderName = "Nats-Msg-Id";
+
     private static readonly TimeSpan ConsumerRecoveryDelay = TimeSpan.FromSeconds(1);
 
     private readonly ILogger<NatsTopologyRuntime>? _logger;
@@ -373,19 +375,78 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             return false;
         }
 
+        // Deduplication is stream-wide, so republishing the original's Nats-Msg-Id inside the duplicate
+        // window would suppress the dead-letter copy. The copy gets a derived id instead; the original
+        // CloudEvents id remains available via the ce-id header.
+        var natsHeaders = ToNatsHeaders(headers);
+        natsHeaders.Remove(NatsMsgIdHeaderName);
+        var messageId = GetDeadLetterMessageId(consumer, message);
+
         var jetStream = await _topology.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
         var acknowledgement = await jetStream
            .PublishAsync(
                 consumer.DeadLetterSubject,
                 message.Data,
                 serializer: null,
-                opts: null,
-                headers: ToNatsHeaders(headers),
+                opts: messageId is null ? null : new NatsJSPubOpts { MsgId = messageId },
+                headers: natsHeaders,
                 cancellationToken
             )
            .ConfigureAwait(false);
+        if (acknowledgement.Duplicate)
+        {
+            // A duplicate acknowledgement for the derived id proves an earlier publish already stored the
+            // dead-letter copy - for example when the subsequent terminate failed and the redelivery
+            // retries the sequence - so the delivery can proceed to termination.
+            return true;
+        }
+
         acknowledgement.EnsureSuccess();
         return true;
+    }
+
+    /// <summary>
+    /// Derives the JetStream message id for a dead-letter copy. The id must differ from the original's
+    /// <c>Nats-Msg-Id</c> so a stream-wide duplicate window cannot deduplicate the copy against the
+    /// original, and it must be stable across redeliveries so a retried dead-letter publish after a
+    /// failed terminate is recognized as already stored instead of creating a second copy. Returns
+    /// <see langword="null" /> when the consumer has no dead-letter subject or no stable id source exists.
+    /// </summary>
+    public static string? GetDeadLetterMessageId(NatsInboundConsumer consumer, INatsJSMsg<byte[]> message)
+    {
+        if (consumer is null)
+        {
+            throw new ArgumentNullException(nameof(consumer));
+        }
+
+        if (message is null)
+        {
+            throw new ArgumentNullException(nameof(message));
+        }
+
+        if (consumer.DeadLetterSubject is null)
+        {
+            return null;
+        }
+
+        string? originalId = null;
+        if (message.Headers is { } messageHeaders &&
+            messageHeaders.TryGetValue(NatsMsgIdHeaderName, out var value))
+        {
+            var headerValue = value.ToString();
+            originalId = string.IsNullOrWhiteSpace(headerValue) ? null : headerValue;
+        }
+
+        // The stream sequence identifies the stored message across redeliveries even when the producer
+        // did not set a message id.
+        if (originalId is null && message.Metadata is { } metadata)
+        {
+            originalId = $"{consumer.StreamName}:{metadata.Sequence.Stream}";
+        }
+
+        return originalId is null ?
+            null :
+            $"{originalId}:dlq:{consumer.DurableName}:{consumer.DeadLetterSubject}";
     }
 
     private static Dictionary<string, object?> GetHeaders(INatsJSMsg<byte[]> message)
