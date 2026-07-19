@@ -82,7 +82,9 @@ the expected retry window.
 ## Consuming
 
 Consumed messages flow through the normal inbound path: CloudEvents inspection, trace context, deserialization
-middleware, acknowledgement middleware, handler invocation, and inbound diagnostics. Handler-level
+middleware, acknowledgement middleware, handler invocation, and inbound diagnostics. Inbound header names are
+matched case-insensitively, so external producers may use canonical HTTP-style casing (`Content-Type`,
+`Ce-Type`); CloudEvents attribute names are canonicalized to their lowercase spec form during mapping. Handler-level
 deserializer overrides, `HandleNamed`, manual acknowledgement, and handler-level acknowledgement options are
 available.
 

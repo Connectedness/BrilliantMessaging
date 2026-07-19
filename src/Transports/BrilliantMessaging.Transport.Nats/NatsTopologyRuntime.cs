@@ -506,7 +506,9 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
 
     private static Dictionary<string, object?> GetHeaders(INatsJSMsg<byte[]> message)
     {
-        Dictionary<string, object?> headers = new (StringComparer.Ordinal);
+        // NatsHeaders resolves names case-insensitively; the copy must preserve that so headers from
+        // external producers using canonical casing (Content-Type) remain resolvable.
+        Dictionary<string, object?> headers = new (StringComparer.OrdinalIgnoreCase);
         if (message.Headers is not null)
         {
             foreach (var header in message.Headers)
@@ -531,8 +533,15 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
 
     private static string MapHeaderName(string headerName)
     {
-        return headerName.StartsWith(NatsOutboundTarget<object>.CloudEventsWireHeaderPrefix, StringComparison.Ordinal) ?
-            $"{CloudEventsInboundMessageInspector.CloudEventsHeaderPrefix}{headerName.Substring(NatsOutboundTarget<object>.CloudEventsWireHeaderPrefix.Length)}" :
+        // CloudEvents attribute names are lowercase per spec, but external producers may use any header
+        // casing. The suffix is canonicalized because the core-attribute classification downstream uses
+        // ordinal comparisons; without it, a header like Ce-Type would surface as a bogus extension
+        // attribute named "Type".
+        return headerName.StartsWith(
+            NatsOutboundTarget<object>.CloudEventsWireHeaderPrefix,
+            StringComparison.OrdinalIgnoreCase
+        ) ?
+            $"{CloudEventsInboundMessageInspector.CloudEventsHeaderPrefix}{headerName.Substring(NatsOutboundTarget<object>.CloudEventsWireHeaderPrefix.Length).ToLowerInvariant()}" :
             headerName;
     }
 

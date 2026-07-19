@@ -1300,6 +1300,86 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CanonicallyCasedHeadersFromExternalProducerAreResolved()
+    {
+        EnvelopeProbe probe = new ();
+        ServiceCollection services = new ();
+        services.AddSingleton(probe);
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-canonical-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.canonical")
+                           .MaxDeliver(1)
+                           .Handle<OrderPlaced, EnvelopeRecordingOrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            // HTTP-style canonical casing, as an external (non-Brilliant-Messaging) producer would send it.
+            NatsHeaders headers = new ()
+            {
+                ["Ce-Specversion"] = "1.0",
+                ["Ce-Id"] = "canonical-1",
+                ["Ce-Source"] = "/external-producer",
+                ["Ce-Type"] = "tests.order.placed",
+                ["Ce-Time"] = "2026-07-19T08:00:00Z",
+                ["Content-Type"] = "application/json"
+            };
+            await jetStream.PublishAsync(
+                "orders.canonical",
+                """{"OrderId":"order-canonical"}"""u8.ToArray(),
+                serializer: null,
+                opts: null,
+                headers,
+                TestContext.Current.CancellationToken
+            );
+
+            var (message, envelope, contentType) = await probe.WaitAsync(
+                TimeSpan.FromSeconds(15),
+                TestContext.Current.CancellationToken
+            );
+
+            message.OrderId.Should().Be("order-canonical");
+            contentType.Should().Be("application/json");
+            envelope.HasValue.Should().BeTrue();
+            envelope!.Value.Id.Should().Be("canonical-1");
+            // The mis-cased core attributes must be canonicalized during mapping, not surface as bogus
+            // extension attributes named "Type", "Id", etc.
+            envelope.Value.Extensions.Should().BeNull();
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
     public async Task UnknownDiscriminatorIsDeadLetteredAndOriginalDeliveryIsTerminated()
     {
         ServiceCollection services = new ();
@@ -2305,6 +2385,46 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
         )
         {
             throw new InvalidOperationException("Simulated manual-ack handler failure.");
+        }
+    }
+
+    private sealed class EnvelopeProbe
+    {
+        private readonly TaskCompletionSource<(OrderPlaced Message, CloudEventEnvelope? Envelope, string? ContentType)>
+            _received = new (TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Record(OrderPlaced message, IncomingMessageContext context)
+        {
+            context.Items.TryGetItem(CloudEventsContextKeys.Envelope, out var envelope);
+            _received.TrySetResult((message, envelope, context.Transport.ContentType));
+        }
+
+        public async Task<(OrderPlaced Message, CloudEventEnvelope? Envelope, string? ContentType)> WaitAsync(
+            TimeSpan timeout,
+            CancellationToken cancellationToken
+        )
+        {
+            return await _received.Task.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private sealed class EnvelopeRecordingOrderPlacedHandler : IMessageHandler<OrderPlaced>
+    {
+        private readonly EnvelopeProbe _probe;
+
+        public EnvelopeRecordingOrderPlacedHandler(EnvelopeProbe probe)
+        {
+            _probe = probe;
+        }
+
+        public Task HandleAsync(
+            OrderPlaced message,
+            IncomingMessageContext context,
+            CancellationToken cancellationToken = default
+        )
+        {
+            _probe.Record(message, context);
+            return Task.CompletedTask;
         }
     }
 
