@@ -862,6 +862,136 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TopologyLocalMessageContractsAreResolvedOnInboundDispatch()
+    {
+        RecordingProbe probe = new ();
+        ServiceCollection services = new ();
+        services.AddSingleton(probe);
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.local.order.placed"))
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Publish<OrderPlaced>(target => target.ToSubject("orders.local"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-local-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.local")
+                           .MaxDeliver(1)
+                           .Handle<OrderPlaced, RecordingOrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            var publisher = provider.GetRequiredService<IMessagePublisher>();
+            await publisher.PublishMessageAsync(
+                new OrderPlaced { OrderId = "order-local" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+            // The contract exists only in the topology dialect; inbound dispatch must resolve it through the
+            // topology's effective registry rather than the globally registered inspector.
+            var received = await probe.WaitAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
+            received.OrderId.Should().Be("order-local");
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task GlobalMessageContractsResolveWhenTopologyDeclaresLocalContracts()
+    {
+        MultiMessageProbe probe = new ();
+        ServiceCollection services = new ();
+        services.AddSingleton(probe);
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .MapMessageContracts(contracts => contracts.Map<OrderCancelled>("tests.local.order.cancelled"))
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Publish<OrderPlaced>(target => target.ToSubject("orders.mixed"))
+                   .Publish<OrderCancelled>(target => target.ToSubject("orders.mixed"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-mixed-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.mixed")
+                           .Handle<OrderPlaced, MultiOrderPlacedHandler>()
+                           .Handle<OrderCancelled, MultiOrderCancelledHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        foreach (var provisioner in provider.GetServices<ITopologyProvisioner>())
+        {
+            await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+        }
+
+        var runtimes = provider.GetServices<ITopologyRuntime>().ToArray();
+        foreach (var runtime in runtimes)
+        {
+            await runtime.StartAsync(TestContext.Current.CancellationToken);
+        }
+
+        try
+        {
+            var publisher = provider.GetRequiredService<IMessagePublisher>();
+            await publisher.PublishMessageAsync(
+                new OrderPlaced { OrderId = "order-mixed-placed" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+            await publisher.PublishMessageAsync(
+                new OrderCancelled { OrderId = "order-mixed-cancelled" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+            // The topology dialect must extend the global contracts, not replace them: the globally mapped
+            // type and the topology-local type are both dispatched by the same consumer.
+            var placed = await probe.WaitForPlacedAsync(
+                TimeSpan.FromSeconds(15),
+                TestContext.Current.CancellationToken
+            );
+            var cancelled = await probe.WaitForCancelledAsync(
+                TimeSpan.FromSeconds(15),
+                TestContext.Current.CancellationToken
+            );
+            placed.OrderId.Should().Be("order-mixed-placed");
+            cancelled.OrderId.Should().Be("order-mixed-cancelled");
+        }
+        finally
+        {
+            foreach (var runtime in runtimes)
+            {
+                await runtime.StopAsync(CancellationToken.None);
+            }
+        }
+    }
+
+    [Fact]
     public async Task UnknownDiscriminatorIsDeadLetteredAndOriginalDeliveryIsTerminated()
     {
         ServiceCollection services = new ();

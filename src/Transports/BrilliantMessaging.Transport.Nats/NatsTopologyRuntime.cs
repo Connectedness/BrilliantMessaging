@@ -24,6 +24,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
 
     private static readonly TimeSpan ConsumerRecoveryDelay = TimeSpan.FromSeconds(1);
 
+    private readonly CloudEventsInboundMessageInspector _inspector;
     private readonly ILogger<NatsTopologyRuntime>? _logger;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly NatsTopology _topology;
@@ -43,6 +44,10 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         _topology = topology ?? throw new ArgumentNullException(nameof(topology));
         _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
         _logger = logger ?? NullLogger<NatsTopologyRuntime>.Instance;
+
+        // The inspector must resolve CloudEvents types against the topology's effective contract registry;
+        // the DI singleton only knows the globally mapped contracts, not topology-local dialects.
+        _inspector = new CloudEventsInboundMessageInspector(_topology.MessageContractRegistry);
     }
 
     /// <inheritdoc />
@@ -210,13 +215,10 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             (uint) (message.Metadata?.NumDelivered ?? 1)
         );
 
-        await using var scope = _serviceScopeFactory.CreateAsyncScope();
-
-        var inspector = scope.ServiceProvider.GetRequiredService<CloudEventsInboundMessageInspector>();
         InboundMessageInspectionResult? inspectResult;
         try
         {
-            inspectResult = await inspector.InspectAsync(transportMessage, cancellationToken).ConfigureAwait(false);
+            inspectResult = await _inspector.InspectAsync(transportMessage, cancellationToken).ConfigureAwait(false);
         }
         catch (UnknownInboundMessageException)
         {
@@ -240,6 +242,8 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
                .ConfigureAwait(false);
             return;
         }
+
+        await using var scope = _serviceScopeFactory.CreateAsyncScope();
 
         var deliveryAttempt = (uint) (message.Metadata?.NumDelivered ?? 1);
         var acknowledgement = new NatsMessageAcknowledgement(
