@@ -443,10 +443,28 @@ public sealed class NatsTopologyCompiler
                 );
             }
 
-            if (consumer.FilterSubject is not null && !IsValidSubject(consumer.FilterSubject, allowWildcards: false))
+            var filterSubjectIsValid = consumer.FilterSubject is null ||
+                                       IsValidSubject(consumer.FilterSubject, allowWildcards: true);
+            if (!filterSubjectIsValid)
             {
                 errors.Add(
                     $"NATS consumer '{consumer.DurableName}' uses invalid filter subject '{consumer.FilterSubject}'."
+                );
+            }
+
+            if (consumer.FilterSubject is not null &&
+                filterSubjectIsValid &&
+                streamNames.Contains(consumer.StreamName) &&
+                !configuration.Streams.Any(
+                    stream => string.Equals(stream.Name, consumer.StreamName, StringComparison.Ordinal) &&
+                              stream.Subjects.Any(
+                                  subject => IsValidSubject(subject, allowWildcards: true) &&
+                                             SubjectPatternsOverlap(subject, consumer.FilterSubject)
+                              )
+                ))
+            {
+                errors.Add(
+                    $"NATS consumer '{consumer.DurableName}' filter subject '{consumer.FilterSubject}' does not overlap any subject declared by stream '{consumer.StreamName}'."
                 );
             }
 
@@ -622,5 +640,30 @@ public sealed class NatsTopologyCompiler
         }
 
         return patternTokens.Length == subjectTokens.Length;
+    }
+
+    private static bool SubjectPatternsOverlap(string leftPattern, string rightPattern)
+    {
+        var leftTokens = leftPattern.Split('.');
+        var rightTokens = rightPattern.Split('.');
+        var sharedLength = Math.Min(leftTokens.Length, rightTokens.Length);
+        for (var i = 0; i < sharedLength; i++)
+        {
+            var leftToken = leftTokens[i];
+            var rightToken = rightTokens[i];
+            if (leftToken == ">" || rightToken == ">")
+            {
+                return true;
+            }
+
+            if (leftToken != "*" &&
+                rightToken != "*" &&
+                !string.Equals(leftToken, rightToken, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return leftTokens.Length == rightTokens.Length;
     }
 }

@@ -53,7 +53,8 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
     }
 
     /// <summary>
-    /// Restricts the durable consumer to a specific NATS subject.
+    /// Restricts the durable consumer to a NATS subject pattern. The pattern may include
+    /// <c>*</c> and terminal <c>&gt;</c> wildcards and must overlap the referenced stream.
     /// </summary>
     public NatsInboundConsumerBuilder FilterSubject(string subject)
     {

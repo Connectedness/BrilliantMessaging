@@ -115,6 +115,7 @@ public sealed class NatsTopologyCompilerTests
     [Theory]
     [InlineData(null)]
     [InlineData("orders.dead")]
+    [InlineData("orders.>")]
     public async Task Compile_RejectsDeadLetterSubjectSelectedByOriginatingConsumer(string? filterSubject)
     {
         ServiceCollection services = new ();
@@ -181,6 +182,99 @@ public sealed class NatsTopologyCompilerTests
         var topology = provider.GetRequiredService<NatsTopology>();
 
         topology.Consumers.Should().ContainSingle().Which.DeadLetterSubject.Should().Be("orders.dead");
+    }
+
+    [Fact]
+    public async Task Compile_AllowsWildcardFilterThatExcludesDeadLetterSubject()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject("orders.>"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.live.*")
+                           .DeadLetterSubject("orders.dead")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var topology = provider.GetRequiredService<NatsTopology>();
+
+        topology.Consumers.Should().ContainSingle().Which.FilterSubject.Should().Be("orders.live.*");
+    }
+
+    [Theory]
+    [InlineData("orders.>", "orders.*")]
+    [InlineData("orders.*", "orders.>")]
+    [InlineData(">", "orders.*")]
+    public async Task Compile_AllowsWildcardFilterOverlappingStream(string streamSubject, string filterSubject)
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject(streamSubject))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer
+                           .FilterSubject(filterSubject)
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var topology = provider.GetRequiredService<NatsTopology>();
+
+        topology.Consumers.Should().ContainSingle().Which.FilterSubject.Should().Be(filterSubject);
+    }
+
+    [Theory]
+    [InlineData("orders.*", "payments.*")]
+    [InlineData("orders.*", "orders.eu.*")]
+    [InlineData("orders.>", "orders")]
+    public async Task Compile_RejectsFilterThatDoesNotOverlapStream(string streamSubject, string filterSubject)
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject(streamSubject))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer
+                           .FilterSubject(filterSubject)
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure
+        var act = () => provider.GetRequiredService<NatsTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should()
+           .Contain(
+                error => error.Contains(
+                    $"filter subject '{filterSubject}' does not overlap any subject declared by stream 'ORDERS'",
+                    StringComparison.Ordinal
+                )
+            );
     }
 
     [Fact]
@@ -384,7 +478,7 @@ public sealed class NatsTopologyCompilerTests
                    .UseServer("nats://localhost:4222")
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
                    .Consume("MISSING", "orders-worker", consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>())
-                   .Consume("ORDERS", "orders-worker", consumer => consumer.FilterSubject("orders.*"))
+                   .Consume("ORDERS", "orders-worker", consumer => consumer.FilterSubject("orders.>.placed"))
                    .Consume(
                         "ORDERS",
                         "cancelled-worker",
@@ -403,7 +497,7 @@ public sealed class NatsTopologyCompilerTests
            .Which.ValidationErrors.Should()
            .Contain(error => error.Contains("configured more than once", StringComparison.Ordinal))
            .And.Contain(error => error.Contains("references missing stream 'MISSING'", StringComparison.Ordinal))
-           .And.Contain(error => error.Contains("invalid filter subject 'orders.*'", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("invalid filter subject 'orders.>.placed'", StringComparison.Ordinal))
            .And.Contain(error => error.Contains("must configure at least one handler", StringComparison.Ordinal))
            .And.Contain(error => error.Contains("invalid dead-letter subject 'orders.>'", StringComparison.Ordinal))
            .And.Contain(

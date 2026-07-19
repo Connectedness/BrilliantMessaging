@@ -81,6 +81,41 @@ public sealed class NatsTopologyProvisionerIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CreateOrUpdateProvisioningPreservesWildcardConsumerFilter()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer(_fixture.ConnectionString)
+                   .Stream("ORDERS", stream => stream.Subject("orders.>"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.*")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var provisioner = provider.GetRequiredService<ITopologyProvisioner>();
+        await provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
+
+        await using NatsConnection connection = new (new NatsOpts { Url = _fixture.ConnectionString });
+        NatsJSContext jetStream = new (connection);
+        var consumer = await jetStream.GetConsumerAsync(
+            "ORDERS",
+            "orders-worker",
+            TestContext.Current.CancellationToken
+        );
+
+        consumer.Info.Config.FilterSubject.Should().Be("orders.*");
+    }
+
+    [Fact]
     public async Task AssertOnlyProvisioningFailsWhenJetStreamResourcesAreMissing()
     {
         ServiceCollection services = new ();

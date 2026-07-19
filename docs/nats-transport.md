@@ -59,9 +59,11 @@ Outbound targets use literal subjects through `ToSubject(...)`; wildcards are re
 subjects reject whitespace and control characters before the transport connects to NATS.
 
 Streams configure storage, retention, replicas, and duplicate windows. Consumers are pull-based durable JetStream
-consumers. A consumer references a stream and durable name, can set an optional filter subject, and can configure
-`AckWait`, `MaxDeliver`, `MaxAckPending`, and `MaxBufferedMessages`. Stream and durable names must not contain
-whitespace, control characters, `.`, `*`, `>`, `/`, or `\`. Stream replica counts must be between one and five.
+consumers. A consumer references a stream and durable name, can set an optional filter subject pattern, and can
+configure `AckWait`, `MaxDeliver`, `MaxAckPending`, and `MaxBufferedMessages`. Filter subjects may use `*` and `>`
+wildcards and must overlap at least one subject pattern declared by the referenced stream. Stream and durable names
+must not contain whitespace, control characters, `.`, `*`, `>`, `/`, or `\`. Stream replica counts must be between
+one and five.
 
 Brilliant Messaging provisions streams and durable consumers by default. Use
 `Provisioning(NatsTopologyProvisioningMode.AssertOnly)` when JetStream infrastructure is managed externally and
