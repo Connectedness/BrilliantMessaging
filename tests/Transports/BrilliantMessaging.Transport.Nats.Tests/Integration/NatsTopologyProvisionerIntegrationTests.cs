@@ -170,7 +170,8 @@ public sealed class NatsTopologyProvisionerIntegrationTests : IAsyncLifetime
             {
                 DurableName = "orders-worker",
                 FilterSubject = "orders.actual",
-                AckPolicy = ConsumerConfigAckPolicy.Explicit,
+                AckPolicy = ConsumerConfigAckPolicy.All,
+                DeliverPolicy = ConsumerConfigDeliverPolicy.New,
                 AckWait = TimeSpan.FromSeconds(5),
                 MaxDeliver = 2,
                 MaxAckPending = 64
@@ -224,6 +225,8 @@ public sealed class NatsTopologyProvisionerIntegrationTests : IAsyncLifetime
            .And.Contain(error => error.Contains("AckWait", StringComparison.Ordinal))
            .And.Contain(error => error.Contains("MaxDeliver", StringComparison.Ordinal))
            .And.Contain(error => error.Contains("MaxAckPending", StringComparison.Ordinal))
-           .And.Contain(error => error.Contains("filter subject", StringComparison.Ordinal));
+           .And.Contain(error => error.Contains("filter subject", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("AckPolicy", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("DeliverPolicy", StringComparison.Ordinal));
     }
 }

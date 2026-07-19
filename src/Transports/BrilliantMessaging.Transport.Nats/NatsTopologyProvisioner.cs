@@ -252,6 +252,23 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
                 $"NATS consumer '{consumer.DurableName}' has filter subject '{existing.FilterSubject}' on the server, but the topology declares '{consumer.FilterSubject}'."
             );
         }
+
+        // AckPolicy and DeliverPolicy are not user knobs but invariants of the transport's reliability
+        // model: anything other than explicit acknowledgement silently downgrades at-least-once to
+        // at-most-once, and a non-All deliver policy skips the backlog the topology promises to consume.
+        if (existing.AckPolicy != ConsumerConfigAckPolicy.Explicit)
+        {
+            mismatches.Add(
+                $"NATS consumer '{consumer.DurableName}' has AckPolicy '{existing.AckPolicy}' on the server, but the topology requires '{ConsumerConfigAckPolicy.Explicit}'."
+            );
+        }
+
+        if (existing.DeliverPolicy != ConsumerConfigDeliverPolicy.All)
+        {
+            mismatches.Add(
+                $"NATS consumer '{consumer.DurableName}' has DeliverPolicy '{existing.DeliverPolicy}' on the server, but the topology requires '{ConsumerConfigDeliverPolicy.All}'."
+            );
+        }
     }
 
     /// <summary>
