@@ -177,7 +177,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         consumer => consumer
                            .FilterSubject("orders.placed")
                            .MaxDeliver(2)
-                           .AckWait(TimeSpan.FromSeconds(2))
+                           .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, RedeliveringOrderPlacedHandler>()
                     )
             );
@@ -310,7 +310,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                            .FilterSubject("orders.slow")
                            .Concurrency(2)
                            .MaxDeliver(2)
-                           .AckWait(TimeSpan.FromSeconds(2))
+                           .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, SlowOrderPlacedHandler>()
                     )
             );
@@ -341,7 +341,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
             );
             attempt.Should().Be(1);
 
-            await Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+            // The observation window must exceed the 3s AckWait so a hypothetical redelivery would be seen.
+            await Task.Delay(TimeSpan.FromSeconds(4), TestContext.Current.CancellationToken);
             probe.InvocationCount.Should().Be(1);
         }
         finally
@@ -375,7 +376,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                            .FilterSubject("orders.no-progress")
                            .Concurrency(2)
                            .MaxDeliver(2)
-                           .AckWait(TimeSpan.FromSeconds(1))
+                           .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, NoProgressOrderPlacedHandler>()
                     )
             );
@@ -437,7 +438,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                            .FilterSubject("orders.manual")
                            .Concurrency(2)
                            .MaxDeliver(2)
-                           .AckWait(TimeSpan.FromSeconds(1))
+                           .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, ManualAckOrderPlacedHandler>(handler => handler.ManualAck())
                     )
             );
@@ -465,7 +466,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
             var attempt = await probe.WaitAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
             attempt.Should().Be(1);
 
-            await Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+            // The observation window must exceed the 3s AckWait so a hypothetical redelivery would be seen.
+            await Task.Delay(TimeSpan.FromSeconds(4), TestContext.Current.CancellationToken);
             probe.InvocationCount.Should().Be(1);
         }
         finally
@@ -497,7 +499,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         consumer => consumer
                            .FilterSubject("orders.unsettled")
                            .MaxDeliver(2)
-                           .AckWait(TimeSpan.FromSeconds(1))
+                           .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, ManualNoAckOrderPlacedHandler>(handler => handler.ManualAck())
                     )
             );
@@ -1479,7 +1481,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         consumer => consumer
                            .FilterSubject("orders.terminate")
                            .MaxDeliver(10)
-                           .AckWait(TimeSpan.FromSeconds(1))
+                           .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, OrderPlacedHandler>()
                     )
             );
@@ -1635,7 +1637,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         consumer => consumer
                            .FilterSubject("orders.metric-unknown")
                            .MaxDeliver(1)
-                           .AckWait(TimeSpan.FromSeconds(1))
+                           .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, OrderPlacedHandler>()
                     )
             );
@@ -2070,7 +2072,9 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
             var seen = Interlocked.Increment(ref _seen);
             if (seen == 1)
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(3500), cancellationToken).ConfigureAwait(false);
+                // Must run noticeably longer than the consumer's 3s AckWait so only AckProgress can keep
+                // the delivery in flight.
+                await Task.Delay(TimeSpan.FromMilliseconds(5000), cancellationToken).ConfigureAwait(false);
                 _completed.TrySetResult(context.Transport.DeliveryAttempt);
             }
         }
@@ -2164,7 +2168,9 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
             var seen = Interlocked.Increment(ref _seen);
             if (seen == 1)
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(2500), cancellationToken).ConfigureAwait(false);
+                // Must run noticeably longer than the consumer's 3s AckWait so the delivery expires and is
+                // redelivered while this first invocation is still executing.
+                await Task.Delay(TimeSpan.FromMilliseconds(5000), cancellationToken).ConfigureAwait(false);
                 return;
             }
 

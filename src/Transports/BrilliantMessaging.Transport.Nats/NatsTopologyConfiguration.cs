@@ -125,4 +125,11 @@ public static class NatsTopologyBuilderDefaults
     /// The default JetStream AckWait for durable consumers.
     /// </summary>
     public static readonly TimeSpan DefaultAckWait = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// The smallest accepted JetStream AckWait. The AckProgress heartbeat runs at <c>AckWait / 3</c> with
+    /// a floor of one second; below three seconds the floor takes over and the margin shrinks until the
+    /// first heartbeat races or misses the ack deadline entirely, so shorter values are rejected.
+    /// </summary>
+    public static readonly TimeSpan MinimumAckWait = TimeSpan.FromSeconds(3);
 }

@@ -95,7 +95,7 @@ public sealed class NatsReliabilityContractTests : IAsyncLifetime
                         consumer => consumer
                            .FilterSubject("orders.poison")
                            .MaxDeliver(3)
-                           .AckWait(TimeSpan.FromSeconds(1))
+                           .AckWait(TimeSpan.FromSeconds(3))
                            .DeadLetterSubject("dead.orders")
                            .Handle<OrderPlaced, PoisonOrderPlacedHandler>()
                     )

@@ -76,13 +76,19 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
     }
 
     /// <summary>
-    /// Sets JetStream AckWait for this durable consumer.
+    /// Sets JetStream AckWait for this durable consumer. Values below
+    /// <see cref="NatsTopologyBuilderDefaults.MinimumAckWait" /> are rejected because the AckProgress
+    /// heartbeat could no longer keep an in-flight delivery alive.
     /// </summary>
     public NatsInboundConsumerBuilder AckWait(TimeSpan ackWait)
     {
-        if (ackWait <= TimeSpan.Zero)
+        if (ackWait < NatsTopologyBuilderDefaults.MinimumAckWait)
         {
-            throw new ArgumentOutOfRangeException(nameof(ackWait), ackWait, "The value must be positive.");
+            throw new ArgumentOutOfRangeException(
+                nameof(ackWait),
+                ackWait,
+                $"The value must be at least {NatsTopologyBuilderDefaults.MinimumAckWait.TotalSeconds} seconds so the AckProgress heartbeat (AckWait / 3) fires safely before the ack deadline."
+            );
         }
 
         _ackWait = ackWait;

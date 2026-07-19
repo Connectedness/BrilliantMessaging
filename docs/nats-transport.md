@@ -106,7 +106,8 @@ consumers, retries, delayed redelivery, or dead-letter routing are involved.
 
 Long-running handlers are kept in-flight by periodic JetStream `AckProgress` while the handler runs. This is on
 by default and can be disabled with `AckProgress(false)`. If it is disabled, size `AckWait` to cover the slowest
-handler.
+handler. `AckWait` must be at least 3 seconds: the heartbeat runs every `AckWait / 3`, and shorter windows could
+not be kept in flight reliably.
 
 Deliveries interrupted by shutdown are not treated as failures: they are NAK'd with a short delay — no retry
 backoff, no client-side `MaxDeliver` accounting — so another (or restarted) instance picks them up promptly

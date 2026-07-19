@@ -249,6 +249,21 @@ public sealed class NatsConfigurationBuilderTests
     }
 
     [Fact]
+    public void InboundConsumerBuilder_EnforcesMinimumAckWait()
+    {
+        NatsInboundConsumerBuilder builder = new ("ORDERS", "orders-worker");
+
+        var belowMinimum = () => builder.AckWait(TimeSpan.FromSeconds(3) - TimeSpan.FromMilliseconds(1));
+        var atMinimum = () => builder.AckWait(TimeSpan.FromSeconds(3));
+
+        belowMinimum.Should()
+           .Throw<ArgumentOutOfRangeException>()
+           .WithParameterName("ackWait")
+           .WithMessage("*at least 3 seconds*AckProgress*");
+        atMinimum.Should().NotThrow();
+    }
+
+    [Fact]
     public void InboundBuilders_RejectInvalidArguments()
     {
         var blankStream = () => new NatsInboundConsumerBuilder("", "orders-worker");
