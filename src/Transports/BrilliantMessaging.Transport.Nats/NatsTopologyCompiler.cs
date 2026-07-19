@@ -136,6 +136,7 @@ public sealed class NatsTopologyCompiler
                     consumer.Concurrency,
                     consumer.AckWait,
                     consumer.MaxDeliver,
+                    consumer.DeadLetterAfterDeliveryAttempt,
                     consumer.MaxAckPending,
                     consumer.MaxBufferedMessages,
                     consumer.DeadLetterSubject,

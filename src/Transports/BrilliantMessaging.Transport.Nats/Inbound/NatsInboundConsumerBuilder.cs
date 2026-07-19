@@ -18,11 +18,12 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
     private readonly string _streamName;
     private TimeSpan _ackWait = NatsTopologyBuilderDefaults.DefaultAckWait;
     private int _concurrency = 1;
+    private int _deadLetterAfterDeliveryAttempt = 5;
     private string? _deadLetterSubject;
     private string? _filterSubject;
     private int _maxAckPending = 1024;
     private int _maxBufferedMessages = NatsTopologyBuilderDefaults.DefaultMaxBufferedMessages;
-    private int _maxDeliver = 5;
+    private int _maxDeliver = 10;
     private RedeliveryClassifier? _redeliveryClassifier;
 
     /// <summary>
@@ -37,6 +38,13 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
     /// <inheritdoc />
     NatsInboundConsumerDefinition IBuildable<NatsInboundConsumerDefinition>.Build()
     {
+        if (_deadLetterAfterDeliveryAttempt > _maxDeliver)
+        {
+            throw new InvalidOperationException(
+                $"DeadLetterAfterDeliveryAttempt ({_deadLetterAfterDeliveryAttempt}) must not exceed MaxDeliver ({_maxDeliver})."
+            );
+        }
+
         return new NatsInboundConsumerDefinition(
             _streamName,
             _durableName,
@@ -44,6 +52,7 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
             _concurrency,
             _ackWait,
             _maxDeliver,
+            _deadLetterAfterDeliveryAttempt,
             _maxAckPending,
             _maxBufferedMessages,
             _deadLetterSubject,
@@ -107,6 +116,27 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
         }
 
         _maxDeliver = maxDeliver;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the JetStream delivery attempt on which a normally failed delivery is dead-lettered or
+    /// terminated. JetStream counts every delivery in <c>NumDelivered</c>, including deliveries caused
+    /// by shutdown interruption or acknowledgement timeout, so this is a delivery ordinal rather than
+    /// a durable handler-failure counter. The value must not exceed <see cref="MaxDeliver" />.
+    /// </summary>
+    public NatsInboundConsumerBuilder DeadLetterAfterDeliveryAttempt(int deliveryAttempt)
+    {
+        if (deliveryAttempt <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(deliveryAttempt),
+                deliveryAttempt,
+                "The value must be positive."
+            );
+        }
+
+        _deadLetterAfterDeliveryAttempt = deliveryAttempt;
         return this;
     }
 

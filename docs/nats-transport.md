@@ -42,7 +42,8 @@ builder
         nats.Consume("ORDERS", "orders-worker", consumer => consumer
             .FilterSubject("orders.placed")
             .AckWait(TimeSpan.FromSeconds(30))
-            .MaxDeliver(5)
+            .MaxDeliver(10)
+            .DeadLetterAfterDeliveryAttempt(5)
             .MaxAckPending(1024)
             .DeadLetterSubject("orders.dead")
             .Handle<OrderPlaced, OrderPlacedHandler>());
@@ -60,10 +61,10 @@ subjects reject whitespace and control characters before the transport connects 
 
 Streams configure storage, retention, replicas, and duplicate windows. Consumers are pull-based durable JetStream
 consumers. A consumer references a stream and durable name, can set an optional filter subject pattern, and can
-configure `AckWait`, `MaxDeliver`, `MaxAckPending`, and `MaxBufferedMessages`. Filter subjects may use `*` and `>`
-wildcards and must overlap at least one subject pattern declared by the referenced stream. Stream and durable names
-must not contain whitespace, control characters, `.`, `*`, `>`, `/`, or `\`. Stream replica counts must be between
-one and five.
+configure `AckWait`, `MaxDeliver`, `DeadLetterAfterDeliveryAttempt`, `MaxAckPending`, and `MaxBufferedMessages`.
+Filter subjects may use `*` and `>` wildcards and must overlap at least one subject pattern declared by the
+referenced stream. Stream and durable names must not contain whitespace, control characters, `.`, `*`, `>`, `/`,
+or `\`. Stream replica counts must be between one and five.
 
 Choose stream retention according to its delivery semantics:
 
@@ -129,14 +130,22 @@ by default and can be disabled with `AckProgress(false)`. If it is disabled, siz
 handler. `AckWait` must be at least 3 seconds: the heartbeat runs every `AckWait / 3`, and shorter windows could
 not be kept in flight reliably.
 
-Deliveries interrupted by shutdown are not treated as failures: they are NAK'd with a short delay — no retry
-backoff, no client-side `MaxDeliver` accounting — so another (or restarted) instance picks them up promptly
-instead of waiting out `AckWait`. To make this possible, the JetStream consumer is provisioned with
-`MaxDeliver` set to twice the configured value: real handler failures are dead-lettered client-side once the
-configured attempts are exhausted, while the extra server-side headroom keeps interrupted deliveries
-redeliverable. Every delivery — interrupted or not — still counts toward the server's limit, so repeated
-interruptions of the same message eventually exhaust the headroom; at that point the message is dead-lettered
-with a distinct terminate reason rather than NAK'd again.
+`MaxDeliver` is provisioned exactly on the JetStream consumer and is the absolute server-side delivery limit.
+`DeadLetterAfterDeliveryAttempt` is the client-side delivery ordinal on which a normally failed delivery is
+dead-lettered or terminated. Its default is 5, while `MaxDeliver` defaults to 10, reserving five additional server
+deliveries as shutdown-interruption headroom. Configure the values independently when a different balance is
+needed; `DeadLetterAfterDeliveryAttempt` must not exceed `MaxDeliver`.
+
+Both settings use JetStream's `NumDelivered`, which counts every delivery regardless of why it was redelivered.
+They are not durable handler-failure counters: shutdown interruptions, acknowledgement timeouts, and process exits
+advance the delivery ordinal and can therefore reduce the remaining normal retry window and increase subsequent
+retry backoff.
+
+Deliveries interrupted by graceful shutdown are NAK'd with a short delay and bypass the normal retry backoff and
+client-side dead-letter threshold for that interruption, so another or restarted instance can pick them up
+promptly instead of waiting out `AckWait`. The transport continues doing this while the delivery ordinal is below
+`MaxDeliver`. When an interruption reaches the server limit, the message is dead-lettered with a distinct terminate
+reason rather than NAK'd again.
 
 That final-attempt handling requires the transport to receive and settle the delivery. If the process exits or
 otherwise fails to settle the final server attempt, JetStream reaches its server-side `MaxDeliver`, stops

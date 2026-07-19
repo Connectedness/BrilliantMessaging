@@ -232,10 +232,10 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
             );
         }
 
-        if (existing.MaxDeliver != consumer.ServerMaxDeliver)
+        if (existing.MaxDeliver != consumer.MaxDeliver)
         {
             mismatches.Add(
-                $"NATS consumer '{consumer.DurableName}' has MaxDeliver {existing.MaxDeliver} on the server, but the topology declares {consumer.ServerMaxDeliver} (2 x MaxDeliver {consumer.MaxDeliver} for shutdown-interruption headroom)."
+                $"NATS consumer '{consumer.DurableName}' has MaxDeliver {existing.MaxDeliver} on the server, but the topology declares {consumer.MaxDeliver}."
             );
         }
 
@@ -318,10 +318,7 @@ public sealed class NatsTopologyProvisioner : ITopologyProvisioner
             DurableName = consumer.DurableName,
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
             AckWait = consumer.AckWait,
-            // The configured MaxDeliver is enforced client-side for real handler failures; the server
-            // headroom keeps shutdown-interrupted deliveries redeliverable (see
-            // NatsInboundConsumer.ServerMaxDeliver).
-            MaxDeliver = consumer.ServerMaxDeliver,
+            MaxDeliver = consumer.MaxDeliver,
             MaxAckPending = consumer.MaxAckPending,
             DeliverPolicy = ConsumerConfigDeliverPolicy.All
         };

@@ -279,6 +279,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             message,
             GetNakDelay(consumer, deliveryAttempt),
             deliveryAttempt,
+            consumer.DeadLetterAfterDeliveryAttempt,
             consumer.MaxDeliver,
             token => PublishDeadLetterAsync(consumer, message, headers, token),
             shutdownToken: cancellationToken

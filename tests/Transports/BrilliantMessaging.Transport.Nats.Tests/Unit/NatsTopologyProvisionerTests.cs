@@ -159,6 +159,7 @@ public sealed class NatsTopologyProvisionerTests
             null,
             1,
             TimeSpan.FromSeconds(30),
+            10,
             5,
             1024,
             8,
@@ -174,7 +175,7 @@ public sealed class NatsTopologyProvisionerTests
     }
 
     [Fact]
-    public void ToConsumerConfig_ProvisionsDoubledMaxDeliverAsShutdownInterruptionHeadroom()
+    public void ToConsumerConfig_ProvisionsConfiguredJetStreamMaxDeliverExactly()
     {
         NatsInboundConsumer consumer = new (
             "ORDERS",
@@ -182,6 +183,7 @@ public sealed class NatsTopologyProvisionerTests
             null,
             1,
             TimeSpan.FromSeconds(30),
+            10,
             5,
             1024,
             8,

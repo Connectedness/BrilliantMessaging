@@ -92,7 +92,8 @@ public sealed class NatsBuilderTests
         builder.FilterSubject("orders.placed")
            .Concurrency(3)
            .AckWait(TimeSpan.FromSeconds(10))
-           .MaxDeliver(7)
+           .MaxDeliver(11)
+           .DeadLetterAfterDeliveryAttempt(7)
            .MaxAckPending(99)
            .MaxBufferedMessages(16)
            .DeadLetterSubject("orders.dead")
@@ -107,7 +108,8 @@ public sealed class NatsBuilderTests
         definition.FilterSubject.Should().Be("orders.placed");
         definition.Concurrency.Should().Be(3);
         definition.AckWait.Should().Be(TimeSpan.FromSeconds(10));
-        definition.MaxDeliver.Should().Be(7);
+        definition.MaxDeliver.Should().Be(11);
+        definition.DeadLetterAfterDeliveryAttempt.Should().Be(7);
         definition.MaxAckPending.Should().Be(99);
         definition.MaxBufferedMessages.Should().Be(16);
         definition.DeadLetterSubject.Should().Be("orders.dead");
@@ -126,6 +128,29 @@ public sealed class NatsBuilderTests
         var definition = ((IBuildable<NatsInboundConsumerDefinition>) builder).Build();
 
         definition.MaxBufferedMessages.Should().Be(NatsTopologyBuilderDefaults.DefaultMaxBufferedMessages);
+    }
+
+    [Fact]
+    public void InboundConsumerBuilder_DefaultsServerAndClientDeliveryLimits()
+    {
+        NatsInboundConsumerBuilder builder = new ("ORDERS", "orders-worker");
+
+        var definition = ((IBuildable<NatsInboundConsumerDefinition>) builder).Build();
+
+        definition.MaxDeliver.Should().Be(10);
+        definition.DeadLetterAfterDeliveryAttempt.Should().Be(5);
+    }
+
+    [Fact]
+    public void InboundConsumerBuilder_RejectsDeadLetterAttemptAboveServerMaxDeliver()
+    {
+        NatsInboundConsumerBuilder builder = new ("ORDERS", "orders-worker");
+        builder.MaxDeliver(4).DeadLetterAfterDeliveryAttempt(5);
+
+        var act = () => ((IBuildable<NatsInboundConsumerDefinition>) builder).Build();
+
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("DeadLetterAfterDeliveryAttempt (5) must not exceed MaxDeliver (4).");
     }
 
     [Theory]

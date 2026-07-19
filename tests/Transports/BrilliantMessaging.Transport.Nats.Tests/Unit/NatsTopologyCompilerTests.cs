@@ -859,6 +859,7 @@ public sealed class NatsTopologyCompilerTests
             "orders.placed",
             1,
             TimeSpan.FromSeconds(17),
+            18,
             9,
             42,
             16,
@@ -871,7 +872,6 @@ public sealed class NatsTopologyCompilerTests
         config.DurableName.Should().Be("orders-worker");
         config.FilterSubject.Should().Be("orders.placed");
         config.AckWait.Should().Be(TimeSpan.FromSeconds(17));
-        // 2 x the configured MaxDeliver of 9: the server carries shutdown-interruption headroom.
         config.MaxDeliver.Should().Be(18);
         config.MaxAckPending.Should().Be(42);
     }

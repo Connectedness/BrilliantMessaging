@@ -51,6 +51,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             1,
             5,
+            10,
             _ => throw new InvalidOperationException()
         );
 
@@ -70,6 +71,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             1,
             5,
+            10,
             _ => throw new InvalidOperationException()
         );
 
@@ -81,7 +83,7 @@ public sealed class NatsMessageMappingTests
     }
 
     [Fact]
-    public async Task Acknowledgement_RequeueSendsShortDelayNakEvenAtFinalConfiguredAttempt()
+    public async Task Acknowledgement_RequeueSendsShortDelayNakAtClientDeadLetterThreshold()
     {
         FakeJetStreamMessage message = new ();
         NatsMessageAcknowledgement acknowledgement = new (
@@ -89,6 +91,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             5,
             5,
+            10,
             _ => throw new InvalidOperationException()
         );
 
@@ -108,6 +111,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             1,
             5,
+            10,
             _ => throw new InvalidOperationException()
         );
 
@@ -127,6 +131,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             1,
             5,
+            10,
             _ => throw new InvalidOperationException()
         );
 
@@ -147,6 +152,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             1,
             5,
+            10,
             _ =>
             {
                 operations.Add("dead-letter");
@@ -172,6 +178,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             5,
             5,
+            10,
             _ =>
             {
                 operations.Add("dead-letter");
@@ -197,6 +204,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             1,
             5,
+            10,
             _ => Task.FromResult(false)
         );
 
@@ -216,6 +224,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             10,
             5,
+            10,
             _ =>
             {
                 operations.Add("dead-letter");
@@ -240,6 +249,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             5,
             5,
+            10,
             _ => throw new InvalidOperationException(),
             new CancellationToken(canceled: true)
         );
@@ -260,6 +270,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             10,
             5,
+            10,
             _ => Task.FromResult(true),
             new CancellationToken(canceled: true)
         );
@@ -280,6 +291,7 @@ public sealed class NatsMessageMappingTests
             TimeSpan.FromSeconds(2),
             1,
             5,
+            10,
             _ => Task.FromResult(true),
             new CancellationToken(canceled: true)
         );
@@ -352,6 +364,7 @@ public sealed class NatsMessageMappingTests
             "orders.placed",
             1,
             TimeSpan.FromSeconds(30),
+            10,
             5,
             1024,
             8,

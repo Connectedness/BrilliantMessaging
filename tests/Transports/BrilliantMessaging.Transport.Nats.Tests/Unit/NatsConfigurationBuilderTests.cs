@@ -286,6 +286,7 @@ public sealed class NatsConfigurationBuilderTests
         Action filter = () => consumerBuilder.FilterSubject(" ");
         Action ackWait = () => consumerBuilder.AckWait(TimeSpan.Zero);
         Action maxDeliver = () => consumerBuilder.MaxDeliver(0);
+        Action deadLetterAfterDeliveryAttempt = () => consumerBuilder.DeadLetterAfterDeliveryAttempt(0);
         Action maxAckPending = () => consumerBuilder.MaxAckPending(0);
         Action maxBufferedMessages = () => consumerBuilder.MaxBufferedMessages(0);
         Action deadLetter = () => consumerBuilder.DeadLetterSubject(" ");
@@ -299,6 +300,9 @@ public sealed class NatsConfigurationBuilderTests
         filter.Should().Throw<ArgumentException>().WithParameterName("subject");
         ackWait.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("ackWait");
         maxDeliver.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("maxDeliver");
+        deadLetterAfterDeliveryAttempt.Should()
+           .Throw<ArgumentOutOfRangeException>()
+           .WithParameterName("deliveryAttempt");
         maxAckPending.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("maxAckPending");
         maxBufferedMessages.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("maxBufferedMessages");
         deadLetter.Should().Throw<ArgumentException>().WithParameterName("subject");

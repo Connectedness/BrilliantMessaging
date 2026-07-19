@@ -18,6 +18,7 @@ public sealed class NatsInboundConsumer
         int concurrency,
         TimeSpan ackWait,
         int maxDeliver,
+        int deadLetterAfterDeliveryAttempt,
         int maxAckPending,
         int maxBufferedMessages,
         string? deadLetterSubject,
@@ -30,6 +31,7 @@ public sealed class NatsInboundConsumer
         Concurrency = concurrency;
         AckWait = ackWait;
         MaxDeliver = maxDeliver;
+        DeadLetterAfterDeliveryAttempt = deadLetterAfterDeliveryAttempt;
         MaxAckPending = maxAckPending;
         MaxBufferedMessages = maxBufferedMessages;
         DeadLetterSubject = deadLetterSubject;
@@ -67,13 +69,12 @@ public sealed class NatsInboundConsumer
     public int MaxDeliver { get; }
 
     /// <summary>
-    /// Gets the MaxDeliver value provisioned on the JetStream consumer: twice <see cref="MaxDeliver" />.
-    /// Real handler failures are dead-lettered client-side once <see cref="MaxDeliver" /> attempts are
-    /// exhausted; the extra server-side headroom lets deliveries that were interrupted by shutdown be
-    /// redelivered instead of being dead-lettered or stranded, while still bounding redelivery of
-    /// messages whose consumer dies without settling them.
+    /// Gets the JetStream delivery attempt on which a normally failed delivery is dead-lettered or
+    /// terminated. JetStream counts every delivery in NumDelivered, including deliveries caused by
+    /// shutdown interruption or acknowledgement timeout, so this is a delivery ordinal rather than a
+    /// durable handler-failure counter.
     /// </summary>
-    public int ServerMaxDeliver => GetServerMaxDeliver(MaxDeliver);
+    public int DeadLetterAfterDeliveryAttempt { get; }
 
     /// <summary>
     /// Gets JetStream MaxAckPending.
@@ -94,14 +95,4 @@ public sealed class NatsInboundConsumer
     /// Gets endpoints by CloudEvents discriminator.
     /// </summary>
     public IReadOnlyDictionary<string, NatsInboundEndpoint> EndpointsByDiscriminator { get; }
-
-    /// <summary>
-    /// Derives the server-side MaxDeliver (twice the configured value, saturating at
-    /// <see cref="int.MaxValue" />) so the provisioner and the acknowledgement adapter apply the same
-    /// shutdown-interruption headroom.
-    /// </summary>
-    public static int GetServerMaxDeliver(int maxDeliver)
-    {
-        return maxDeliver > int.MaxValue / 2 ? int.MaxValue : maxDeliver * 2;
-    }
 }

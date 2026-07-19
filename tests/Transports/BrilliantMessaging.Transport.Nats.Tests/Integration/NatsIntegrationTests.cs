@@ -112,7 +112,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-worker",
                         consumer => consumer
                            .FilterSubject("orders.placed")
-                           .MaxDeliver(1)
+                           .MaxDeliver(2)
+                           .DeadLetterAfterDeliveryAttempt(1)
                            .DeadLetterSubject("orders.dead")
                            .Handle<OrderPlaced, FailingOrderPlacedHandler>()
                     )
@@ -176,7 +177,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-worker",
                         consumer => consumer
                            .FilterSubject("orders.placed")
-                           .MaxDeliver(2)
+                           .MaxDeliver(4)
+                           .DeadLetterAfterDeliveryAttempt(2)
                            .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, RedeliveringOrderPlacedHandler>()
                     )
@@ -309,7 +311,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         consumer => consumer
                            .FilterSubject("orders.slow")
                            .Concurrency(2)
-                           .MaxDeliver(2)
+                           .MaxDeliver(4)
+                           .DeadLetterAfterDeliveryAttempt(2)
                            .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, SlowOrderPlacedHandler>()
                     )
@@ -375,7 +378,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         consumer => consumer
                            .FilterSubject("orders.no-progress")
                            .Concurrency(2)
-                           .MaxDeliver(2)
+                           .MaxDeliver(4)
+                           .DeadLetterAfterDeliveryAttempt(2)
                            .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, NoProgressOrderPlacedHandler>()
                     )
@@ -437,7 +441,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         consumer => consumer
                            .FilterSubject("orders.manual")
                            .Concurrency(2)
-                           .MaxDeliver(2)
+                           .MaxDeliver(4)
+                           .DeadLetterAfterDeliveryAttempt(2)
                            .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, ManualAckOrderPlacedHandler>(handler => handler.ManualAck())
                     )
@@ -498,7 +503,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-manual-unsettled-worker",
                         consumer => consumer
                            .FilterSubject("orders.unsettled")
-                           .MaxDeliver(2)
+                           .MaxDeliver(4)
+                           .DeadLetterAfterDeliveryAttempt(2)
                            .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, ManualNoAckOrderPlacedHandler>(handler => handler.ManualAck())
                     )
@@ -688,7 +694,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-dedup-dead-worker",
                         consumer => consumer
                            .FilterSubject("orders.dedup-dead")
-                           .MaxDeliver(1)
+                           .MaxDeliver(2)
+                           .DeadLetterAfterDeliveryAttempt(1)
                            .DeadLetterSubject("orders.dead")
                            .Handle<OrderPlaced, FailingOrderPlacedHandler>()
                     )
@@ -776,7 +783,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-retry-dead-worker",
                         consumer => consumer
                            .FilterSubject("orders.retry-dead")
-                           .MaxDeliver(1)
+                           .MaxDeliver(2)
+                           .DeadLetterAfterDeliveryAttempt(1)
                            .AckWait(TimeSpan.FromSeconds(30))
                            .DeadLetterSubject("orders.dead")
                            .Handle<OrderPlaced, FailingOrderPlacedHandler>()
@@ -882,7 +890,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-local-worker",
                         consumer => consumer
                            .FilterSubject("orders.local")
-                           .MaxDeliver(1)
+                           .MaxDeliver(2)
+                           .DeadLetterAfterDeliveryAttempt(1)
                            .Handle<OrderPlaced, RecordingOrderPlacedHandler>()
                     )
             );
@@ -1014,7 +1023,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-malformed-worker",
                         consumer => consumer
                            .FilterSubject("orders.malformed")
-                           .MaxDeliver(3)
+                           .MaxDeliver(6)
+                           .DeadLetterAfterDeliveryAttempt(3)
                            .AckWait(TimeSpan.FromSeconds(30))
                            .DeadLetterSubject("orders.dead")
                            .Handle<OrderPlaced, OrderPlacedHandler>()
@@ -1126,7 +1136,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-interrupted-worker",
                         consumer => consumer
                            .FilterSubject("orders.interrupted")
-                           .MaxDeliver(1)
+                           .MaxDeliver(2)
+                           .DeadLetterAfterDeliveryAttempt(1)
                            .AckWait(TimeSpan.FromSeconds(30))
                            .DeadLetterSubject("orders.dead")
                            .Handle<OrderPlaced, InterruptibleOrderPlacedHandler>()
@@ -1169,9 +1180,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
 
             await probe.WaitForStartAsync(TimeSpan.FromSeconds(15), TestContext.Current.CancellationToken);
 
-            // MaxDeliver is 1, so this stop interrupts the delivery on its final configured attempt.
-            // The interruption must not consume the retry policy: after a restart the message has to be
-            // processed normally instead of being dead-lettered.
+            // The client threshold is 1, but server MaxDeliver is 2. The interruption bypasses the
+            // client dead-letter decision, so after a restart the message can be processed normally.
             foreach (var runtime in runtimes)
             {
                 await runtime.StopAsync(CancellationToken.None);
@@ -1226,7 +1236,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-storm-worker",
                         consumer => consumer
                            .FilterSubject("orders.storm")
-                           .MaxDeliver(1)
+                           .MaxDeliver(2)
+                           .DeadLetterAfterDeliveryAttempt(1)
                            .AckWait(TimeSpan.FromSeconds(30))
                            .DeadLetterSubject("orders.dead")
                            .Handle<OrderPlaced, BlockingOrderPlacedHandler>()
@@ -1258,9 +1269,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
         {
             var publisher = provider.GetRequiredService<IMessagePublisher>();
 
-            // MaxDeliver(1) provisions a server-side limit of 2, so the second interruption exhausts the
-            // redelivery headroom and must dead-letter the message instead of stranding it with a NAK the
-            // server would ignore.
+            // MaxDeliver is 2, so the second interruption exhausts the server-side headroom and must
+            // dead-letter the message instead of stranding it with a NAK the server would ignore.
             for (var cycle = 0; cycle < 2; cycle++)
             {
                 foreach (var runtime in runtimes)
@@ -1319,7 +1329,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-canonical-worker",
                         consumer => consumer
                            .FilterSubject("orders.canonical")
-                           .MaxDeliver(1)
+                           .MaxDeliver(2)
+                           .DeadLetterAfterDeliveryAttempt(1)
                            .Handle<OrderPlaced, EnvelopeRecordingOrderPlacedHandler>()
                     )
             );
@@ -1480,7 +1491,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-terminate-worker",
                         consumer => consumer
                            .FilterSubject("orders.terminate")
-                           .MaxDeliver(10)
+                           .MaxDeliver(20)
+                           .DeadLetterAfterDeliveryAttempt(10)
                            .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, OrderPlacedHandler>()
                     )
@@ -1555,7 +1567,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-manual-throw-worker",
                         consumer => consumer
                            .FilterSubject("orders.manual-throw")
-                           .MaxDeliver(5)
+                           .MaxDeliver(10)
+                           .DeadLetterAfterDeliveryAttempt(5)
                            .AckWait(TimeSpan.FromSeconds(30))
                            .DeadLetterSubject("orders.dead")
                            .Handle<OrderPlaced, ThrowingManualAckOrderPlacedHandler>(handler => handler.ManualAck())
@@ -1636,7 +1649,8 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                         "orders-metric-unknown-worker",
                         consumer => consumer
                            .FilterSubject("orders.metric-unknown")
-                           .MaxDeliver(1)
+                           .MaxDeliver(2)
+                           .DeadLetterAfterDeliveryAttempt(1)
                            .AckWait(TimeSpan.FromSeconds(3))
                            .Handle<OrderPlaced, OrderPlacedHandler>()
                     )

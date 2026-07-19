@@ -29,6 +29,8 @@ public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
     /// </summary>
     internal static readonly TimeSpan ShutdownRequeueDelay = TimeSpan.FromSeconds(1);
 
+    private readonly int _deadLetterAfterDeliveryAttempt;
+
     private readonly Func<CancellationToken, Task<bool>> _deadLetterAsync;
     private readonly uint _deliveryAttempt;
     private readonly int _maxDeliver;
@@ -44,6 +46,7 @@ public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
         INatsJSMsg<byte[]> message,
         TimeSpan nakDelay,
         uint deliveryAttempt,
+        int deadLetterAfterDeliveryAttempt,
         int maxDeliver,
         Func<CancellationToken, Task<bool>> deadLetterAsync,
         CancellationToken shutdownToken = default
@@ -52,6 +55,7 @@ public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
         _message = message ?? throw new ArgumentNullException(nameof(message));
         _nakDelay = nakDelay;
         _deliveryAttempt = deliveryAttempt == 0 ? 1 : deliveryAttempt;
+        _deadLetterAfterDeliveryAttempt = deadLetterAfterDeliveryAttempt <= 0 ? 1 : deadLetterAfterDeliveryAttempt;
         _maxDeliver = maxDeliver <= 0 ? 1 : maxDeliver;
         _deadLetterAsync = deadLetterAsync ?? throw new ArgumentNullException(nameof(deadLetterAsync));
         _shutdownToken = shutdownToken;
@@ -85,7 +89,7 @@ public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
             return;
         }
 
-        if (requeue && _deliveryAttempt < _maxDeliver)
+        if (requeue && _deliveryAttempt < _deadLetterAfterDeliveryAttempt)
         {
             AckOpts opts = new () { NakDelay = _nakDelay };
             await _message.NakAsync(opts, cancellationToken).ConfigureAwait(false);
@@ -104,7 +108,7 @@ public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
 
     /// <summary>
     /// Settles a delivery that was interrupted by shutdown rather than failed by the handler: a NAK with
-    /// <see cref="ShutdownRequeueDelay" /> (no retry backoff, no client-side MaxDeliver check) while the
+    /// <see cref="ShutdownRequeueDelay" /> (no retry backoff or client-side dead-letter check) while the
     /// server-side redelivery headroom lasts. Once the server would stop redelivering, the message is
     /// dead-lettered or terminated instead - a NAK at that point would strand it without redelivery or
     /// dead-letter copy.
@@ -116,7 +120,7 @@ public sealed class NatsMessageAcknowledgement : IMessageAcknowledgement
             return;
         }
 
-        if (_deliveryAttempt < NatsInboundConsumer.GetServerMaxDeliver(_maxDeliver))
+        if (_deliveryAttempt < _maxDeliver)
         {
             AckOpts opts = new () { NakDelay = ShutdownRequeueDelay };
             await _message.NakAsync(opts, cancellationToken).ConfigureAwait(false);

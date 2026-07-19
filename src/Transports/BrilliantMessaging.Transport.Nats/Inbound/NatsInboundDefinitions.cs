@@ -14,6 +14,7 @@ public sealed record NatsInboundConsumerDefinition(
     int Concurrency,
     TimeSpan AckWait,
     int MaxDeliver,
+    int DeadLetterAfterDeliveryAttempt,
     int MaxAckPending,
     int MaxBufferedMessages,
     string? DeadLetterSubject,
