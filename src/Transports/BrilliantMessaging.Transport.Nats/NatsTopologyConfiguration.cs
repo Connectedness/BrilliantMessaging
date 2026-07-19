@@ -104,6 +104,16 @@ public sealed record NatsStreamDefinition(
 public static class NatsTopologyBuilderDefaults
 {
     /// <summary>
+    /// The minimum replica count accepted by JetStream streams.
+    /// </summary>
+    public const int MinimumStreamReplicas = 1;
+
+    /// <summary>
+    /// The maximum replica count accepted by JetStream streams.
+    /// </summary>
+    public const int MaximumStreamReplicas = 5;
+
+    /// <summary>
     /// The default NATS server URI used when no explicit endpoint is configured.
     /// </summary>
     public const string DefaultServerUrl = "nats://localhost:4222";

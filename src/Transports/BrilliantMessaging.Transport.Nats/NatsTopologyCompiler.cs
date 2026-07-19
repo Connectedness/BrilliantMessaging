@@ -326,6 +326,13 @@ public sealed class NatsTopologyCompiler
 
         foreach (var stream in streams)
         {
+            if (!IsValidResourceName(stream.Name))
+            {
+                errors.Add(
+                    $"NATS stream '{stream.Name}' has an invalid name. Stream names must not contain whitespace, control characters, '.', '*', '>', '/', or '\\'."
+                );
+            }
+
             if (stream.Subjects.Count == 0)
             {
                 errors.Add($"NATS stream '{stream.Name}' must declare at least one subject pattern.");
@@ -339,9 +346,12 @@ public sealed class NatsTopologyCompiler
                 }
             }
 
-            if (stream.Replicas <= 0)
+            if (stream.Replicas is < NatsTopologyBuilderDefaults.MinimumStreamReplicas or
+                                   > NatsTopologyBuilderDefaults.MaximumStreamReplicas)
             {
-                errors.Add($"NATS stream '{stream.Name}' must configure a positive replica count.");
+                errors.Add(
+                    $"NATS stream '{stream.Name}' must configure a replica count between {NatsTopologyBuilderDefaults.MinimumStreamReplicas} and {NatsTopologyBuilderDefaults.MaximumStreamReplicas}."
+                );
             }
         }
     }
@@ -419,6 +429,13 @@ public sealed class NatsTopologyCompiler
         foreach (var consumer in configuration.Consumers)
         {
             HashSet<Type> handlerMessageTypes = new ();
+            if (!IsValidResourceName(consumer.DurableName))
+            {
+                errors.Add(
+                    $"NATS durable consumer '{consumer.DurableName}' has an invalid name. Durable names must not contain whitespace, control characters, '.', '*', '>', '/', or '\\'."
+                );
+            }
+
             if (!streamNames.Contains(consumer.StreamName))
             {
                 errors.Add(
@@ -481,7 +498,7 @@ public sealed class NatsTopologyCompiler
 
     private static bool IsValidSubject(string subject, bool allowWildcards)
     {
-        if (string.IsNullOrWhiteSpace(subject) || subject.Contains(' '))
+        if (string.IsNullOrWhiteSpace(subject) || subject.Any(IsInvalidProtocolCharacter))
         {
             return false;
         }
@@ -512,6 +529,29 @@ public sealed class NatsTopologyCompiler
         }
 
         return true;
+    }
+
+    private static bool IsValidResourceName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        foreach (var character in name)
+        {
+            if (IsInvalidProtocolCharacter(character) || character is '.' or '*' or '>' or '/' or '\\')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsInvalidProtocolCharacter(char character)
+    {
+        return char.IsWhiteSpace(character) || char.IsControl(character);
     }
 
     private static bool Covers(IReadOnlyList<string> patterns, string subject)

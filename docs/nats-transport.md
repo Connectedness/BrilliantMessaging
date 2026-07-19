@@ -55,11 +55,13 @@ custom reconnect settings, or any other `NATS.Net` connection option.
 ## Topology
 
 Streams declare explicit subject patterns. Stream patterns may use NATS wildcards such as `*` and `>`.
-Outbound targets use literal subjects through `ToSubject(...)`; wildcards are rejected for publish subjects.
+Outbound targets use literal subjects through `ToSubject(...)`; wildcards are rejected for publish subjects. All
+subjects reject whitespace and control characters before the transport connects to NATS.
 
 Streams configure storage, retention, replicas, and duplicate windows. Consumers are pull-based durable JetStream
 consumers. A consumer references a stream and durable name, can set an optional filter subject, and can configure
-`AckWait`, `MaxDeliver`, `MaxAckPending`, and `MaxBufferedMessages`.
+`AckWait`, `MaxDeliver`, `MaxAckPending`, and `MaxBufferedMessages`. Stream and durable names must not contain
+whitespace, control characters, `.`, `*`, `>`, `/`, or `\`. Stream replica counts must be between one and five.
 
 Brilliant Messaging provisions streams and durable consumers by default. Use
 `Provisioning(NatsTopologyProvisioningMode.AssertOnly)` when JetStream infrastructure is managed externally and

@@ -125,13 +125,18 @@ public sealed class NatsStreamBuilder : IBuildable<NatsStreamDefinition>
     }
 
     /// <summary>
-    /// Configures the stream replica count.
+    /// Configures the stream replica count from one through five.
     /// </summary>
     public NatsStreamBuilder Replicas(int replicas)
     {
-        if (replicas <= 0)
+        if (replicas is < NatsTopologyBuilderDefaults.MinimumStreamReplicas or
+                        > NatsTopologyBuilderDefaults.MaximumStreamReplicas)
         {
-            throw new ArgumentOutOfRangeException(nameof(replicas), replicas, "The value must be positive.");
+            throw new ArgumentOutOfRangeException(
+                nameof(replicas),
+                replicas,
+                $"The value must be between {NatsTopologyBuilderDefaults.MinimumStreamReplicas} and {NatsTopologyBuilderDefaults.MaximumStreamReplicas}."
+            );
         }
 
         _replicas = replicas;

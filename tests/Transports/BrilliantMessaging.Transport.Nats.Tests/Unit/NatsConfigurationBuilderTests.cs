@@ -76,6 +76,7 @@ public sealed class NatsConfigurationBuilderTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
+    [InlineData(6)]
     public void StreamBuilder_RejectsInvalidReplicaCount(int replicas)
     {
         NatsStreamBuilder builder = new ("ORDERS");
@@ -83,6 +84,18 @@ public sealed class NatsConfigurationBuilderTests
         var act = () => builder.Replicas(replicas);
 
         act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("replicas");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    public void StreamBuilder_AcceptsReplicaCountBoundaries(int replicas)
+    {
+        NatsStreamBuilder builder = new ("ORDERS");
+
+        var act = () => builder.Replicas(replicas);
+
+        act.Should().NotThrow();
     }
 
     [Fact]

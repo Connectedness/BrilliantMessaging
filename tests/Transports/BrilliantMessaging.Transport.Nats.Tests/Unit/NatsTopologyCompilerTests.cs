@@ -26,7 +26,13 @@ public sealed class NatsTopologyCompilerTests
            .AddNatsTopology(
                 topology => topology
                    .UseServer("nats://localhost:4222")
-                   .Stream("ORDERS", stream => stream.Subject("orders.*").DuplicateWindow(TimeSpan.FromMinutes(2)))
+                   .Stream(
+                        "ORDERS",
+                        stream => stream
+                           .Subject("orders.*")
+                           .Subject("events.>")
+                           .DuplicateWindow(TimeSpan.FromMinutes(2))
+                    )
                    .Publish<OrderPlaced>(target => target.ToSubject("orders.placed").UseMessageIdDeduplication())
                    .PublishNamed<OrderPlaced>("audit", target => target.ToSubject("orders.audit"))
                    .Consume(
@@ -44,7 +50,7 @@ public sealed class NatsTopologyCompilerTests
 
         var topology = provider.GetRequiredService<NatsTopology>();
 
-        topology.Streams.Should().ContainSingle().Which.Subjects.Should().Contain("orders.*");
+        topology.Streams.Should().ContainSingle().Which.Subjects.Should().Equal("orders.*", "events.>");
         topology.GetRequiredTarget<OrderPlaced>().Name.Should().Contain("orders.placed");
         topology.GetRequiredTarget<OrderPlaced>("audit").Name.Should().Be("audit");
         var compiledConsumer = topology.Consumers.Should().ContainSingle().Which;
@@ -117,7 +123,13 @@ public sealed class NatsTopologyCompilerTests
                 topology => topology
                    .UseServer("nats://localhost:4222")
                    .Stream("ORDERS", _ => { })
-                   .Stream("ORDERS", stream => stream.Subject("orders..placed"))
+                   .Stream(
+                        "ORDERS",
+                        stream => stream
+                           .Subject("orders..placed")
+                           .Subject("orders.>.*")
+                           .Subject("orders.pl*aced")
+                    )
             );
         await using var provider = services.BuildServiceProvider();
 
@@ -128,7 +140,134 @@ public sealed class NatsTopologyCompilerTests
            .Which.ValidationErrors.Should()
            .Contain(error => error.Contains("configured more than once", StringComparison.Ordinal))
            .And.Contain(error => error.Contains("must declare at least one subject", StringComparison.Ordinal))
-           .And.Contain(error => error.Contains("invalid subject pattern 'orders..placed'", StringComparison.Ordinal));
+           .And.Contain(error => error.Contains("invalid subject pattern 'orders..placed'", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("invalid subject pattern 'orders.>.*'", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("invalid subject pattern 'orders.pl*aced'", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("ORDERS.V1")]
+    [InlineData("ORDERS WORKER")]
+    [InlineData("ORDERS\tWORKER")]
+    [InlineData("ORDERS\u0001WORKER")]
+    [InlineData("ORDERS*WORKER")]
+    [InlineData("ORDERS>WORKER")]
+    [InlineData("ORDERS/WORKER")]
+    [InlineData("ORDERS\\WORKER")]
+    public async Task Compile_RejectsInvalidStreamAndDurableNames(string invalidName)
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream(invalidName, stream => stream.Subject("orders.placed"))
+                   .Consume(
+                        invalidName,
+                        invalidName,
+                        consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure
+        var act = () => provider.GetRequiredService<NatsTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should()
+           .Contain(
+                error => error.Contains("NATS stream", StringComparison.Ordinal) &&
+                         error.Contains("invalid name", StringComparison.Ordinal)
+            )
+           .And.Contain(
+                error => error.Contains("NATS durable consumer", StringComparison.Ordinal) &&
+                         error.Contains("invalid name", StringComparison.Ordinal)
+            );
+    }
+
+    [Theory]
+    [InlineData("orders.\tplaced")]
+    [InlineData("orders.\rplaced")]
+    [InlineData("orders.\nplaced")]
+    [InlineData("orders.\u0001placed")]
+    public async Task Compile_RejectsWhitespaceAndControlCharactersInSubjects(string invalidSubject)
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject("orders.>").Subject(invalidSubject))
+                   .Publish<OrderPlaced>(target => target.ToSubject(invalidSubject))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer
+                           .FilterSubject("orders.placed")
+                           .DeadLetterSubject(invalidSubject)
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure
+        var act = () => provider.GetRequiredService<NatsTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should()
+           .Contain(error => error.Contains("invalid subject pattern", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("invalid literal subject", StringComparison.Ordinal))
+           .And.Contain(error => error.Contains("invalid dead-letter subject", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Compile_RejectsReplicaCountAboveJetStreamMaximumInPublicDefinition()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests");
+        await using var provider = services.BuildServiceProvider();
+        NatsTopologyConfiguration configuration = new (
+            _ => new NatsOpts(),
+            [
+                new NatsStreamDefinition(
+                    "ORDERS",
+                    ["orders.placed"],
+                    null,
+                    null,
+                    null,
+                    NatsStreamStorage.File,
+                    NatsStreamRetention.Limits,
+                    6
+                )
+            ],
+            [],
+            [],
+            typeof(MessageDeserializationMiddleware),
+            null,
+            TimeSpan.FromSeconds(5),
+            NatsTopologyProvisioningMode.CreateOrUpdate,
+            true
+        );
+        NatsTopologyCompiler compiler = new (
+            provider.GetRequiredService<IMessageContractRegistry>(),
+            provider.GetRequiredService<IMessageSerializer>(),
+            // ReSharper disable once AccessToDisposedClosure
+            serializerType => (IMessageSerializer?) provider.GetService(serializerType),
+            // ReSharper disable once AccessToDisposedClosure
+            serviceType => provider.GetService(serviceType) is not null
+        );
+        await using NatsConnectionProvider connectionProvider = new (_ => Task.FromResult(new NatsOpts()));
+
+        var act = () => compiler.Compile("tests", configuration, connectionProvider);
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should()
+           .Contain(error => error.Contains("replica count between 1 and 5", StringComparison.Ordinal));
     }
 
     [Fact]
