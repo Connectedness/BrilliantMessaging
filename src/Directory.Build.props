@@ -11,7 +11,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <PackageIcon>logo-128x128.png</PackageIcon>
-    <PackageTags>messaging;communication;rabbitmq;amqp;brilliantmessaging;cloudevents</PackageTags>
+    <PackageTags>messaging;communication;brilliantmessaging;cloudevents</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

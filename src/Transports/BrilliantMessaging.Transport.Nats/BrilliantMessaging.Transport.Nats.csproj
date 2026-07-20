@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Description>Brilliant Messaging NATS JetStream transport.</Description>
-    <PackageTags>messaging;communication;nats;jetstream;brilliantmessaging;cloudevents</PackageTags>
+    <PackageTags>$(PackageTags);nats;jetstream</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

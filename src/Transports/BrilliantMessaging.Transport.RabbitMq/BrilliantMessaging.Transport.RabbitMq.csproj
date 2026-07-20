@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Description>Brilliant Messaging RabbitMQ transport integration.</Description>
+    <PackageTags>$(PackageTags);rabbitmq;amqp</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
