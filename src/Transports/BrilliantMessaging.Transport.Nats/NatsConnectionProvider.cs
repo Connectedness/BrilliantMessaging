@@ -37,7 +37,7 @@ public sealed class NatsConnectionProvider : IAsyncDisposable
                 return;
             }
 
-            _disposed = true;
+            Volatile.Write(ref _disposed, true);
             if (_connection is not null)
             {
                 await _connection.DisposeAsync().ConfigureAwait(false);
@@ -54,14 +54,17 @@ public sealed class NatsConnectionProvider : IAsyncDisposable
     /// </summary>
     public async Task<NatsJSContext> GetJetStreamAsync(CancellationToken cancellationToken = default)
     {
-        if (_disposed)
+        // The fast path reads both fields outside the semaphore that publishes them, so it needs the
+        // matching acquire fence: without it the context reference can become visible before the writes
+        // its constructor performed, handing a caller a partially initialized object.
+        if (Volatile.Read(ref _disposed))
         {
             throw new ObjectDisposedException(nameof(NatsConnectionProvider));
         }
 
-        if (_jetStream is not null)
+        if (Volatile.Read(ref _jetStream) is { } cached)
         {
-            return _jetStream;
+            return cached;
         }
 
         await _sync.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -95,8 +98,9 @@ public sealed class NatsConnectionProvider : IAsyncDisposable
             }
 
             _connection = connection;
-            _jetStream = new NatsJSContext(connection);
-            return _jetStream;
+            NatsJSContext jetStream = new (connection);
+            Volatile.Write(ref _jetStream, jetStream);
+            return jetStream;
         }
         finally
         {
