@@ -212,6 +212,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             GetHeader(headers, "content-type"),
             GetHeader(headers, "content-encoding"),
             GetHeader(headers, "message-id"),
+            GetHeader(headers, "correlation-id"),
             (uint) (message.Metadata?.NumDelivered ?? 1)
         );
 

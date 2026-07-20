@@ -18,6 +18,7 @@ public sealed class NatsTransportMessage : TransportMessage
         string? contentType,
         string? contentEncoding,
         string? messageId,
+        string? correlationId,
         uint deliveryAttempt
     ) : base(
         NatsTopology.TransportNameValue,
@@ -27,6 +28,7 @@ public sealed class NatsTransportMessage : TransportMessage
         contentType,
         contentEncoding,
         messageId,
+        correlationId,
         deliveryAttempt: deliveryAttempt > 1 ? deliveryAttempt : 1,
         redelivered: deliveryAttempt > 1
     ) { }

@@ -64,7 +64,13 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var headers = CreateHeaders(message.Headers, message.ContentType, message.ContentEncoding, message.MessageId);
+        var headers = CreateHeaders(
+            message.Headers,
+            message.ContentType,
+            message.ContentEncoding,
+            message.MessageId,
+            message.CorrelationId
+        );
         var options = CreatePublishOptions(message.MessageId);
         var jetStream = await _connectionProvider.GetJetStreamAsync(cancellationToken).ConfigureAwait(false);
         var acknowledgement = await jetStream
@@ -130,10 +136,11 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
         IReadOnlyDictionary<string, string?> headers,
         string? contentType,
         string? contentEncoding,
-        string? messageId
+        string? messageId,
+        string? correlationId
     )
     {
-        NatsHeaders natsHeaders = new (headers.Count + 4);
+        NatsHeaders natsHeaders = new (headers.Count + 5);
         foreach (var header in headers)
         {
             natsHeaders[MapHeaderName(header.Key)] = header.Value;
@@ -152,6 +159,11 @@ public sealed class NatsOutboundTarget<TMessage> : OutboundTarget<TMessage>
         if (messageId is not null)
         {
             natsHeaders["message-id"] = messageId;
+        }
+
+        if (correlationId is not null)
+        {
+            natsHeaders["correlation-id"] = correlationId;
         }
 
         return natsHeaders;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
@@ -57,6 +58,75 @@ public sealed class NatsTopologyCompilerTests
         compiledConsumer.DurableName.Should().Be("orders-worker");
         compiledConsumer.MaxBufferedMessages.Should().Be(16);
         topology.Endpoints.Should().ContainSingle().Which.Discriminator.Should().Be("tests.order.placed");
+    }
+
+    [Fact]
+    public async Task AddNatsTopology_CompilesDispatchIndexForInboundAliases()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(
+                contracts => contracts.Map<OrderPlaced>("tests.order.placed").WithInboundAlias("tests.order.legacy")
+            )
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var topology = provider.GetRequiredService<NatsTopology>();
+        var consumer = topology.Consumers.Should().ContainSingle().Which;
+
+        consumer.EndpointsByDiscriminator.Should().ContainKeys("tests.order.placed", "tests.order.legacy");
+        consumer.EndpointsByDiscriminator["tests.order.placed"].Should()
+           .BeSameAs(consumer.EndpointsByDiscriminator["tests.order.legacy"]);
+        topology.Endpoints.Should().ContainSingle().Which.Name.Should()
+           .Be("ORDERS:orders-worker:tests.order.placed");
+    }
+
+    [Fact]
+    public async Task Compile_AllowsSameDurableNameOnDifferentStreams()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Stream("PAYMENTS", stream => stream.Subject("payments.*"))
+                   .Consume(
+                        "ORDERS",
+                        "worker",
+                        consumer => consumer
+                           .FilterSubject("orders.placed")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+                   .Consume(
+                        "PAYMENTS",
+                        "worker",
+                        consumer => consumer
+                           .FilterSubject("payments.placed")
+                           .Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        var topology = provider.GetRequiredService<NatsTopology>();
+
+        topology.Consumers.Should().HaveCount(2);
+        topology.Endpoints.Select(static endpoint => endpoint.Name).Should().BeEquivalentTo(
+            "ORDERS:worker:tests.order.placed",
+            "PAYMENTS:worker:tests.order.placed"
+        );
     }
 
     [Fact]
@@ -619,6 +689,7 @@ public sealed class NatsTopologyCompilerTests
         );
         await using NatsConnectionProvider connectionProvider = new (_ => Task.FromResult(new NatsOpts()));
 
+        // ReSharper disable once AccessToDisposedClosure
         var act = () => compiler.Compile("tests", configuration, connectionProvider);
 
         act.Should().Throw<TopologyValidationException>()
@@ -668,8 +739,13 @@ public sealed class NatsTopologyCompilerTests
                 topology => topology
                    .UseServer("nats://localhost:4222")
                    .Stream("ORDERS", stream => stream.Subject("orders.*"))
-                   .Consume("MISSING", "orders-worker", consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>())
+                   .Consume("MISSING", "missing-worker", consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>())
                    .Consume("ORDERS", "orders-worker", consumer => consumer.FilterSubject("orders.>.placed"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
                    .Consume(
                         "ORDERS",
                         "cancelled-worker",
@@ -727,6 +803,34 @@ public sealed class NatsTopologyCompilerTests
                     "configures multiple handlers for message 'BrilliantMessaging.Transport.Nats.Tests.TestSupport.OrderPlaced'",
                     StringComparison.Ordinal
                 )
+            );
+    }
+
+    [Fact]
+    public async Task Compile_RejectsOutboundOnlyContractForInboundEndpoint()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.MapOutbound<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker",
+                        consumer => consumer.Handle<OrderPlaced, OrderPlacedHandler>()
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure
+        var act = () => provider.GetRequiredService<NatsTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should().Contain(
+                "Inbound endpoint for message 'BrilliantMessaging.Transport.Nats.Tests.TestSupport.OrderPlaced' has no inbound CloudEvents discriminators. Use MessageContractRegistryBuilder.Map<T>(...) instead of MapOutbound<T>(...)."
             );
     }
 

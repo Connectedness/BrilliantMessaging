@@ -115,7 +115,9 @@ public sealed class NatsTopologyCompiler
             foreach (var handler in consumer.Handlers)
             {
                 var discriminator = messageContractRegistry.GetDiscriminator(handler.MessageType);
-                var endpointName = handler.EndpointName ?? $"{consumer.DurableName}:{discriminator}";
+                var inboundDiscriminators = messageContractRegistry.GetInboundDiscriminators(handler.MessageType);
+                var endpointName = handler.EndpointName ??
+                                   $"{consumer.StreamName}:{consumer.DurableName}:{discriminator}";
                 var endpoint = CreateEndpoint(
                     handler,
                     consumer.RedeliveryClassifier,
@@ -124,7 +126,11 @@ public sealed class NatsTopologyCompiler
                     endpointName,
                     discriminator
                 );
-                endpointsByDiscriminator.Add(discriminator, endpoint);
+                foreach (var inboundDiscriminator in inboundDiscriminators)
+                {
+                    endpointsByDiscriminator.Add(inboundDiscriminator, endpoint);
+                }
+
                 endpointsByName.Add(endpoint.Name, endpoint);
             }
 
@@ -418,19 +424,21 @@ public sealed class NatsTopologyCompiler
     )
     {
         foreach (var group in configuration.Consumers.GroupBy(
-                     static consumer => consumer.DurableName,
-                     StringComparer.Ordinal
+                     static consumer => (consumer.StreamName, consumer.DurableName)
                  ))
         {
             if (group.Count() > 1)
             {
-                errors.Add($"NATS durable consumer '{group.Key}' is configured more than once.");
+                errors.Add(
+                    $"NATS durable consumer '{group.Key.DurableName}' is configured more than once for stream '{group.Key.StreamName}'."
+                );
             }
         }
 
         foreach (var consumer in configuration.Consumers)
         {
             HashSet<Type> handlerMessageTypes = new ();
+            HashSet<string> inboundDiscriminators = new (StringComparer.Ordinal);
             if (!IsValidResourceName(consumer.DurableName))
             {
                 errors.Add(
@@ -489,6 +497,27 @@ public sealed class NatsTopologyCompiler
                     errors.Add(
                         $"NATS handler '{handler.HandlerType.FullName}' handles message '{handler.MessageType.FullName}' which has no registered CloudEvents discriminator."
                     );
+                }
+                else
+                {
+                    var handlerInboundDiscriminators =
+                        messageContractRegistry.GetInboundDiscriminators(handler.MessageType);
+                    if (handlerInboundDiscriminators.Count == 0)
+                    {
+                        errors.Add(
+                            $"Inbound endpoint for message '{handler.MessageType.FullName}' has no inbound CloudEvents discriminators. Use MessageContractRegistryBuilder.Map<T>(...) instead of MapOutbound<T>(...)."
+                        );
+                    }
+
+                    foreach (var discriminator in handlerInboundDiscriminators)
+                    {
+                        if (!inboundDiscriminators.Add(discriminator))
+                        {
+                            errors.Add(
+                                $"Inbound endpoint discriminator '{discriminator}' is configured multiple times for NATS consumer '{consumer.DurableName}' on stream '{consumer.StreamName}'."
+                            );
+                        }
+                    }
                 }
 
                 if (!_serviceIsRegistered(handler.DeserializerType))

@@ -591,7 +591,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                 ["traceparent"] = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00"
             },
             "message-raw",
-            null
+            "correlation-raw"
         );
 
         await target.PublishSerializedAsync(message, TestContext.Current.CancellationToken);
@@ -610,6 +610,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
         HeaderValue(headers, "content-type").Should().Be("application/json");
         HeaderValue(headers, "content-encoding").Should().Be("gzip");
         HeaderValue(headers, "message-id").Should().Be("message-raw");
+        HeaderValue(headers, "correlation-id").Should().Be("correlation-raw");
         HeaderValue(headers, "traceparent").Should().Be("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00");
     }
 

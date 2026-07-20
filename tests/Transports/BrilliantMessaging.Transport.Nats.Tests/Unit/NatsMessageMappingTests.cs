@@ -29,6 +29,7 @@ public sealed class NatsMessageMappingTests
             "application/json",
             null,
             "message-1",
+            "correlation-1",
             3
         );
 
@@ -36,6 +37,7 @@ public sealed class NatsMessageMappingTests
         message.Body.ToArray().Should().Equal("body"u8.ToArray());
         message.ContentType.Should().Be("application/json");
         message.MessageId.Should().Be("message-1");
+        message.CorrelationId.Should().Be("correlation-1");
         message.Redelivered.Should().BeTrue();
         message.DeliveryAttempt.Should().Be(3);
         message.TryGetHeaderString("cloudEvents:type", out var type).Should().BeTrue();
