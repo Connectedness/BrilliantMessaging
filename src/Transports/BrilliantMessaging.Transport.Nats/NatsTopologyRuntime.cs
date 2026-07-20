@@ -25,7 +25,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
     private static readonly TimeSpan ConsumerRecoveryDelay = TimeSpan.FromSeconds(1);
 
     private readonly CloudEventsInboundMessageInspector _inspector;
-    private readonly ILogger<NatsTopologyRuntime>? _logger;
+    private readonly ILogger<NatsTopologyRuntime> _logger;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly NatsTopology _topology;
     private readonly List<Task> _workers = [];
@@ -103,7 +103,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
         catch (TimeoutException)
         {
-            _logger?.LogWarning(
+            _logger.LogWarning(
                 "NATS topology '{Topology}' workers did not stop within {ShutdownTimeout}; in-flight deliveries will be redelivered after AckWait",
                 _topology.Name,
                 _topology.ShutdownTimeout
@@ -113,11 +113,11 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         {
             // Workers are cancelled via the internal _stopping token, so their cancellation never matches
             // the StopAsync token filter above; it is the expected graceful shutdown outcome.
-            _logger?.LogDebug(exception, "NATS topology '{Topology}' stopped with cancelled workers", _topology.Name);
+            _logger.LogDebug(exception, "NATS topology '{Topology}' stopped with cancelled workers", _topology.Name);
         }
         catch (Exception exception)
         {
-            _logger?.LogWarning(
+            _logger.LogWarning(
                 exception,
                 "NATS topology '{Topology}' workers faulted during shutdown",
                 _topology.Name
@@ -170,7 +170,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
                     }
                     catch (Exception exception)
                     {
-                        _logger?.LogError(
+                        _logger.LogError(
                             exception,
                             "NATS topology '{Topology}' consumer '{Consumer}' failed while processing a message",
                             _topology.Name,
@@ -185,7 +185,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             }
             catch (Exception exception)
             {
-                _logger?.LogWarning(
+                _logger.LogWarning(
                     exception,
                     "NATS topology '{Topology}' consumer '{Consumer}' consume loop failed; restarting",
                     _topology.Name,
@@ -354,7 +354,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
                 {
                     // Can race with settlement: progress on an already-settled delivery is rejected by the
                     // server, which is harmless here.
-                    _logger?.LogDebug(exception, "NATS AckProgress failed");
+                    _logger.LogDebug(exception, "NATS AckProgress failed");
                 }
             }
         }
@@ -372,7 +372,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         var action = consumer.DeadLetterSubject is null ? "terminating it" : "dead-lettering it";
         if (inspectionFailure is null)
         {
-            _logger?.LogWarning(
+            _logger.LogWarning(
                 "NATS topology '{Topology}' consumer '{Consumer}' received a message with no matching handler; {Action}",
                 _topology.Name,
                 consumer.DurableName,
@@ -381,7 +381,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
         else
         {
-            _logger?.LogWarning(
+            _logger.LogWarning(
                 inspectionFailure,
                 "NATS topology '{Topology}' consumer '{Consumer}' received a message that failed inbound inspection; {Action}",
                 _topology.Name,
