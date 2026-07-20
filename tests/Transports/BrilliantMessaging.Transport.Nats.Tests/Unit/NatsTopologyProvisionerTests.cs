@@ -38,18 +38,18 @@ public sealed class NatsTopologyProvisionerTests
         var act = () => provisioner.ProvisionAsync(TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<TopologyValidationException>();
-        var activity = recorder.StartedActivities.Should().ContainSingle().Which;
+        var activity = recorder.SnapshotStartedActivities().Should().ContainSingle().Which;
         activity.OperationName.Should().Be(ProvisionActivityName);
         activity.Status.Should().Be(ActivityStatusCode.Error);
         activity.GetTagItem(TransportNameTagName).Should().Be(NatsTopology.TransportNameValue);
         activity.GetTagItem(OutcomeTagName).Should().Be("failure");
-        recorder.Attempts.Should().ContainSingle().Which.Should().Contain(
+        recorder.SnapshotAttempts().Should().ContainSingle().Which.Should().Contain(
             new KeyValuePair<string, object?>(TransportNameTagName, NatsTopology.TransportNameValue)
         );
-        recorder.Failures.Should().ContainSingle().Which.Should().Contain(
+        recorder.SnapshotFailures().Should().ContainSingle().Which.Should().Contain(
             new KeyValuePair<string, object?>(OutcomeTagName, "failure")
         );
-        recorder.Durations.Should().ContainSingle().Which.Should().Contain(
+        recorder.SnapshotDurations().Should().ContainSingle().Which.Should().Contain(
             new KeyValuePair<string, object?>(OutcomeTagName, "failure")
         );
     }
@@ -71,14 +71,14 @@ public sealed class NatsTopologyProvisionerTests
         var act = () => provisioner.ProvisionAsync(cancellationTokenSource.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        var activity = recorder.StartedActivities.Should().ContainSingle().Which;
+        var activity = recorder.SnapshotStartedActivities().Should().ContainSingle().Which;
         activity.OperationName.Should().Be(ProvisionActivityName);
         activity.Status.Should().Be(ActivityStatusCode.Unset);
         activity.GetTagItem(TransportNameTagName).Should().Be(NatsTopology.TransportNameValue);
         activity.GetTagItem(OutcomeTagName).Should().Be("cancelled");
-        recorder.Attempts.Should().ContainSingle();
-        recorder.Failures.Should().BeEmpty();
-        recorder.Durations.Should().ContainSingle().Which.Should().Contain(
+        recorder.SnapshotAttempts().Should().ContainSingle();
+        recorder.SnapshotFailures().Should().BeEmpty();
+        recorder.SnapshotDurations().Should().ContainSingle().Which.Should().Contain(
             new KeyValuePair<string, object?>(OutcomeTagName, "cancelled")
         );
     }

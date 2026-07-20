@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Threading;
 using BrilliantMessaging.Core.Messaging.Outbound;
 
 namespace BrilliantMessaging.Transport.Nats.Tests.TestSupport;
@@ -15,6 +16,7 @@ public sealed class OutboundTopologyProvisioningDiagnosticsRecorder : IDisposabl
     public const string DurationInstrumentName = "brilliantmessaging.outbound.topology.provisioning.duration";
 
     private readonly ActivityListener _activityListener;
+    private readonly Lock _gate = new ();
     private readonly MeterListener _meterListener;
 
     public OutboundTopologyProvisioningDiagnosticsRecorder()
@@ -23,7 +25,13 @@ public sealed class OutboundTopologyProvisioningDiagnosticsRecorder : IDisposabl
         {
             ShouldListenTo = source => source.Name == OutboundDiagnostics.ActivitySourceName,
             Sample = static (ref _) => ActivitySamplingResult.AllData,
-            ActivityStarted = activity => StartedActivities.Add(activity)
+            ActivityStarted = activity =>
+            {
+                lock (_gate)
+                {
+                    StartedActivities.Add(activity);
+                }
+            }
         };
         ActivitySource.AddActivityListener(_activityListener);
 
@@ -42,11 +50,17 @@ public sealed class OutboundTopologyProvisioningDiagnosticsRecorder : IDisposabl
             {
                 if (instrument.Name == AttemptsInstrumentName)
                 {
-                    Attempts.Add(tags.ToArray());
+                    lock (_gate)
+                    {
+                        Attempts.Add(tags.ToArray());
+                    }
                 }
                 else if (instrument.Name == FailuresInstrumentName)
                 {
-                    Failures.Add(tags.ToArray());
+                    lock (_gate)
+                    {
+                        Failures.Add(tags.ToArray());
+                    }
                 }
             }
         );
@@ -55,24 +69,59 @@ public sealed class OutboundTopologyProvisioningDiagnosticsRecorder : IDisposabl
             {
                 if (instrument.Name == DurationInstrumentName)
                 {
-                    Durations.Add(tags.ToArray());
+                    lock (_gate)
+                    {
+                        Durations.Add(tags.ToArray());
+                    }
                 }
             }
         );
         _meterListener.Start();
     }
 
-    public List<Activity> StartedActivities { get; } = [];
+    private List<Activity> StartedActivities { get; } = [];
 
-    public List<KeyValuePair<string, object?>[]> Attempts { get; } = [];
+    private List<KeyValuePair<string, object?>[]> Attempts { get; } = [];
 
-    public List<KeyValuePair<string, object?>[]> Failures { get; } = [];
+    private List<KeyValuePair<string, object?>[]> Failures { get; } = [];
 
-    public List<KeyValuePair<string, object?>[]> Durations { get; } = [];
+    private List<KeyValuePair<string, object?>[]> Durations { get; } = [];
 
     public void Dispose()
     {
         _meterListener.Dispose();
         _activityListener.Dispose();
+    }
+
+    public Activity[] SnapshotStartedActivities()
+    {
+        lock (_gate)
+        {
+            return StartedActivities.ToArray();
+        }
+    }
+
+    public KeyValuePair<string, object?>[][] SnapshotAttempts()
+    {
+        lock (_gate)
+        {
+            return Attempts.ToArray();
+        }
+    }
+
+    public KeyValuePair<string, object?>[][] SnapshotFailures()
+    {
+        lock (_gate)
+        {
+            return Failures.ToArray();
+        }
+    }
+
+    public KeyValuePair<string, object?>[][] SnapshotDurations()
+    {
+        lock (_gate)
+        {
+            return Durations.ToArray();
+        }
     }
 }
