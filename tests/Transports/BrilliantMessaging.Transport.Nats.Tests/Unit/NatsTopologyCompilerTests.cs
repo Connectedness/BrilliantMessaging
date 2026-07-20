@@ -807,6 +807,43 @@ public sealed class NatsTopologyCompilerTests
     }
 
     [Fact]
+    public async Task Compile_RejectsDuplicateEndpointNamesAcrossConsumers()
+    {
+        ServiceCollection services = new ();
+        services.AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests")
+           .MapMessageContracts(contracts => contracts.Map<OrderPlaced>("tests.order.placed"))
+           .AddNatsTopology(
+                topology => topology
+                   .UseServer("nats://localhost:4222")
+                   .Stream("ORDERS", stream => stream.Subject("orders.*"))
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker-a",
+                        consumer => consumer.HandleNamed<OrderPlaced, OrderPlacedHandler>("shared-endpoint")
+                    )
+                   .Consume(
+                        "ORDERS",
+                        "orders-worker-b",
+                        consumer => consumer.HandleNamed<OrderPlaced, DuplicateOrderPlacedHandler>("shared-endpoint")
+                    )
+            );
+        await using var provider = services.BuildServiceProvider();
+
+        // ReSharper disable once AccessToDisposedClosure
+        var act = () => provider.GetRequiredService<NatsTopology>();
+
+        act.Should().Throw<TopologyValidationException>()
+           .Which.ValidationErrors.Should()
+           .Contain(
+                error => error.Contains(
+                    "Inbound endpoint name 'shared-endpoint' is configured multiple times",
+                    StringComparison.Ordinal
+                )
+            );
+    }
+
+    [Fact]
     public async Task Compile_RejectsOutboundOnlyContractForInboundEndpoint()
     {
         ServiceCollection services = new ();

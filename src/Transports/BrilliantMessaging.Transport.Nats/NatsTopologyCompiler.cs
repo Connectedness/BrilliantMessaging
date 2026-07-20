@@ -435,6 +435,11 @@ public sealed class NatsTopologyCompiler
             }
         }
 
+        // Endpoint names are indexed into one topology-wide dictionary during compilation, so a collision
+        // across any two consumers would otherwise surface as a raw ArgumentException from that dictionary
+        // instead of a validation error.
+        HashSet<string> endpointNames = new (StringComparer.Ordinal);
+
         foreach (var consumer in configuration.Consumers)
         {
             HashSet<Type> handlerMessageTypes = new ();
@@ -492,7 +497,7 @@ public sealed class NatsTopologyCompiler
                     );
                 }
 
-                if (!messageContractRegistry.TryGetDiscriminator(handler.MessageType, out _))
+                if (!messageContractRegistry.TryGetDiscriminator(handler.MessageType, out var handlerDiscriminator))
                 {
                     errors.Add(
                         $"NATS handler '{handler.HandlerType.FullName}' handles message '{handler.MessageType.FullName}' which has no registered CloudEvents discriminator."
@@ -518,6 +523,17 @@ public sealed class NatsTopologyCompiler
                             );
                         }
                     }
+                }
+
+                // Mirrors the name the compiler derives; skipped when the discriminator is missing, because
+                // validation has already failed above and compilation never runs.
+                var endpointName = handler.EndpointName ??
+                                   (handlerDiscriminator is null ?
+                                       null :
+                                       $"{consumer.StreamName}:{consumer.DurableName}:{handlerDiscriminator}");
+                if (endpointName is not null && !endpointNames.Add(endpointName))
+                {
+                    errors.Add($"Inbound endpoint name '{endpointName}' is configured multiple times.");
                 }
 
                 if (!_serviceIsRegistered(handler.DeserializerType))
