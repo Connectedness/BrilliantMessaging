@@ -71,7 +71,9 @@ public sealed class NatsReliabilityContractTests : IAsyncLifetime
         );
 
         await act
-           .Should().ThrowAsync<Exception>("a JetStream publish rejected by the server must not report success");
+           .Should().ThrowAsync<NatsJSApiException>(
+                "a JetStream publish rejected by the server must surface its API error"
+            );
     }
 
     [Fact]

@@ -1519,7 +1519,7 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                 ["ce-type"] = "tests.unknown",
                 ["message-id"] = "message-terminate"
             };
-            await jetStream.PublishAsync(
+            var acknowledgement = await jetStream.PublishAsync(
                 "orders.terminate",
                 "unknown"u8.ToArray(),
                 serializer: null,
@@ -1527,8 +1527,15 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
                 headers,
                 TestContext.Current.CancellationToken
             );
-
-            await Task.Delay(TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
+            acknowledgement.EnsureSuccess();
+            await WaitForDeliveryToSettleAsync(
+                jetStream,
+                "ORDERS",
+                "orders-terminate-worker",
+                acknowledgement.Seq,
+                TimeSpan.FromSeconds(10),
+                TestContext.Current.CancellationToken
+            );
         }
         finally
         {
@@ -1538,7 +1545,6 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
             }
         }
 
-        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         var redelivered = await ReadMessagesAsync(
             jetStream,
             "ORDERS",
@@ -1925,6 +1931,34 @@ public sealed class NatsIntegrationTests : IAsyncLifetime
 
         throw new TimeoutException(
             $"Timed out waiting for consumer '{durableName}' to have no acknowledgements pending."
+        );
+    }
+
+    private static async Task WaitForDeliveryToSettleAsync(
+        NatsJSContext jetStream,
+        string streamName,
+        string durableName,
+        ulong streamSequence,
+        TimeSpan timeout,
+        CancellationToken cancellationToken
+    )
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var consumer = await jetStream
+               .GetConsumerAsync(streamName, durableName, cancellationToken)
+               .ConfigureAwait(false);
+            if (consumer.Info.Delivered.StreamSeq >= streamSequence && consumer.Info.NumAckPending == 0)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken).ConfigureAwait(false);
+        }
+
+        throw new TimeoutException(
+            $"Timed out waiting for consumer '{durableName}' to settle stream sequence {streamSequence}."
         );
     }
 
