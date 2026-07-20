@@ -11,19 +11,19 @@ public sealed class InboundDiagnosticsRecorder : IDisposable
 {
     public const string ConsumedMessagesInstrumentName = "messaging.client.consumed.messages";
 
-    public const string OperationDurationInstrumentName = "messaging.client.operation.duration";
-
     private readonly ActivityListener _activityListener;
     private readonly Lock _gate = new ();
     private readonly MeterListener _meterListener;
 
     public InboundDiagnosticsRecorder()
     {
+        // The listener stays registered even though nothing records the activities: without a listener
+        // ActivitySource.StartActivity returns null, which changes the code path the production
+        // diagnostics take and therefore the tags the consumed-messages assertions check.
         _activityListener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == InboundDiagnostics.ActivitySourceName,
-            Sample = static (ref _) => ActivitySamplingResult.AllData,
-            ActivityStopped = activity => StoppedActivities.Add(activity)
+            Sample = static (ref _) => ActivitySamplingResult.AllData
         };
         ActivitySource.AddActivityListener(_activityListener);
 
@@ -49,23 +49,10 @@ public sealed class InboundDiagnosticsRecorder : IDisposable
                 }
             }
         );
-        _meterListener.SetMeasurementEventCallback<double>(
-            (instrument, _, tags, _) =>
-            {
-                if (instrument.Name == OperationDurationInstrumentName)
-                {
-                    Durations.Add(tags.ToArray());
-                }
-            }
-        );
         _meterListener.Start();
     }
 
-    public List<Activity> StoppedActivities { get; } = [];
-
     public List<KeyValuePair<string, object?>[]> ConsumedMessages { get; } = [];
-
-    public List<KeyValuePair<string, object?>[]> Durations { get; } = [];
 
     public void Dispose()
     {
