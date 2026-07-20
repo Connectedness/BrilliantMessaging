@@ -277,7 +277,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         var deliveryAttempt = (uint) (message.Metadata?.NumDelivered ?? 1);
         var acknowledgement = new NatsMessageAcknowledgement(
             message,
-            GetNakDelay(consumer, deliveryAttempt),
+            NatsNakDelayPolicy.GetDelay(consumer.AckWait, deliveryAttempt),
             deliveryAttempt,
             consumer.DeadLetterAfterDeliveryAttempt,
             consumer.MaxDeliver,
@@ -559,15 +559,6 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
     private static string? GetHeader(IReadOnlyDictionary<string, object?> headers, string name)
     {
         return headers.TryGetValue(name, out var value) ? value?.ToString() : null;
-    }
-
-    private static TimeSpan GetNakDelay(NatsInboundConsumer consumer, uint deliveryAttempt)
-    {
-        var baseMilliseconds = Math.Max(100, Math.Min(consumer.AckWait.TotalMilliseconds / 2, 5000));
-        var attempt = Math.Max(1, deliveryAttempt);
-        var scaledMilliseconds = baseMilliseconds * Math.Pow(2, attempt - 1);
-        var cappedMilliseconds = Math.Min(scaledMilliseconds, TimeSpan.FromSeconds(30).TotalMilliseconds);
-        return TimeSpan.FromMilliseconds(cappedMilliseconds);
     }
 
     /// <summary>
