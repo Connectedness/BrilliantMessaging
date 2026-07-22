@@ -6,27 +6,32 @@ Brilliant Messaging is a lightweight, CloudEvents-first messaging framework for 
 .NET applications. You declare your broker topology; Brilliant Messaging provisions exactly those
 resources — no surprise queues, no hidden dependencies. Messages travel as
 [CloudEvents v1.0](https://cloudevents.io/) in binary content mode over RabbitMQ
-(AMQP 0.9.1), and the whole thing lives inside the .NET generic host.
+(AMQP 0.9.1) or NATS JetStream, and the whole thing lives inside the .NET generic host.
 
 ## Packages
 
-| Package | What it gives you |
-| --- | --- |
-| `BrilliantMessaging.Abstractions` | The CloudEvents contracts: `ICloudEvent` and `BaseCloudEvent`. |
-| `BrilliantMessaging.Core` | Publishing, consuming, message contracts, the topology model, and DI wiring. |
-| `BrilliantMessaging.Transport.RabbitMq` | The RabbitMQ transport — exchanges, queues, bindings, publishers, and consumers. |
-| `BrilliantMessaging.OpenTelemetry` | One-line registration of Brilliant Messaging tracing and metrics with the OpenTelemetry SDK. |
+| Package                                 | What it gives you                                                                               |
+|-----------------------------------------|-------------------------------------------------------------------------------------------------|
+| `BrilliantMessaging.Abstractions`       | The CloudEvents contracts: `ICloudEvent` and `BaseCloudEvent`.                                  |
+| `BrilliantMessaging.Core`               | Publishing, consuming, message contracts, the topology model, and DI wiring.                    |
+| `BrilliantMessaging.Transport.RabbitMq` | The RabbitMQ transport — exchanges, queues, bindings, publishers, and consumers.                |
+| `BrilliantMessaging.Transport.Nats`     | The NATS JetStream transport — streams, durable consumers, subjects, publishers, and consumers. |
+| `BrilliantMessaging.OpenTelemetry`      | One-line registration of Brilliant Messaging tracing and metrics with the OpenTelemetry SDK.    |
 
-RabbitMQ is the only transport today and transitively references the other two
-packages, so a single reference is all you need:
+Choose the transport for your broker. Each transport transitively references the core contracts and
+runtime, so a single transport reference is all you need:
 
 ```bash
 dotnet add package BrilliantMessaging.Transport.RabbitMq
+dotnet add package BrilliantMessaging.Transport.Nats
 ```
 
-## Quick start
+## RabbitMQ quick start
 
 A complete publish-and-consume loop is four small steps.
+
+For NATS JetStream setup and topology examples, see the
+[NATS transport guide](https://github.com/Connectedness/BMF/blob/main/docs/nats-transport.md).
 
 ```csharp
 using BrilliantMessaging.Abstractions;

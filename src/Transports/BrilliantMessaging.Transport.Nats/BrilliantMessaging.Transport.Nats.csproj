@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Description>Brilliant Messaging RabbitMQ transport integration.</Description>
-    <PackageTags>$(PackageTags);rabbitmq;amqp</PackageTags>
+    <Description>Brilliant Messaging NATS JetStream transport.</Description>
+    <PackageTags>$(PackageTags);nats;jetstream</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,8 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="NATS.Net" />
     <PackageReference Include="Polyfill" PrivateAssets="all" />
-    <PackageReference Include="RabbitMQ.Client" />
-    <PackageReference Include="System.Threading.Channels" />
   </ItemGroup>
 </Project>
