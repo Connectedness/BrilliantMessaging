@@ -15,9 +15,9 @@
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.301" />
     <PackageVersion Include="Microsoft.Testing.Platform" Version="2.3.2" />
     <PackageVersion Include="NATS.Net" Version="3.0.1" />
-    <PackageVersion Include="OpenTelemetry" Version="1.16.0" />
-    <PackageVersion Include="OpenTelemetry.Api" Version="1.16.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry" Version="1.17.0" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.17.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.17.0" />
     <PackageVersion Include="Polyfill" Version="10.11.2" />
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
     <PackageVersion Include="System.Collections.Immutable" Version="10.0.10" />
