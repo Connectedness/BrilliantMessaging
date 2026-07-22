@@ -9,6 +9,21 @@
   "major": {
     "dependencyDashboardApproval": true
   },
+  "description": [
+    "ignorePaths mirrors the config:recommended defaults but drops **/tests/**.",
+    "Custom managers cannot see files under tests/ while that entry is active,",
+    "which would silently disable the DockerImages.cs manager below.",
+    "Re-check this list when config:recommended changes its own defaults."
+  ],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/__fixtures__/**"
+  ],
   "packageRules": [
     {
       "description": "Restore old NuGet update behavior for bare versions",
@@ -44,7 +59,16 @@
       "groupName": "RabbitMQ",
       "matchPackageNames": [
         "RabbitMQ.Client",
-        "Testcontainers.RabbitMq"
+        "Testcontainers.RabbitMq",
+        "rabbitmq"
+      ]
+    },
+    {
+      "groupName": "NATS",
+      "matchPackageNames": [
+        "NATS.Net",
+        "Testcontainers.Nats",
+        "nats"
       ]
     },
     {
@@ -66,6 +90,18 @@
       ],
       "depNameTemplate": "dotnet-reportgenerator-globaltool",
       "datasourceTemplate": "nuget"
+    },
+    {
+      "customType": "regex",
+      "description": "Update the Docker images pinned in the Testcontainers DockerImages constants",
+      "managerFilePatterns": [
+        "**/TestSupport/DockerImages.cs"
+      ],
+      "matchStrings": [
+        "public const string \\w+ = \"(?<depName>[a-z0-9][a-z0-9._-]*):(?<currentValue>[a-zA-Z0-9][a-zA-Z0-9._-]*)\";"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
     }
   ]
 }
