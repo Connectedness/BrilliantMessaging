@@ -98,7 +98,7 @@
         "**/TestSupport/DockerImages.cs"
       ],
       "matchStrings": [
-        "public const string \\w+ = \"(?<depName>[a-z0-9][a-z0-9._-]*):(?<currentValue>[a-zA-Z0-9][a-zA-Z0-9._-]*)\";"
+        "public const string[ \\t]+\\w+[ \\t]*=[ \\t]*\"(?<depName>[a-z0-9][a-z0-9._-]*):(?<currentValue>[a-zA-Z0-9_][a-zA-Z0-9._-]*)\"[ \\t]*;"
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker"
