@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Description>Brilliant Messaging in-memory transport for tests, samples, and local development.</Description>
+    <PackageTags>$(PackageTags);in-memory;testing</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
