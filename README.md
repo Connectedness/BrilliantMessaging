@@ -296,6 +296,11 @@ different so they coexist without colliding), and provisioning happens once at
 startup through a hosted service. If what's on the broker doesn't match what you
 declared, you'll know immediately — not three deploys later.
 
+Topology names share one application-wide namespace across all transport modules.
+When registering multiple transports in one application, use the registration
+overloads that accept an explicit topology name and give every transport a distinct
+name.
+
 ### Resilience and redelivery
 
 RabbitMQ queues are declared as quorum queues by default:

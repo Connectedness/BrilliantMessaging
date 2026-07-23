@@ -8,13 +8,13 @@ Verify that RabbitMQ, NATS, and InMemory transports can be registered and run to
 
 ## Acceptance Criteria
 
-- [ ] The test project `tests/Transports/BrilliantMessaging.Transports.Integration.Tests` references the RabbitMQ, NATS, and InMemory transports and is included in `BrilliantMessaging.slnx`.
-- [ ] Testcontainers-backed coverage registers RabbitMQ, NATS, and InMemory together in one `IServiceCollection` under distinct topology names.
-- [ ] An end-to-end test consumes an InMemory message, transforms and publishes it to RabbitMQ, intentionally rejects it into a RabbitMQ dead-letter queue, publishes a report from the dead-letter consumer to NATS, and verifies that a NATS subscriber receives the report.
-- [ ] The service provider resolves one `TopologyProvisioningHostedService` and one `TopologyRuntimeHostedService`, with `RabbitMqTopologyProvisioner` and `NatsTopologyProvisioner` contributions plus `InMemoryTopologyRuntime`, `RabbitMqTopologyRuntime`, and `NatsTopologyRuntime` contributions; starting and stopping the shared hosted services drives them all.
-- [ ] Registering two transports through their parameterless overloads throws `InvalidOperationException` whose message names the duplicated topology (`default`) and lists the registered topologies.
-- [ ] The README `Topologies` section states that topology names share one application-wide namespace across transport modules, and that multi-transport registrations must use the overloads accepting explicit, distinct names.
-- [ ] Tests use FluentAssertions and hand-crafted test doubles, contain no `Task.Delay`- or `Thread.Sleep`-based synchronisation, and generate unique broker resource names per run.
+- [x] The test project `tests/Transports/BrilliantMessaging.Transports.Integration.Tests` references the RabbitMQ, NATS, and InMemory transports and is included in `BrilliantMessaging.slnx`.
+- [x] Testcontainers-backed coverage registers RabbitMQ, NATS, and InMemory together in one `IServiceCollection` under distinct topology names.
+- [x] An end-to-end test consumes an InMemory message, transforms and publishes it to RabbitMQ, intentionally rejects it into a RabbitMQ dead-letter queue, publishes a report from the dead-letter consumer to NATS, and verifies that a NATS subscriber receives the report.
+- [x] The service provider resolves one `TopologyProvisioningHostedService` and one `TopologyRuntimeHostedService`, with `RabbitMqTopologyProvisioner` and `NatsTopologyProvisioner` contributions plus `InMemoryTopologyRuntime`, `RabbitMqTopologyRuntime`, and `NatsTopologyRuntime` contributions; starting and stopping the shared hosted services drives them all.
+- [x] Registering two transports through their parameterless overloads throws `InvalidOperationException` whose message names the duplicated topology (`default`) and lists the registered topologies.
+- [x] The README `Topologies` section states that topology names share one application-wide namespace across transport modules, and that multi-transport registrations must use the overloads accepting explicit, distinct names.
+- [x] Tests use FluentAssertions and hand-crafted test doubles, contain no `Task.Delay`- or `Thread.Sleep`-based synchronisation, and generate unique broker resource names per run.
 
 ## Technical Details
 
