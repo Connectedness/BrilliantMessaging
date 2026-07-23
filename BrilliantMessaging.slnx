@@ -39,5 +39,7 @@
         <Project
             Path="tests/Transports/BrilliantMessaging.Transport.Nats.Tests/BrilliantMessaging.Transport.Nats.Tests.csproj" />
         <Project Path="tests/Transports/BrilliantMessaging.Transport.RabbitMq.Tests/BrilliantMessaging.Transport.RabbitMq.Tests.csproj" />
+        <Project
+            Path="tests/Transports/BrilliantMessaging.Transports.Integration.Tests/BrilliantMessaging.Transports.Integration.Tests.csproj" />
     </Folder>
 </Solution>
