@@ -1,0 +1,916 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-08-07T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="workflow-engine-architecture" name="Workflow Engine Architecture">
+    <mxGraphModel dx="1600" dy="1150" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Editable architecture lanes -->
+        <mxCell id="lane-definition" value="WORKFLOW DEFINITION &amp;amp; ORCHESTRATION" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="30" width="1540" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-flow" value="WORKFLOW EXECUTION GRAPH" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#fff4e6;swimlaneFillColor=#fffaf2;strokeColor=#d79b00;fontColor=#7f5300;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="230" width="1540" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-core" value="ACTIVITY CONTRACT &amp;amp; ADAPTERS (TRANSPORT-NEUTRAL)" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#eee8f7;swimlaneFillColor=#faf8fd;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="570" width="1540" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-state" value="DURABLE STATE, RESULTS &amp;amp; RECOVERY" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="890" width="1540" height="210" as="geometry" />
+        </mxCell>
+
+        <!-- Business-facing definition and orchestrator -->
+        <mxCell id="workflow-definition" value="&lt;b&gt;Workflow Definition&lt;/b&gt;&lt;br&gt;Business-facing DSL / builder&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;steps · branches · policies · compensation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="170" y="80" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="workflow-runtime" value="&lt;b&gt;Workflow Runtime / Orchestrator&lt;/b&gt;&lt;br&gt;Advances tokens and invokes Activity Contracts&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;continues immediately or persists a correlated wait&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="625" y="70" width="360" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="workflow-instance" value="&lt;b&gt;Workflow Instance&lt;/b&gt;&lt;br&gt;Definition + instance ID&lt;br&gt;current token(s)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1105" y="80" width="265" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Execution graph -->
+        <mxCell id="flow-start" value="Start" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="105" y="350" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="step-1" value="&lt;b&gt;Sequential Step 1&lt;/b&gt;&lt;br&gt;Invoke an activity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="215" y="340" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="step-2" value="&lt;b&gt;Sequential Step 2&lt;/b&gt;&lt;br&gt;Use result or resume after event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="445" y="340" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="parallel-fork" value="FAN-OUT" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="675" y="330" width="100" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="parallel-a" value="&lt;b&gt;Parallel Step A&lt;/b&gt;&lt;br&gt;Independent work" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="825" y="275" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="parallel-b" value="&lt;b&gt;Parallel Step B&lt;/b&gt;&lt;br&gt;Independent work" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="825" y="415" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="parallel-join" value="JOIN" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="330" width="100" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="condition" value="CONDITION" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1185" y="330" width="100" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="branch-yes" value="&lt;b&gt;Branch: continue&lt;/b&gt;&lt;br&gt;Next activity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="275" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="branch-no" value="&lt;b&gt;Branch: alternate&lt;/b&gt;&lt;br&gt;Skip / complete / reroute" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="415" width="170" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Transport-neutral activity boundary and representative adapters -->
+        <mxCell id="activity-contract" value="&lt;b&gt;Activity / Activity Contract&lt;/b&gt;&lt;br&gt;Typed input + execution context&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;adapter-independent invocation boundary&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="85" y="665" width="280" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="messaging-adapter" value="&lt;b&gt;Asynchronous Messaging Adapter&lt;/b&gt;&lt;br&gt;Existing BMF Core&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;IMessagePublisher → OutboundTarget&amp;lt;T&amp;gt; → Topology&lt;br&gt;message endpoints emit correlated events&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="430" y="610" width="330" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="http-adapter" value="&lt;b&gt;HTTP / gRPC Adapter&lt;/b&gt;&lt;br&gt;Request-response client&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;returns response or failure&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="430" y="750" width="230" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="database-adapter" value="&lt;b&gt;Database Adapter&lt;/b&gt;&lt;br&gt;Command / query / transaction&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;returns value or affected state&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="700" y="750" width="230" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="sap-adapter" value="&lt;b&gt;SAP / External-System Adapter&lt;/b&gt;&lt;br&gt;API, RFC, job, or callback&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;adapter declares immediate vs asynchronous semantics&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="800" y="610" width="275" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="immediate-outcome" value="&lt;b&gt;Immediate Result&lt;/b&gt;&lt;br&gt;Completed(result)&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;continue in the current execution&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="610" width="215" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="async-outcome" value="&lt;b&gt;Asynchronous Start + Wait&lt;/b&gt;&lt;br&gt;Started(correlation, deadline)&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;persist wait; resume on matching event&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1105" y="745" width="255" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="activity-note" value="Adapters implement one contract, but preserve their real interaction model. Messaging is event-driven; request-response and database calls usually complete immediately." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1390" y="650" width="145" height="145" as="geometry" />
+        </mxCell>
+
+        <!-- State, result handling, and recovery -->
+        <mxCell id="state-store" value="&lt;b&gt;Workflow State Store&lt;/b&gt;&lt;br&gt;Durable instance state&lt;br&gt;correlation keys · step outcomes · tokens" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="150" y="945" width="250" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="result-handler" value="&lt;b&gt;Result / Event Handler&lt;/b&gt;&lt;br&gt;Correlate endpoint response&lt;br&gt;resume waiting workflow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="475" y="950" width="240" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="failure-handler" value="&lt;b&gt;Failure / Timeout Policy&lt;/b&gt;&lt;br&gt;Retry · fail · time limit&lt;br&gt;select compensation boundary" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="800" y="950" width="240" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="compensation" value="&lt;b&gt;Compensation Path&lt;/b&gt;&lt;br&gt;Reverse completed steps&lt;br&gt;invoke compensating activities" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="950" width="250" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="recovery-outcome" value="Recovered&lt;br&gt;or terminal failure" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="1425" y="960" width="105" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- Primary control-flow edges -->
+        <mxCell id="edge-definition-runtime" value="compile / register" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="workflow-definition" target="workflow-runtime">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-runtime-instance" value="create / load" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="workflow-runtime" target="workflow-instance">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-runtime-start" value="advance token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="workflow-runtime" target="flow-start">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="805" y="205" />
+              <mxPoint x="135" y="205" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-start-step1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="flow-start" target="step-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-step1-step2" value="success / result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="step-1" target="step-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-step2-fork" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="step-2" target="parallel-fork">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-fork-a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-fork" target="parallel-a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-fork-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-fork" target="parallel-b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-a-join" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-a" target="parallel-join">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-b-join" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-b" target="parallel-join">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-join-condition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-join" target="condition">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-condition-yes" value="true" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="condition" target="branch-yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-condition-no" value="false" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="condition" target="branch-no">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Runtime invokes a transport-neutral activity; adapters preserve their interaction semantics -->
+        <mxCell id="edge-runtime-activity" value="invoke activity" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="1" source="workflow-runtime" target="activity-contract">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="805" y="215" />
+              <mxPoint x="55" y="215" />
+              <mxPoint x="55" y="718" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-activity-messaging" value="select adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="activity-contract" target="messaging-adapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-activity-http" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="activity-contract" target="http-adapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-activity-database" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="activity-contract" target="database-adapter">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="395" y="718" />
+              <mxPoint x="395" y="850" />
+              <mxPoint x="815" y="850" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-activity-sap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="activity-contract" target="sap-adapter">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="395" y="718" />
+              <mxPoint x="395" y="590" />
+              <mxPoint x="938" y="590" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-messaging-async" value="start command" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="messaging-adapter" target="async-outcome">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-http-immediate" value="response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="http-adapter" target="immediate-outcome">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="793" />
+              <mxPoint x="680" y="730" />
+              <mxPoint x="1233" y="730" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-database-immediate" value="result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="database-adapter" target="immediate-outcome">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="965" y="793" />
+              <mxPoint x="965" y="730" />
+              <mxPoint x="1233" y="730" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-sap-immediate" value="sync API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="sap-adapter" target="immediate-outcome">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-sap-async" value="job / callback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="sap-adapter" target="async-outcome">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-immediate-runtime" value="return now" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="immediate-outcome" target="workflow-runtime">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1233" y="585" />
+              <mxPoint x="1045" y="585" />
+              <mxPoint x="1045" y="125" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-messaging-result-event" value="later correlated event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="messaging-adapter" target="result-handler">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="595" y="730" />
+              <mxPoint x="595" y="930" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-sap-result-event" value="callback / status event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="sap-adapter" target="result-handler">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1085" y="663" />
+              <mxPoint x="1085" y="920" />
+              <mxPoint x="595" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Correlation and result loop -->
+        <mxCell id="edge-runtime-state" value="persist checkpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="workflow-runtime" target="state-store">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="125" />
+              <mxPoint x="560" y="905" />
+              <mxPoint x="275" y="905" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-instance-state" value="durable correlation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="workflow-instance" target="state-store">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="195" />
+              <mxPoint x="440" y="195" />
+              <mxPoint x="440" y="998" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-async-state" value="persist wait + expected event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="async-outcome" target="state-store">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1233" y="880" />
+              <mxPoint x="275" y="880" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-result-state" value="match correlation key" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="result-handler" target="state-store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-result-runtime" value="resume" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="result-handler" target="workflow-runtime">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="998" />
+              <mxPoint x="750" y="195" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Failure, timeout, and compensation -->
+        <mxCell id="edge-runtime-failure" value="fault / timeout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="1" source="workflow-runtime" target="failure-handler">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1025" y="125" />
+              <mxPoint x="1025" y="920" />
+              <mxPoint x="920" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-failure-compensation" value="compensate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="1" source="failure-handler" target="compensation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-compensation-activity" value="invoke compensating activity" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" edge="1" parent="1" source="compensation" target="activity-contract">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1235" y="1080" />
+              <mxPoint x="70" y="1080" />
+              <mxPoint x="70" y="718" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-compensation-outcome" value="complete" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="compensation" target="recovery-outcome">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="request-response-vs-async" name="Request-Response vs Asynchronous Messaging">
+    <mxGraphModel dx="1600" dy="1050" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="c0" />
+        <mxCell id="c1" parent="c0" />
+
+        <mxCell id="c-title" value="&lt;b&gt;Workflow Runtime: Request-Response vs Asynchronous Messaging&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Different interaction lifecycles, one normalized outcome model&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#333333;" vertex="1" parent="c1">
+          <mxGeometry x="430" y="20" width="790" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="c-runtime" value="&lt;b&gt;Workflow Runtime invokes Activity Contract&lt;/b&gt;&lt;br&gt;Activity adapter declares its interaction mode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;strokeWidth=2;" vertex="1" parent="c1">
+          <mxGeometry x="610" y="95" width="430" height="75" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c-lane-rr" value="REQUEST-RESPONSE — DIRECT EXECUTE / RESULT" style="swimlane;horizontal=1;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#fff4e6;swimlaneFillColor=#fffaf2;strokeColor=#d79b00;fontColor=#7f5300;fontStyle=1;" vertex="1" parent="c1">
+          <mxGeometry x="40" y="190" width="745" height="630" as="geometry" />
+        </mxCell>
+        <mxCell id="c-lane-async" value="ASYNCHRONOUS MESSAGING — START / WAIT / RESUME" style="swimlane;horizontal=1;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;" vertex="1" parent="c1">
+          <mxGeometry x="825" y="190" width="745" height="630" as="geometry" />
+        </mxCell>
+        <mxCell id="c-lane-outcome" value="NORMALIZED WORKFLOW OUTCOMES" style="swimlane;horizontal=1;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;" vertex="1" parent="c1">
+          <mxGeometry x="40" y="840" width="1530" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- Request-response lifecycle -->
+        <mxCell id="c-rr-execute" value="&lt;b&gt;1 · Execute Request&lt;/b&gt;&lt;br&gt;HTTP / gRPC / direct API call" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="95" y="250" width="270" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c-rr-await" value="&lt;b&gt;2 · Await Direct Result&lt;/b&gt;&lt;br&gt;Call remains active until response, failure, cancellation, or timeout" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="95" y="380" width="270" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="c-rr-classify" value="&lt;b&gt;3 · Classify Response&lt;/b&gt;&lt;br&gt;Business / remote rejection&lt;br&gt;vs technical / transport failure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=8;strokeWidth=2;" vertex="1" parent="c1">
+          <mxGeometry x="95" y="545" width="270" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="c-rr-finish" value="&lt;b&gt;4 · Return Activity Outcome&lt;/b&gt;&lt;br&gt;No durable waiting state" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="95" y="705" width="270" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="c-rr-timeout" value="&lt;b&gt;Bounded Timeout&lt;/b&gt;&lt;br&gt;Per attempt / total budget&lt;br&gt;cancel remote call where supported" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="455" y="285" width="255" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="c-rr-retry" value="&lt;b&gt;Retry + Idempotency&lt;/b&gt;&lt;br&gt;Retry only eligible technical failures&lt;br&gt;stable idempotency key for side effects" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="455" y="440" width="255" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="c-rr-map-note" value="Remote/business failures are valid responses; connection, protocol, and unavailable errors are technical failures." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="c1">
+          <mxGeometry x="455" y="600" width="255" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Asynchronous messaging lifecycle -->
+        <mxCell id="c-async-outbox" value="&lt;b&gt;1 · Persist Before Send&lt;/b&gt;&lt;br&gt;Workflow checkpoint + expected response&lt;br&gt;outbox record in one durable decision" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;strokeWidth=2;" vertex="1" parent="c1">
+          <mxGeometry x="870" y="240" width="285" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="c-async-send" value="&lt;b&gt;2 · Start Command&lt;/b&gt;&lt;br&gt;Outbox dispatches through messaging adapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="870" y="385" width="285" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c-async-wait" value="&lt;b&gt;3 · Waiting State&lt;/b&gt;&lt;br&gt;Correlation key + expected event type&lt;br&gt;durable deadline; no active call" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;" vertex="1" parent="c1">
+          <mxGeometry x="870" y="505" width="285" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="c-async-event" value="&lt;b&gt;4 · Correlated Event Arrives&lt;/b&gt;&lt;br&gt;Match workflow + expected response&lt;br&gt;deduplicate delivery before applying" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="870" y="650" width="285" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="c-async-resume" value="&lt;b&gt;5 · Resume Workflow&lt;/b&gt;&lt;br&gt;Persist event outcome and advance token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="870" y="775" width="285" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c-async-timeout" value="&lt;b&gt;Durable Timeout&lt;/b&gt;&lt;br&gt;Timer survives process restarts&lt;br&gt;race-safe against matching event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="1245" y="250" width="260" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="c-async-delivery" value="&lt;b&gt;Duplicate Delivery / Idempotency&lt;/b&gt;&lt;br&gt;Stable command + event IDs&lt;br&gt;inbox/deduplication before transition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="1245" y="390" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="c-async-late" value="&lt;b&gt;Late / Unknown Response&lt;/b&gt;&lt;br&gt;Ignore duplicate; audit late event&lt;br&gt;quarantine unknown correlation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="1245" y="535" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="c-async-failure" value="&lt;b&gt;Delivery Failure Operations&lt;/b&gt;&lt;br&gt;Retry / backoff → dead-letter&lt;br&gt;operator escalation / reconciliation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" vertex="1" parent="c1">
+          <mxGeometry x="1245" y="680" width="260" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Shared normalized outcomes -->
+        <mxCell id="c-normalize" value="&lt;b&gt;Normalize Activity Outcome&lt;/b&gt;&lt;br&gt;Transport-specific details remain diagnostic context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;strokeWidth=2;" vertex="1" parent="c1">
+          <mxGeometry x="90" y="900" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="c-success" value="&lt;b&gt;Success&lt;/b&gt;&lt;br&gt;result" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;" vertex="1" parent="c1">
+          <mxGeometry x="460" y="910" width="165" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c-business-failure" value="&lt;b&gt;Business Failure&lt;/b&gt;&lt;br&gt;valid rejection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="c1">
+          <mxGeometry x="660" y="910" width="175" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c-technical-failure" value="&lt;b&gt;Technical Failure&lt;/b&gt;&lt;br&gt;retry exhausted" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;" vertex="1" parent="c1">
+          <mxGeometry x="870" y="910" width="175" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c-timeout" value="&lt;b&gt;Timeout&lt;/b&gt;&lt;br&gt;budget / deadline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;" vertex="1" parent="c1">
+          <mxGeometry x="1080" y="910" width="165" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c-outcome-gateway" value="POLICY" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="c1">
+          <mxGeometry x="1285" y="895" width="95" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="c-branch" value="Branch / continue" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;" vertex="1" parent="c1">
+          <mxGeometry x="1425" y="875" width="120" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c-compensate" value="Compensate / fail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;" vertex="1" parent="c1">
+          <mxGeometry x="1425" y="965" width="120" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="c-outcome-note" value="The workflow branches on normalized semantics, not HTTP status codes, broker errors, or vendor-specific response formats." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="c1">
+          <mxGeometry x="520" y="1025" width="610" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Entry split -->
+        <mxCell id="c-edge-runtime-rr" value="immediate mode" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;strokeWidth=2;" edge="1" parent="c1" source="c-runtime" target="c-rr-execute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-runtime-async" value="asynchronous mode" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="c1" source="c-runtime" target="c-async-outbox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Request-response flow and policy edges -->
+        <mxCell id="c-edge-rr-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="c1" source="c-rr-execute" target="c-rr-await"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-rr-2" value="response / exception" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="c1" source="c-rr-await" target="c-rr-classify"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-rr-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="c1" source="c-rr-classify" target="c-rr-finish"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-rr-timeout" value="bounds" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-rr-timeout" target="c-rr-await"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-rr-retry" value="repeat safely" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="c1" source="c-rr-retry" target="c-rr-execute"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Async flow and safeguards -->
+        <mxCell id="c-edge-async-1" value="commit then dispatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-outbox" target="c-async-send"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-async-2" value="transition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-send" target="c-async-wait"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-async-3" value="correlate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-wait" target="c-async-event"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-async-4" value="apply once" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-event" target="c-async-resume"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-async-timeout" value="deadline wins" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-timeout" target="c-async-wait"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-async-dedup" value="guards" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="c1" source="c-async-delivery" target="c-async-event"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-async-late" value="unmatched" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#d6b656;" edge="1" parent="c1" source="c-async-event" target="c-async-late"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-async-failure" value="delivery exhausted" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-send" target="c-async-failure"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Convergence and workflow policy -->
+        <mxCell id="c-edge-rr-normalize" value="direct outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="c1" source="c-rr-finish" target="c-normalize"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-async-normalize" value="resumed outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="c1" source="c-async-resume" target="c-normalize">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1013" y="855" /><mxPoint x="240" y="855" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="c-edge-timeout-normalize" value="timeout outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-timeout" target="c-normalize">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1525" y="298" /><mxPoint x="1525" y="825" /><mxPoint x="240" y="825" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="c-edge-failure-normalize" value="technical outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-failure" target="c-normalize">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1375" y="805" /><mxPoint x="420" y="805" /><mxPoint x="420" y="945" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="c-edge-normalize-success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="c1" source="c-normalize" target="c-success"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-normalize-business" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="c1" source="c-normalize" target="c-business-failure"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-normalize-technical" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-normalize" target="c-technical-failure"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-normalize-timeout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-normalize" target="c-timeout"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-success-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="c1" source="c-success" target="c-outcome-gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-business-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="c1" source="c-business-failure" target="c-outcome-gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-technical-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-technical-failure" target="c-outcome-gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-timeout-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-timeout" target="c-outcome-gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-policy-branch" value="continue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="c1" source="c-outcome-gateway" target="c-branch"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-policy-compensate" value="recover" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-outcome-gateway" target="c-compensate"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="transactional-decision-cycle" name="Transactional Decision Cycle">
+    <mxGraphModel dx="1600" dy="1050" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="t0" />
+        <mxCell id="t1" parent="t0" />
+
+        <mxCell id="t-title" value="&lt;b&gt;Workflow Runtime — Transactional Decision Cycle&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Decide and persist atomically; execute external work only after commit&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#333333;" vertex="1" parent="t1">
+          <mxGeometry x="430" y="20" width="790" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Input is serialized per workflow instance -->
+        <mxCell id="t-input" value="&lt;b&gt;External Input&lt;/b&gt;&lt;br&gt;Start · command · result/event&lt;br&gt;timer / durable timeout" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="65" y="105" width="260" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="t-instance-handler" value="&lt;b&gt;Per-Instance Serialized Handler&lt;/b&gt;&lt;br&gt;One decision cycle at a time for a workflow instance" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;" vertex="1" parent="t1">
+          <mxGeometry x="395" y="105" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="t-ordering-note" value="&lt;b&gt;Ordering / concurrency control&lt;/b&gt;&lt;br&gt;Instance key + optimistic version or short lease&lt;br&gt;idempotent input receipt; retry on version conflict" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="t1">
+          <mxGeometry x="805" y="95" width="360" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="t-cycle-repeat" value="Next input repeats the same cycle" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="t1">
+          <mxGeometry x="1290" y="110" width="220" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- Transaction boundary: pure decision + durable writes -->
+        <mxCell id="t-tx-lane" value="DATABASE TRANSACTION — LOAD, DECIDE, AND PERSIST (NO EXTERNAL CALLS)" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;strokeWidth=2;" vertex="1" parent="t1">
+          <mxGeometry x="40" y="235" width="1120" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="t-begin" value="BEGIN TX" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;fontStyle=1;" vertex="1" parent="t1">
+          <mxGeometry x="75" y="330" width="95" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="t-load" value="&lt;b&gt;1 · Load State&lt;/b&gt;&lt;br&gt;instance + version&lt;br&gt;pending waits" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="205" y="320" width="155" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="t-validate" value="&lt;b&gt;2 · Validate Input&lt;/b&gt;&lt;br&gt;correlation · expected event&lt;br&gt;business rules · dedup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="400" y="315" width="185" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="t-compute" value="&lt;b&gt;3 · Compute Transition&lt;/b&gt;&lt;br&gt;new state · tokens · waits&lt;br&gt;0..N execution intents" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="625" y="315" width="190" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="t-persist" value="&lt;b&gt;4 · Atomic Persist&lt;/b&gt;&lt;br&gt;workflow state + version&lt;br&gt;one-or-more outbox actions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;" vertex="1" parent="t1">
+          <mxGeometry x="855" y="305" width="205" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="t-commit" value="COMMIT" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;fontStyle=1;strokeWidth=2;" vertex="1" parent="t1">
+          <mxGeometry x="1035" y="475" width="95" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="t-store" value="&lt;b&gt;Workflow Database&lt;/b&gt;&lt;br&gt;state + waits + inbox&lt;br&gt;transactional outbox" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="70" y="475" width="205" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="t-inbound-safety" value="&lt;b&gt;Inbound Response Safety (same TX)&lt;/b&gt;&lt;br&gt;Execution/correlation ID + result/message ID&lt;br&gt;atomically record inbox/dedup, verify Waiting state,&lt;br&gt;and permit exactly one workflow transition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;fontSize=11;" vertex="1" parent="t1">
+          <mxGeometry x="315" y="465" width="315" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="t-duplicate-exit" value="&lt;b&gt;Duplicate&lt;/b&gt;&lt;br&gt;Inbox already has result ID&lt;br&gt;exit; no second transition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=6;fontSize=11;" vertex="1" parent="t1">
+          <mxGeometry x="655" y="450" width="155" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="t-late-conflict" value="&lt;b&gt;Late / old / unknown&lt;/b&gt;&lt;br&gt;wrong execution or not Waiting&lt;br&gt;audit conflict / quarantine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=6;fontSize=11;" vertex="1" parent="t1">
+          <mxGeometry x="655" y="535" width="155" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="t-no-external" value="&lt;b&gt;NO EXTERNAL CALLS IN THIS TRANSACTION&lt;/b&gt;&lt;br&gt;Only deterministic computation and database writes. Network/broker/vendor latency cannot hold locks or make commit ambiguous." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;fontSize=11;fontStyle=1;" vertex="1" parent="t1">
+          <mxGeometry x="835" y="475" width="175" height="115" as="geometry" />
+        </mxCell>
+
+        <!-- Separate post-commit dispatcher -->
+        <mxCell id="t-dispatch-lane" value="SEPARATE OUTBOX DISPATCHER — POST-COMMIT" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eee8f7;swimlaneFillColor=#faf8fd;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;strokeWidth=2;" vertex="1" parent="t1">
+          <mxGeometry x="1190" y="235" width="380" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="t-dispatcher" value="&lt;b&gt;5 · Poll / Claim Outbox&lt;/b&gt;&lt;br&gt;committed actions only&lt;br&gt;claim lease + attempt count" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;strokeWidth=2;" vertex="1" parent="t1">
+          <mxGeometry x="1240" y="295" width="280" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="t-selector" value="&lt;b&gt;6 · Select Activity / Adapter Type&lt;/b&gt;&lt;br&gt;attach Execution ID:&lt;br&gt;workflow instance + step/token + attempt" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;fontSize=11;" vertex="1" parent="t1">
+          <mxGeometry x="1240" y="435" width="280" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="t-dispatch-policy" value="&lt;b&gt;Idempotency / retry&lt;/b&gt;&lt;br&gt;stable execution-intent ID&lt;br&gt;retry + backoff; complete/park/escalate&lt;br&gt;claim expiry enables recovery" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="t1">
+          <mxGeometry x="1240" y="545" width="280" height="105" as="geometry" />
+        </mxCell>
+
+        <!-- External execution occurs only here -->
+        <mxCell id="t-execution-lane" value="POST-COMMIT ACTIVITY EXECUTION — EXTERNAL CALLS OCCUR HERE" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;strokeWidth=2;" vertex="1" parent="t1">
+          <mxGeometry x="40" y="660" width="1530" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="t-adapter-message" value="&lt;b&gt;Async Messaging&lt;/b&gt;&lt;br&gt;IMessagePublisher&lt;br&gt;OutboundTarget / Topology" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="80" y="725" width="245" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="t-adapter-http" value="&lt;b&gt;HTTP / gRPC&lt;/b&gt;&lt;br&gt;request-response adapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="365" y="725" width="210" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="t-adapter-db" value="&lt;b&gt;Database Operation&lt;/b&gt;&lt;br&gt;command / query adapter&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;separate from workflow TX&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="615" y="725" width="220" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="t-adapter-sap" value="&lt;b&gt;SAP / External System&lt;/b&gt;&lt;br&gt;API · RFC · job · callback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="875" y="725" width="225" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="t-adapter-other" value="&lt;b&gt;Other Command Adapter&lt;/b&gt;&lt;br&gt;extension point for new activity types" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;" vertex="1" parent="t1">
+          <mxGeometry x="1140" y="725" width="225" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="t-external-system" value="External service&lt;br&gt;broker / database&lt;br&gt;SAP / vendor" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="t1">
+          <mxGeometry x="1400" y="720" width="130" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="t-immediate" value="&lt;b&gt;Immediate Result&lt;/b&gt;&lt;br&gt;response / value / mapped failure&lt;br&gt;enqueue as new runtime input" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;" vertex="1" parent="t1">
+          <mxGeometry x="355" y="885" width="300" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="t-later" value="&lt;b&gt;Later Inbound Response / Event&lt;/b&gt;&lt;br&gt;carries Execution/correlation ID&lt;br&gt;+ result/message ID + event type&lt;br&gt;enqueue as serialized per-instance input" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;fontSize=11;" vertex="1" parent="t1">
+          <mxGeometry x="800" y="875" width="365" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="t-response-note" value="Every response re-enters the runtime. It cannot mutate workflow state directly or bypass the transactional inbox / waiting-state gate." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="t1">
+          <mxGeometry x="1215" y="875" width="315" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- Input and transaction sequence -->
+        <mxCell id="t-edge-input-handler" value="instance key" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="t1" source="t-input" target="t-instance-handler"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-ordering" value="guards" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-ordering-note" target="t-instance-handler"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-handler-begin" value="serialize" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-instance-handler" target="t-begin">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="560" y="220" /><mxPoint x="123" y="220" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-begin-load" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-begin" target="t-load"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-load-validate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-load" target="t-validate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-validate-safety" value="for response / event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-validate" target="t-inbound-safety"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-validate-compute" value="start / timer / command" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="t1" source="t-validate" target="t-compute"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-safety-compute" value="unseen + expected" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-inbound-safety" target="t-compute"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-safety-duplicate" value="result ID exists" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-inbound-safety" target="t-duplicate-exit"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-safety-late" value="not valid Waiting state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-inbound-safety" target="t-late-conflict"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-duplicate-commit" value="no-op / acknowledge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-duplicate-exit" target="t-commit"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-late-commit" value="audit only" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-late-conflict" target="t-commit"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-compute-persist" value="new state + intents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-compute" target="t-persist"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-store-load" value="read" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#82b366;" edge="1" parent="t1" source="t-store" target="t-load"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-persist-store" value="state + outbox (atomic)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-persist" target="t-store"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-persist-commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-persist" target="t-commit"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Post-commit dispatch -->
+        <mxCell id="t-edge-commit-dispatcher" value="after commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="t1" source="t-commit" target="t-dispatcher"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-store-dispatcher" value="poll / claim committed outbox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#9673a6;" edge="1" parent="t1" source="t-store" target="t-dispatcher">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="290" y="525" /><mxPoint x="1175" y="525" /><mxPoint x="1175" y="343" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-dispatcher-selector" value="execution intent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="t1" source="t-dispatcher" target="t-selector"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-policy-dispatcher" value="governs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-dispatch-policy" target="t-dispatcher"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Adapter selection fan-out -->
+        <mxCell id="t-edge-selector-message" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-message"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="203" y="640" /></Array></mxGeometry></mxCell>
+        <mxCell id="t-edge-selector-http" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-http"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="470" y="640" /></Array></mxGeometry></mxCell>
+        <mxCell id="t-edge-selector-db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-db"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="725" y="640" /></Array></mxGeometry></mxCell>
+        <mxCell id="t-edge-selector-sap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-sap"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="988" y="640" /></Array></mxGeometry></mxCell>
+        <mxCell id="t-edge-selector-other" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-other"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="1253" y="640" /></Array></mxGeometry></mxCell>
+        <mxCell id="t-edge-adapters-external" value="external calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="t1" source="t-adapter-other" target="t-external-system"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Immediate and asynchronous feedback paths -->
+        <mxCell id="t-edge-http-immediate" value="direct" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-adapter-http" target="t-immediate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-db-immediate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-adapter-db" target="t-immediate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-message-later" value="event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-adapter-message" target="t-later"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-sap-immediate" value="sync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-adapter-sap" target="t-immediate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-sap-later" value="job / callback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-adapter-sap" target="t-later"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-immediate-input" value="new input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-immediate" target="t-input">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="505" y="1030" /><mxPoint x="20" y="1030" /><mxPoint x="20" y="150" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-later-input" value="correlated input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-later" target="t-input">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="993" y="1010" /><mxPoint x="35" y="1010" /><mxPoint x="35" y="165" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-input-repeat" value="accepted transition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-instance-handler" target="t-cycle-repeat"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="parallel-fanout-logical-join" name="Parallel Fan-Out and Logical Join">
+    <mxGraphModel dx="1600" dy="1120" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1250" math="0" shadow="0">
+      <root>
+        <mxCell id="p0" />
+        <mxCell id="p1" parent="p0" />
+
+        <mxCell id="p-title" value="&lt;b&gt;Parallel Fan-Out — Idempotent Responses and Exactly-Once Logical Join&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Persist the expected child set first; let conditional child state and a versioned join provide logical exactly-once behavior&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#333333;" vertex="1" parent="p1">
+          <mxGeometry x="310" y="20" width="1030" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Fan-out planning is one transaction -->
+        <mxCell id="p-fanout-lane" value="FAN-OUT DECISION — ONE DATABASE TRANSACTION" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;strokeWidth=2;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="100" width="1530" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="p-parent" value="&lt;b&gt;Parent Workflow&lt;/b&gt;&lt;br&gt;reaches parallel fan-out&lt;br&gt;at version V" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="p1">
+          <mxGeometry x="75" y="165" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p-plan" value="&lt;b&gt;Compute Fan-Out&lt;/b&gt;&lt;br&gt;deterministic child/token list&lt;br&gt;join predicate + policy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="p1">
+          <mxGeometry x="345" y="165" width="225" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p-expected-set" value="&lt;b&gt;Persisted Expected Child / Token Set&lt;/b&gt;&lt;br&gt;child ID · activity execution ID&lt;br&gt;status = Waiting · deadline · attempt&lt;br&gt;join identity + predicate" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="625" y="145" width="325" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="p-atomic-persist" value="&lt;b&gt;Atomic Persist&lt;/b&gt;&lt;br&gt;parent + expected set&lt;br&gt;+ 0..N child outbox intents&lt;br&gt;with version check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;" vertex="1" parent="p1">
+          <mxGeometry x="1000" y="150" width="250" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p-commit" value="COMMIT" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;fontStyle=1;strokeWidth=2;" vertex="1" parent="p1">
+          <mxGeometry x="1310" y="175" width="100" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p-tx-end" value="Outbox is now dispatchable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="p1">
+          <mxGeometry x="1440" y="180" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p-dynamic-note" value="&lt;b&gt;Dynamic fan-out recovery rule&lt;/b&gt; — discover/compute the complete expected set, then persist that set and its child intents before dispatch. A restarted runtime can reconstruct what must finish and what is still missing." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="365" y="305" width="700" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p-tx-note" value="No child execution occurs before commit." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;fontSize=11;fontStyle=1;" vertex="1" parent="p1">
+          <mxGeometry x="1110" y="305" width="340" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Dispatcher executes children after commit -->
+        <mxCell id="p-execution-lane" value="POST-COMMIT DISPATCH AND PARALLEL CHILD EXECUTION" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;strokeWidth=2;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="425" width="1530" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="p-dispatcher" value="&lt;b&gt;Outbox Dispatcher&lt;/b&gt;&lt;br&gt;poll / claim child intents&lt;br&gt;retry with stable execution ID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;" vertex="1" parent="p1">
+          <mxGeometry x="75" y="505" width="245" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p-fork" value="FAN-OUT" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="p1">
+          <mxGeometry x="365" y="500" width="105" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="p-child-a" value="&lt;b&gt;Child A Activity&lt;/b&gt;&lt;br&gt;child A · execution A&lt;br&gt;attempt N" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="p1">
+          <mxGeometry x="525" y="485" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p-child-b" value="&lt;b&gt;Child B Activity&lt;/b&gt;&lt;br&gt;child B · execution B&lt;br&gt;attempt N" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="p1">
+          <mxGeometry x="790" y="485" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p-child-n" value="&lt;b&gt;Child … N Activity&lt;/b&gt;&lt;br&gt;child ID · execution ID&lt;br&gt;attempt N" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="p1">
+          <mxGeometry x="1055" y="485" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="p-external" value="External work&lt;br&gt;message · HTTP · DB&lt;br&gt;SAP / adapter" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="p1">
+          <mxGeometry x="1360" y="475" width="150" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p-response-id-note" value="Each response must echo child ID + activity execution ID + attempt (and a result/message ID for diagnostics)." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="520" y="605" width="760" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Conditional response update and logical join -->
+        <mxCell id="p-response-lane" value="RESPONSE TRANSACTION AND EXACTLY-ONCE LOGICAL JOIN" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eee8f7;swimlaneFillColor=#faf8fd;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;strokeWidth=2;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="720" width="1530" height="450" as="geometry" />
+        </mxCell>
+        <mxCell id="p-response" value="&lt;b&gt;Child Response&lt;/b&gt;&lt;br&gt;parent + child ID&lt;br&gt;execution ID + attempt&lt;br&gt;terminal outcome" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="p1">
+          <mxGeometry x="70" y="810" width="215" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p-conditional-update" value="&lt;b&gt;Conditional / Versioned Child Update&lt;/b&gt;&lt;br&gt;UPDATE expected child&lt;br&gt;WHERE execution + attempt match&lt;br&gt;AND status = Waiting&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;set terminal outcome exactly once&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="325" y="790" width="290" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="p-update-result" value="MATCHED?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="p1">
+          <mxGeometry x="665" y="805" width="115" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="p-accepted" value="&lt;b&gt;Accepted&lt;/b&gt;&lt;br&gt;Waiting → terminal&lt;br&gt;one child state change" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="p1">
+          <mxGeometry x="825" y="755" width="205" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="p-duplicate" value="&lt;b&gt;Duplicate Response&lt;/b&gt;&lt;br&gt;matching child is non-Waiting&lt;br&gt;no effect; no second transition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="825" y="865" width="205" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="p-old-response" value="&lt;b&gt;Old / Retried Response&lt;/b&gt;&lt;br&gt;execution ID or attempt mismatch&lt;br&gt;audit / ignore / quarantine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=8;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="825" y="980" width="205" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="p-join-observer" value="&lt;b&gt;Observe Persisted Expected Set&lt;/b&gt;&lt;br&gt;terminal vs Waiting child statuses&lt;br&gt;evaluate only children recorded before dispatch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;strokeWidth=2;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="1075" y="775" width="245" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="p-join-predicate" value="JOIN PREDICATE&lt;br&gt;all · any · quorum" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="1360" y="775" width="125" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="p-wait-more" value="Not met&lt;br&gt;remain waiting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="p1">
+          <mxGeometry x="1120" y="930" width="155" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p-continue-once" value="&lt;b&gt;Versioned Continuation — Once&lt;/b&gt;&lt;br&gt;predicate false → true&lt;br&gt;mark join Continued + emit next intent&lt;br&gt;only if parent/join version still matches" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="1340" y="950" width="190" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="p-no-inbox-note" value="&lt;b&gt;No separate generic inbox is required for child responses.&lt;/b&gt; The persisted expected-child row is the idempotency gate: execution/attempt identity plus the conditional Waiting → terminal update rejects duplicates and stale attempts." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="250" y="1040" width="520" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="p-join-note" value="Logical exactly-once does not promise exactly-once delivery. Many responses may arrive, but conditional child updates and the versioned join permit only one effective child transition and one continuation." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;fontSize=11;" vertex="1" parent="p1">
+          <mxGeometry x="800" y="1080" width="520" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Fan-out transaction flow -->
+        <mxCell id="p-edge-parent-plan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-parent" target="p-plan"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-plan-set" value="complete set" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-plan" target="p-expected-set"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-set-persist" value="state + intents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-expected-set" target="p-atomic-persist"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-persist-commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-atomic-persist" target="p-commit"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-commit-end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-commit" target="p-tx-end"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Dispatch and parallel execution -->
+        <mxCell id="p-edge-commit-dispatch" value="post-commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="p1" source="p-tx-end" target="p-dispatcher">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1490" y="410" /><mxPoint x="198" y="410" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="p-edge-dispatch-fork" value="claim intents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="p1" source="p-dispatcher" target="p-fork"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-fork-a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-fork" target="p-child-a"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-fork-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-fork" target="p-child-b"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-fork-n" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-fork" target="p-child-n"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-a-external" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-child-a" target="p-external"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-b-external" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-child-b" target="p-external"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-n-external" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-child-n" target="p-external"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-external-response" value="one or many deliveries" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="p1" source="p-external" target="p-response">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1540" y="530" /><mxPoint x="1540" y="705" /><mxPoint x="178" y="705" /></Array></mxGeometry>
+        </mxCell>
+
+        <!-- Conditional child update -->
+        <mxCell id="p-edge-response-update" value="response transaction" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-response" target="p-conditional-update"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-update-result" value="rows affected?" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-conditional-update" target="p-update-result"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-result-accepted" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-update-result" target="p-accepted"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-result-duplicate" value="same execution; non-Waiting" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="p1" source="p-update-result" target="p-duplicate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-result-old" value="execution / attempt mismatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#d6b656;" edge="1" parent="p1" source="p-update-result" target="p-old-response"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Join observes the full persisted set and continues once -->
+        <mxCell id="p-edge-set-join" value="authoritative expected set" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#9673a6;" edge="1" parent="p1" source="p-expected-set" target="p-join-observer">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="788" y="290" /><mxPoint x="1070" y="290" /><mxPoint x="1070" y="830" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="p-edge-accepted-join" value="re-evaluate in same TX" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-accepted" target="p-join-observer"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-join-predicate" value="count / observe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="p1" source="p-join-observer" target="p-join-predicate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-predicate-wait" value="false" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="p1" source="p-join-predicate" target="p-wait-more"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-predicate-continue" value="true + version matches" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-join-predicate" target="p-continue-once"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-continue-parent" value="next workflow transition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-continue-once" target="p-parent">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1535" y="1010" /><mxPoint x="1535" y="1185" /><mxPoint x="20" y="1185" /><mxPoint x="20" y="210" /></Array></mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="ordered-dispatch-groups" name="Ordered Dispatch Groups">
+    <mxGraphModel dx="1600" dy="1050" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="o0" />
+        <mxCell id="o1" parent="o0" />
+
+        <mxCell id="o-title" value="&lt;b&gt;Ordered Dispatch Groups — Optional Ordered Outbox Dispatch&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Collection iteration order is intuitive; runtime delivery order is guaranteed only when the user chooses it explicitly&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#333333;" vertex="1" parent="o1">
+          <mxGeometry x="300" y="20" width="1050" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Developer-facing transition -->
+        <mxCell id="o-transition" value="&lt;b&gt;One Workflow Transition&lt;/b&gt;&lt;br&gt;produces outgoing intents" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="65" y="105" width="245" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="o-collection" value="&lt;b&gt;Intent Collection&lt;/b&gt;&lt;br&gt;iteration: [ A, B, C ]&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;clear authoring / inspection order&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="375" y="100" width="260" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="o-choice" value="ORDERING&lt;br&gt;REQUESTED?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="o1">
+          <mxGeometry x="705" y="95" width="115" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="o-dx-note" value="&lt;b&gt;Developer-experience rule&lt;/b&gt;&lt;br&gt;Enumerating intents in order must not silently promise that independent workers dispatch—or receivers observe—the same order." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="o1">
+          <mxGeometry x="900" y="95" width="570" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Default mode -->
+        <mxCell id="o-independent-lane" value="DEFAULT — INDEPENDENT INTENTS (PARALLEL, NO ORDERING GUARANTEE)" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;strokeWidth=2;" vertex="1" parent="o1">
+          <mxGeometry x="40" y="225" width="745" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="o-independent-persist" value="&lt;b&gt;Atomic Persist&lt;/b&gt;&lt;br&gt;Intent A · Intent B · Intent C&lt;br&gt;independent IDs; no group sequence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;strokeWidth=2;" vertex="1" parent="o1">
+          <mxGeometry x="90" y="285" width="315" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="o-worker-pool" value="WORKER POOL" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;fontSize=11;" vertex="1" parent="o1">
+          <mxGeometry x="465" y="285" width="115" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="o-worker-a" value="Worker 1&lt;br&gt;claims A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;" vertex="1" parent="o1">
+          <mxGeometry x="620" y="265" width="125" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="o-worker-b" value="Worker 2&lt;br&gt;claims B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;" vertex="1" parent="o1">
+          <mxGeometry x="620" y="355" width="125" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="o-worker-c" value="Worker 3&lt;br&gt;claims C" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;" vertex="1" parent="o1">
+          <mxGeometry x="620" y="445" width="125" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="o-independent-arrival" value="&lt;b&gt;Possible Dispatch / Observation Order&lt;/b&gt;&lt;br&gt;B → C → A&lt;br&gt;A → C → B&lt;br&gt;or any timing-dependent order" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=8;strokeWidth=2;" vertex="1" parent="o1">
+          <mxGeometry x="180" y="500" width="360" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="o-no-order" value="&lt;b&gt;NO ORDERING GUARANTEE&lt;/b&gt;&lt;br&gt;Retries, worker scheduling, broker behavior, and receiver concurrency may reorder independent intents." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;fontSize=11;fontStyle=1;" vertex="1" parent="o1">
+          <mxGeometry x="155" y="670" width="420" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="o-independent-benefit" value="&lt;b&gt;Use when intents are independent&lt;/b&gt;&lt;br&gt;maximum throughput; separate workflows and every intent may progress in parallel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;fontSize=11;" vertex="1" parent="o1">
+          <mxGeometry x="155" y="795" width="420" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Explicit ordered mode -->
+        <mxCell id="o-ordered-lane" value="OPTIONAL — ORDERED DISPATCH GROUP (EXPLICIT HEAD-OF-LINE ORDER)" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;strokeWidth=2;" vertex="1" parent="o1">
+          <mxGeometry x="825" y="225" width="745" height="670" as="geometry" />
+        </mxCell>
+        <mxCell id="o-group-persist" value="&lt;b&gt;Atomic Ordered Group&lt;/b&gt;&lt;br&gt;Group ID = G-42&lt;br&gt;[ seq 1: A, seq 2: B, seq 3: C ]&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;created by one workflow transition&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;" vertex="1" parent="o1">
+          <mxGeometry x="865" y="275" width="300" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="o-group-claim" value="&lt;b&gt;Claim Group Lease&lt;/b&gt;&lt;br&gt;one dispatcher owns G-42&lt;br&gt;lease is renewable / recoverable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="1230" y="285" width="270" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="o-seq-1" value="&lt;b&gt;Head of line: seq 1 · A&lt;/b&gt;&lt;br&gt;eligible for dispatch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="875" y="455" width="260" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="o-seq-2" value="&lt;b&gt;seq 2 · B&lt;/b&gt;&lt;br&gt;blocked until seq 1 succeeds" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="875" y="570" width="260" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="o-seq-3" value="&lt;b&gt;seq 3 · C&lt;/b&gt;&lt;br&gt;blocked until seq 2 succeeds" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="875" y="685" width="260" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="o-success-gate" value="SUCCESS?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=11;" vertex="1" parent="o1">
+          <mxGeometry x="1195" y="455" width="105" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="o-release-next" value="&lt;b&gt;Success&lt;/b&gt;&lt;br&gt;mark seq terminal&lt;br&gt;release next sequence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="1350" y="445" width="175" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="o-retry-block" value="&lt;b&gt;Retry / Backoff&lt;/b&gt;&lt;br&gt;same head-of-line item&lt;br&gt;later sequences remain blocked" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="1325" y="575" width="200" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="o-other-groups" value="&lt;b&gt;Parallel across groups&lt;/b&gt;&lt;br&gt;G-42 is serial internally&lt;br&gt;G-43, G-99, other workflows&lt;br&gt;may use other dispatchers concurrently" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;fontSize=11;" vertex="1" parent="o1">
+          <mxGeometry x="1215" y="720" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="o-group-complete" value="Group complete&lt;br&gt;release lease" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;" vertex="1" parent="o1">
+          <mxGeometry x="890" y="795" width="190" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Cross-cutting explicit contract -->
+        <mxCell id="o-contract-lane" value="EXPLICIT USER CHOICE AND END-TO-END ORDER" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eee8f7;swimlaneFillColor=#faf8fd;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;strokeWidth=2;" vertex="1" parent="o1">
+          <mxGeometry x="40" y="920" width="1530" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="o-default-choice" value="&lt;b&gt;Default: Independent&lt;/b&gt;&lt;br&gt;“These intents may dispatch concurrently.”" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="95" y="980" width="340" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="o-ordered-choice" value="&lt;b&gt;Opt in: Ordered Dispatch Group&lt;/b&gt;&lt;br&gt;“These intents share group G and sequences 1..N.”" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="o1">
+          <mxGeometry x="500" y="980" width="390" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="o-receiver-validation" value="&lt;b&gt;Receiver may still validate sequence&lt;/b&gt;&lt;br&gt;Dispatch order is not automatically end-to-end processing order. Include group ID + sequence when the receiver must reject, defer, or reorder out-of-sequence delivery." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;fontSize=11;" vertex="1" parent="o1">
+          <mxGeometry x="955" y="965" width="545" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="o-choice-summary" value="Ordering is a deliberate semantic and throughput tradeoff—not an accidental guarantee inferred from collection order." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontColor=#4f365b;" vertex="1" parent="o1">
+          <mxGeometry x="430" y="1080" width="750" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Authoring choice -->
+        <mxCell id="o-edge-transition-collection" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="o1" source="o-transition" target="o-collection"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-collection-choice" value="explicit policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="o1" source="o-collection" target="o-choice"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-choice-independent" value="no / default" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="o1" source="o-choice" target="o-independent-persist">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="763" y="215" /><mxPoint x="248" y="215" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="o-edge-choice-ordered" value="yes / opt in" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-choice" target="o-group-persist">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="763" y="215" /><mxPoint x="1015" y="215" /></Array></mxGeometry>
+        </mxCell>
+
+        <!-- Independent dispatch -->
+        <mxCell id="o-edge-persist-pool" value="eligible independently" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-independent-persist" target="o-worker-pool"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-pool-a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-pool" target="o-worker-a"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-pool-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-pool" target="o-worker-b"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-pool-c" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-pool" target="o-worker-c"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-a-arrival" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-a" target="o-independent-arrival"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-b-arrival" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-b" target="o-independent-arrival"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-c-arrival" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-c" target="o-independent-arrival"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-arrival-warning" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-independent-arrival" target="o-no-order"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Ordered group dispatch -->
+        <mxCell id="o-edge-group-claim" value="committed group" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-group-persist" target="o-group-claim"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-claim-head" value="only minimum pending seq" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-group-claim" target="o-seq-1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-seq1-gate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-seq-1" target="o-success-gate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-gate-success" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-success-gate" target="o-release-next"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-release-seq2" value="release seq 2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-release-next" target="o-seq-2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-gate-retry" value="no / retryable" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-success-gate" target="o-retry-block"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-retry-head" value="retry same head" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-retry-block" target="o-seq-1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-retry-blocks-seq2" value="blocked" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-retry-block" target="o-seq-2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-seq2-seq3" value="on seq 2 success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-seq-2" target="o-seq-3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-seq3-complete" value="on seq 3 success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-seq-3" target="o-group-complete"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-claim-other-groups" value="other leases" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-group-claim" target="o-other-groups"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Explicit contract references -->
+        <mxCell id="o-edge-independent-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-independent-benefit" target="o-default-choice"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-group-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-group-complete" target="o-ordered-choice"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
