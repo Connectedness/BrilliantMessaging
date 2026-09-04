@@ -1,119 +1,106 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="app.diagrams.net" modified="2026-08-07T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+<mxfile host="Electron" agent="Codex" pages="6">
   <diagram id="workflow-engine-architecture" name="Workflow Engine Architecture">
-    <mxGraphModel dx="1600" dy="1150" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1300" math="0" shadow="0">
+    <mxGraphModel dx="1994" dy="1209" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1300" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-
-        <!-- Editable architecture lanes -->
-        <mxCell id="lane-definition" value="WORKFLOW DEFINITION &amp;amp; ORCHESTRATION" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="30" y="30" width="1540" height="180" as="geometry" />
+        <mxCell id="lane-definition" parent="1" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;" value="WORKFLOW DEFINITION &amp;amp; ORCHESTRATION" vertex="1">
+          <mxGeometry height="180" width="1540" x="30" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="lane-flow" value="WORKFLOW EXECUTION GRAPH" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#fff4e6;swimlaneFillColor=#fffaf2;strokeColor=#d79b00;fontColor=#7f5300;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="30" y="230" width="1540" height="320" as="geometry" />
+        <mxCell id="lane-flow" parent="1" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#fff4e6;swimlaneFillColor=#fffaf2;strokeColor=#d79b00;fontColor=#7f5300;fontStyle=1;" value="WORKFLOW EXECUTION GRAPH" vertex="1">
+          <mxGeometry height="320" width="1540" x="30" y="230" as="geometry" />
         </mxCell>
-        <mxCell id="lane-core" value="ACTIVITY CONTRACT &amp;amp; ADAPTERS (TRANSPORT-NEUTRAL)" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#eee8f7;swimlaneFillColor=#faf8fd;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="30" y="570" width="1540" height="300" as="geometry" />
+        <mxCell id="lane-core" parent="1" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#eee8f7;swimlaneFillColor=#faf8fd;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;" value="ACTIVITY CONTRACT &amp;amp; ADAPTERS (TRANSPORT-NEUTRAL)" vertex="1">
+          <mxGeometry height="300" width="1540" x="30" y="570" as="geometry" />
         </mxCell>
-        <mxCell id="lane-state" value="DURABLE STATE, RESULTS &amp;amp; RECOVERY" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="30" y="890" width="1540" height="210" as="geometry" />
+        <mxCell id="lane-state" parent="1" style="swimlane;horizontal=0;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;" value="DURABLE STATE, RESULTS &amp;amp; RECOVERY" vertex="1">
+          <mxGeometry height="210" width="1540" x="30" y="890" as="geometry" />
         </mxCell>
-
-        <!-- Business-facing definition and orchestrator -->
-        <mxCell id="workflow-definition" value="&lt;b&gt;Workflow Definition&lt;/b&gt;&lt;br&gt;Business-facing DSL / builder&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;steps · branches · policies · compensation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="170" y="80" width="300" height="90" as="geometry" />
+        <mxCell id="workflow-definition" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" value="&lt;b&gt;Workflow Definition&lt;/b&gt;&lt;br&gt;Business-facing DSL / builder&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;steps · branches · policies · compensation&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="300" x="170" y="80" as="geometry" />
         </mxCell>
-        <mxCell id="workflow-runtime" value="&lt;b&gt;Workflow Runtime / Orchestrator&lt;/b&gt;&lt;br&gt;Advances tokens and invokes Activity Contracts&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;continues immediately or persists a correlated wait&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="625" y="70" width="360" height="110" as="geometry" />
+        <mxCell id="workflow-runtime" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" value="&lt;b&gt;Workflow Runtime / Orchestrator&lt;/b&gt;&lt;br&gt;Advances tokens and invokes Activity Contracts&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;continues immediately or persists a correlated wait&lt;/font&gt;" vertex="1">
+          <mxGeometry height="110" width="360" x="625" y="70" as="geometry" />
         </mxCell>
-        <mxCell id="workflow-instance" value="&lt;b&gt;Workflow Instance&lt;/b&gt;&lt;br&gt;Definition + instance ID&lt;br&gt;current token(s)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="1105" y="80" width="265" height="90" as="geometry" />
+        <mxCell id="workflow-instance" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;" value="&lt;b&gt;Workflow Instance&lt;/b&gt;&lt;br&gt;Definition + instance ID&lt;br&gt;current token(s)" vertex="1">
+          <mxGeometry height="90" width="265" x="1105" y="80" as="geometry" />
         </mxCell>
-
-        <!-- Execution graph -->
-        <mxCell id="flow-start" value="Start" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="105" y="350" width="60" height="60" as="geometry" />
+        <mxCell id="flow-start" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" value="Start" vertex="1">
+          <mxGeometry height="60" width="60" x="105" y="350" as="geometry" />
         </mxCell>
-        <mxCell id="step-1" value="&lt;b&gt;Sequential Step 1&lt;/b&gt;&lt;br&gt;Invoke an activity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="215" y="340" width="180" height="80" as="geometry" />
+        <mxCell id="step-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" value="&lt;b&gt;Sequential Step 1&lt;/b&gt;&lt;br&gt;Invoke an activity" vertex="1">
+          <mxGeometry height="80" width="180" x="215" y="340" as="geometry" />
         </mxCell>
-        <mxCell id="step-2" value="&lt;b&gt;Sequential Step 2&lt;/b&gt;&lt;br&gt;Use result or resume after event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="445" y="340" width="180" height="80" as="geometry" />
+        <mxCell id="step-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" value="&lt;b&gt;Sequential Step 2&lt;/b&gt;&lt;br&gt;Use result or resume after event" vertex="1">
+          <mxGeometry height="80" width="180" x="445" y="340" as="geometry" />
         </mxCell>
-        <mxCell id="parallel-fork" value="FAN-OUT" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="675" y="330" width="100" height="100" as="geometry" />
+        <mxCell id="parallel-fork" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="FAN-OUT" vertex="1">
+          <mxGeometry height="100" width="100" x="675" y="330" as="geometry" />
         </mxCell>
-        <mxCell id="parallel-a" value="&lt;b&gt;Parallel Step A&lt;/b&gt;&lt;br&gt;Independent work" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="825" y="275" width="170" height="70" as="geometry" />
+        <mxCell id="parallel-a" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" value="&lt;b&gt;Parallel Step A&lt;/b&gt;&lt;br&gt;Independent work" vertex="1">
+          <mxGeometry height="70" width="170" x="825" y="275" as="geometry" />
         </mxCell>
-        <mxCell id="parallel-b" value="&lt;b&gt;Parallel Step B&lt;/b&gt;&lt;br&gt;Independent work" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="825" y="415" width="170" height="70" as="geometry" />
+        <mxCell id="parallel-b" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" value="&lt;b&gt;Parallel Step B&lt;/b&gt;&lt;br&gt;Independent work" vertex="1">
+          <mxGeometry height="70" width="170" x="825" y="415" as="geometry" />
         </mxCell>
-        <mxCell id="parallel-join" value="JOIN" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="1040" y="330" width="100" height="100" as="geometry" />
+        <mxCell id="parallel-join" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="JOIN" vertex="1">
+          <mxGeometry height="100" width="100" x="1040" y="330" as="geometry" />
         </mxCell>
-        <mxCell id="condition" value="CONDITION" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="1185" y="330" width="100" height="100" as="geometry" />
+        <mxCell id="condition" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" value="CONDITION" vertex="1">
+          <mxGeometry height="100" width="100" x="1185" y="330" as="geometry" />
         </mxCell>
-        <mxCell id="branch-yes" value="&lt;b&gt;Branch: continue&lt;/b&gt;&lt;br&gt;Next activity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="1340" y="275" width="170" height="70" as="geometry" />
+        <mxCell id="branch-yes" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" value="&lt;b&gt;Branch: continue&lt;/b&gt;&lt;br&gt;Next activity" vertex="1">
+          <mxGeometry height="70" width="170" x="1340" y="275" as="geometry" />
         </mxCell>
-        <mxCell id="branch-no" value="&lt;b&gt;Branch: alternate&lt;/b&gt;&lt;br&gt;Skip / complete / reroute" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="1340" y="415" width="170" height="70" as="geometry" />
+        <mxCell id="branch-no" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" value="&lt;b&gt;Branch: alternate&lt;/b&gt;&lt;br&gt;Skip / complete / reroute" vertex="1">
+          <mxGeometry height="70" width="170" x="1340" y="415" as="geometry" />
         </mxCell>
-
-        <!-- Transport-neutral activity boundary and representative adapters -->
-        <mxCell id="activity-contract" value="&lt;b&gt;Activity / Activity Contract&lt;/b&gt;&lt;br&gt;Typed input + execution context&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;adapter-independent invocation boundary&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="85" y="665" width="280" height="105" as="geometry" />
+        <mxCell id="activity-contract" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;strokeWidth=2;" value="&lt;b&gt;Activity / Activity Contract&lt;/b&gt;&lt;br&gt;Typed input + execution context&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;adapter-independent invocation boundary&lt;/font&gt;" vertex="1">
+          <mxGeometry height="105" width="280" x="85" y="665" as="geometry" />
         </mxCell>
-        <mxCell id="messaging-adapter" value="&lt;b&gt;Asynchronous Messaging Adapter&lt;/b&gt;&lt;br&gt;Existing BMF Core&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;IMessagePublisher → OutboundTarget&amp;lt;T&amp;gt; → Topology&lt;br&gt;message endpoints emit correlated events&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="430" y="610" width="330" height="105" as="geometry" />
+        <mxCell id="messaging-adapter" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" value="&lt;b&gt;Asynchronous Messaging Adapter&lt;/b&gt;&lt;br&gt;Existing BMF Core&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;IMessagePublisher → OutboundTarget&amp;lt;T&amp;gt; → Topology&lt;br&gt;message endpoints emit correlated events&lt;/font&gt;" vertex="1">
+          <mxGeometry height="105" width="330" x="430" y="610" as="geometry" />
         </mxCell>
-        <mxCell id="http-adapter" value="&lt;b&gt;HTTP / gRPC Adapter&lt;/b&gt;&lt;br&gt;Request-response client&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;returns response or failure&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="430" y="750" width="230" height="85" as="geometry" />
+        <mxCell id="http-adapter" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;" value="&lt;b&gt;HTTP / gRPC Adapter&lt;/b&gt;&lt;br&gt;Request-response client&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;returns response or failure&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="230" x="430" y="750" as="geometry" />
         </mxCell>
-        <mxCell id="database-adapter" value="&lt;b&gt;Database Adapter&lt;/b&gt;&lt;br&gt;Command / query / transaction&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;returns value or affected state&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="700" y="750" width="230" height="85" as="geometry" />
+        <mxCell id="database-adapter" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;" value="&lt;b&gt;Database Adapter&lt;/b&gt;&lt;br&gt;Command / query / transaction&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;returns value or affected state&lt;/font&gt;" vertex="1">
+          <mxGeometry height="85" width="230" x="700" y="750" as="geometry" />
         </mxCell>
-        <mxCell id="sap-adapter" value="&lt;b&gt;SAP / External-System Adapter&lt;/b&gt;&lt;br&gt;API, RFC, job, or callback&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;adapter declares immediate vs asynchronous semantics&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="800" y="610" width="275" height="105" as="geometry" />
+        <mxCell id="sap-adapter" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" value="&lt;b&gt;SAP / External-System Adapter&lt;/b&gt;&lt;br&gt;API, RFC, job, or callback&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;adapter declares immediate vs asynchronous semantics&lt;/font&gt;" vertex="1">
+          <mxGeometry height="105" width="275" x="800" y="610" as="geometry" />
         </mxCell>
-        <mxCell id="immediate-outcome" value="&lt;b&gt;Immediate Result&lt;/b&gt;&lt;br&gt;Completed(result)&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;continue in the current execution&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="1125" y="610" width="215" height="95" as="geometry" />
+        <mxCell id="immediate-outcome" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" value="&lt;b&gt;Immediate Result&lt;/b&gt;&lt;br&gt;Completed(result)&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;continue in the current execution&lt;/font&gt;" vertex="1">
+          <mxGeometry height="95" width="215" x="1125" y="610" as="geometry" />
         </mxCell>
-        <mxCell id="async-outcome" value="&lt;b&gt;Asynchronous Start + Wait&lt;/b&gt;&lt;br&gt;Started(correlation, deadline)&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;persist wait; resume on matching event&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="1105" y="745" width="255" height="95" as="geometry" />
+        <mxCell id="async-outcome" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;strokeWidth=2;" value="&lt;b&gt;Asynchronous Start + Wait&lt;/b&gt;&lt;br&gt;Started(correlation, deadline)&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;persist wait; resume on matching event&lt;/font&gt;" vertex="1">
+          <mxGeometry height="95" width="255" x="1105" y="745" as="geometry" />
         </mxCell>
-        <mxCell id="activity-note" value="Adapters implement one contract, but preserve their real interaction model. Messaging is event-driven; request-response and database calls usually complete immediately." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1390" y="650" width="145" height="145" as="geometry" />
+        <mxCell id="activity-note" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" value="Adapters implement one contract, but preserve their real interaction model. Messaging is event-driven; request-response and database calls usually complete immediately." vertex="1">
+          <mxGeometry height="145" width="145" x="1390" y="650" as="geometry" />
         </mxCell>
-
-        <!-- State, result handling, and recovery -->
-        <mxCell id="state-store" value="&lt;b&gt;Workflow State Store&lt;/b&gt;&lt;br&gt;Durable instance state&lt;br&gt;correlation keys · step outcomes · tokens" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="150" y="945" width="250" height="105" as="geometry" />
+        <mxCell id="state-store" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" value="&lt;b&gt;Workflow State Store&lt;/b&gt;&lt;br&gt;Durable instance state&lt;br&gt;correlation keys · step outcomes · tokens" vertex="1">
+          <mxGeometry height="105" width="250" x="150" y="945" as="geometry" />
         </mxCell>
-        <mxCell id="result-handler" value="&lt;b&gt;Result / Event Handler&lt;/b&gt;&lt;br&gt;Correlate endpoint response&lt;br&gt;resume waiting workflow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="475" y="950" width="240" height="95" as="geometry" />
+        <mxCell id="result-handler" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" value="&lt;b&gt;Result / Event Handler&lt;/b&gt;&lt;br&gt;Correlate endpoint response&lt;br&gt;resume waiting workflow" vertex="1">
+          <mxGeometry height="95" width="240" x="475" y="950" as="geometry" />
         </mxCell>
-        <mxCell id="failure-handler" value="&lt;b&gt;Failure / Timeout Policy&lt;/b&gt;&lt;br&gt;Retry · fail · time limit&lt;br&gt;select compensation boundary" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="800" y="950" width="240" height="95" as="geometry" />
+        <mxCell id="failure-handler" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" value="&lt;b&gt;Failure / Timeout Policy&lt;/b&gt;&lt;br&gt;Retry · fail · time limit&lt;br&gt;select compensation boundary" vertex="1">
+          <mxGeometry height="95" width="240" x="800" y="950" as="geometry" />
         </mxCell>
-        <mxCell id="compensation" value="&lt;b&gt;Compensation Path&lt;/b&gt;&lt;br&gt;Reverse completed steps&lt;br&gt;invoke compensating activities" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="1110" y="950" width="250" height="95" as="geometry" />
+        <mxCell id="compensation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" value="&lt;b&gt;Compensation Path&lt;/b&gt;&lt;br&gt;Reverse completed steps&lt;br&gt;invoke compensating activities" vertex="1">
+          <mxGeometry height="95" width="250" x="1110" y="950" as="geometry" />
         </mxCell>
-        <mxCell id="recovery-outcome" value="Recovered&lt;br&gt;or terminal failure" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="1425" y="960" width="105" height="75" as="geometry" />
+        <mxCell id="recovery-outcome" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="Recovered&lt;br&gt;or terminal failure" vertex="1">
+          <mxGeometry height="75" width="105" x="1425" y="960" as="geometry" />
         </mxCell>
-
-        <!-- Primary control-flow edges -->
-        <mxCell id="edge-definition-runtime" value="compile / register" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="workflow-definition" target="workflow-runtime">
+        <mxCell id="edge-definition-runtime" edge="1" parent="1" source="workflow-definition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" target="workflow-runtime" value="compile / register">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-runtime-instance" value="create / load" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="workflow-runtime" target="workflow-instance">
+        <mxCell id="edge-runtime-instance" edge="1" parent="1" source="workflow-runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="workflow-instance" value="create / load">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-runtime-start" value="advance token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="workflow-runtime" target="flow-start">
+        <mxCell id="edge-runtime-start" edge="1" parent="1" source="workflow-runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="flow-start" value="advance token">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="805" y="205" />
@@ -121,39 +108,37 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-start-step1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="flow-start" target="step-1">
+        <mxCell id="edge-start-step1" edge="1" parent="1" source="flow-start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="step-1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-step1-step2" value="success / result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="step-1" target="step-2">
+        <mxCell id="edge-step1-step2" edge="1" parent="1" source="step-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="step-2" value="success / result">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-step2-fork" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="step-2" target="parallel-fork">
+        <mxCell id="edge-step2-fork" edge="1" parent="1" source="step-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="parallel-fork">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-fork-a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-fork" target="parallel-a">
+        <mxCell id="edge-fork-a" edge="1" parent="1" source="parallel-fork" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="parallel-a">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-fork-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-fork" target="parallel-b">
+        <mxCell id="edge-fork-b" edge="1" parent="1" source="parallel-fork" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="parallel-b">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-a-join" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-a" target="parallel-join">
+        <mxCell id="edge-a-join" edge="1" parent="1" source="parallel-a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="parallel-join">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-b-join" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-b" target="parallel-join">
+        <mxCell id="edge-b-join" edge="1" parent="1" source="parallel-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="parallel-join">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-join-condition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="parallel-join" target="condition">
+        <mxCell id="edge-join-condition" edge="1" parent="1" source="parallel-join" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="condition">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-condition-yes" value="true" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="condition" target="branch-yes">
+        <mxCell id="edge-condition-yes" edge="1" parent="1" source="condition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="branch-yes" value="true">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-condition-no" value="false" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="1" source="condition" target="branch-no">
+        <mxCell id="edge-condition-no" edge="1" parent="1" source="condition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" target="branch-no" value="false">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-
-        <!-- Runtime invokes a transport-neutral activity; adapters preserve their interaction semantics -->
-        <mxCell id="edge-runtime-activity" value="invoke activity" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="1" source="workflow-runtime" target="activity-contract">
+        <mxCell id="edge-runtime-activity" edge="1" parent="1" source="workflow-runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;" target="activity-contract" value="invoke activity">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="805" y="215" />
@@ -162,13 +147,13 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-activity-messaging" value="select adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="activity-contract" target="messaging-adapter">
+        <mxCell id="edge-activity-messaging" edge="1" parent="1" source="activity-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" target="messaging-adapter" value="select adapter">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-activity-http" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="activity-contract" target="http-adapter">
+        <mxCell id="edge-activity-http" edge="1" parent="1" source="activity-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" target="http-adapter">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-activity-database" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="activity-contract" target="database-adapter">
+        <mxCell id="edge-activity-database" edge="1" parent="1" source="activity-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" target="database-adapter">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="395" y="718" />
@@ -177,7 +162,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-activity-sap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="1" source="activity-contract" target="sap-adapter">
+        <mxCell id="edge-activity-sap" edge="1" parent="1" source="activity-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" target="sap-adapter">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="395" y="718" />
@@ -186,10 +171,10 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-messaging-async" value="start command" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="messaging-adapter" target="async-outcome">
+        <mxCell id="edge-messaging-async" edge="1" parent="1" source="messaging-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" target="async-outcome" value="start command">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-http-immediate" value="response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="http-adapter" target="immediate-outcome">
+        <mxCell id="edge-http-immediate" edge="1" parent="1" source="http-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" target="immediate-outcome" value="response">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="680" y="793" />
@@ -198,7 +183,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-database-immediate" value="result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="1" source="database-adapter" target="immediate-outcome">
+        <mxCell id="edge-database-immediate" edge="1" parent="1" source="database-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" target="immediate-outcome" value="result">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="965" y="793" />
@@ -207,13 +192,13 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-sap-immediate" value="sync API" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="sap-adapter" target="immediate-outcome">
+        <mxCell id="edge-sap-immediate" edge="1" parent="1" source="sap-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" target="immediate-outcome" value="sync API">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-sap-async" value="job / callback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="sap-adapter" target="async-outcome">
+        <mxCell id="edge-sap-async" edge="1" parent="1" source="sap-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" target="async-outcome" value="job / callback">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-immediate-runtime" value="return now" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="immediate-outcome" target="workflow-runtime">
+        <mxCell id="edge-immediate-runtime" edge="1" parent="1" source="immediate-outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" target="workflow-runtime" value="return now">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1233" y="585" />
@@ -222,7 +207,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-messaging-result-event" value="later correlated event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="messaging-adapter" target="result-handler">
+        <mxCell id="edge-messaging-result-event" edge="1" parent="1" source="messaging-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" target="result-handler" value="later correlated event">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="595" y="730" />
@@ -230,7 +215,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-sap-result-event" value="callback / status event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="sap-adapter" target="result-handler">
+        <mxCell id="edge-sap-result-event" edge="1" parent="1" source="sap-adapter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" target="result-handler" value="callback / status event">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1085" y="663" />
@@ -239,10 +224,9 @@
             </Array>
           </mxGeometry>
         </mxCell>
-
-        <!-- Correlation and result loop -->
-        <mxCell id="edge-runtime-state" value="persist checkpoint" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="workflow-runtime" target="state-store">
-          <mxGeometry relative="1" as="geometry">
+        <mxCell id="edge-runtime-state" edge="1" parent="1" source="workflow-runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="state-store" value="persist checkpoint">
+          <mxGeometry relative="1" x="-0.1453" as="geometry">
+            <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="560" y="125" />
               <mxPoint x="560" y="905" />
@@ -250,7 +234,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-instance-state" value="durable correlation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="workflow-instance" target="state-store">
+        <mxCell id="edge-instance-state" edge="1" parent="1" source="workflow-instance" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" target="state-store" value="durable correlation">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1240" y="195" />
@@ -259,7 +243,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-async-state" value="persist wait + expected event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="async-outcome" target="state-store">
+        <mxCell id="edge-async-state" edge="1" parent="1" source="async-outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" target="state-store" value="persist wait + expected event">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1233" y="880" />
@@ -267,20 +251,19 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-result-state" value="match correlation key" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="1" source="result-handler" target="state-store">
+        <mxCell id="edge-result-state" edge="1" parent="1" source="result-handler" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" target="state-store" value="match correlation key">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-result-runtime" value="resume" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="result-handler" target="workflow-runtime">
-          <mxGeometry relative="1" as="geometry">
+        <mxCell id="edge-result-runtime" edge="1" parent="1" source="result-handler" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" target="workflow-runtime" value="resume">
+          <mxGeometry relative="1" x="0.0414" as="geometry">
+            <mxPoint as="offset" />
             <Array as="points">
               <mxPoint x="750" y="998" />
               <mxPoint x="750" y="195" />
             </Array>
           </mxGeometry>
         </mxCell>
-
-        <!-- Failure, timeout, and compensation -->
-        <mxCell id="edge-runtime-failure" value="fault / timeout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="1" source="workflow-runtime" target="failure-handler">
+        <mxCell id="edge-runtime-failure" edge="1" parent="1" source="workflow-runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;strokeWidth=2;" target="failure-handler" value="fault / timeout">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1025" y="125" />
@@ -289,10 +272,10 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-failure-compensation" value="compensate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="1" source="failure-handler" target="compensation">
+        <mxCell id="edge-failure-compensation" edge="1" parent="1" source="failure-handler" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;strokeWidth=2;" target="compensation" value="compensate">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-compensation-activity" value="invoke compensating activity" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" edge="1" parent="1" source="compensation" target="activity-contract">
+        <mxCell id="edge-compensation-activity" edge="1" parent="1" source="compensation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" target="activity-contract" value="invoke compensating activity">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1235" y="1080" />
@@ -301,7 +284,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="edge-compensation-outcome" value="complete" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="1" source="compensation" target="recovery-outcome">
+        <mxCell id="edge-compensation-outcome" edge="1" parent="1" source="compensation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" target="recovery-outcome" value="complete">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
@@ -312,14 +295,12 @@
       <root>
         <mxCell id="c0" />
         <mxCell id="c1" parent="c0" />
-
         <mxCell id="c-title" value="&lt;b&gt;Workflow Runtime: Request-Response vs Asynchronous Messaging&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Different interaction lifecycles, one normalized outcome model&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#333333;" vertex="1" parent="c1">
           <mxGeometry x="430" y="20" width="790" height="65" as="geometry" />
         </mxCell>
         <mxCell id="c-runtime" value="&lt;b&gt;Workflow Runtime invokes Activity Contract&lt;/b&gt;&lt;br&gt;Activity adapter declares its interaction mode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;strokeWidth=2;" vertex="1" parent="c1">
           <mxGeometry x="610" y="95" width="430" height="75" as="geometry" />
         </mxCell>
-
         <mxCell id="c-lane-rr" value="REQUEST-RESPONSE — DIRECT EXECUTE / RESULT" style="swimlane;horizontal=1;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#fff4e6;swimlaneFillColor=#fffaf2;strokeColor=#d79b00;fontColor=#7f5300;fontStyle=1;" vertex="1" parent="c1">
           <mxGeometry x="40" y="190" width="745" height="630" as="geometry" />
         </mxCell>
@@ -329,7 +310,6 @@
         <mxCell id="c-lane-outcome" value="NORMALIZED WORKFLOW OUTCOMES" style="swimlane;horizontal=1;startSize=34;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;" vertex="1" parent="c1">
           <mxGeometry x="40" y="840" width="1530" height="280" as="geometry" />
         </mxCell>
-
         <!-- Request-response lifecycle -->
         <mxCell id="c-rr-execute" value="&lt;b&gt;1 · Execute Request&lt;/b&gt;&lt;br&gt;HTTP / gRPC / direct API call" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;spacing=8;" vertex="1" parent="c1">
           <mxGeometry x="95" y="250" width="270" height="80" as="geometry" />
@@ -352,7 +332,6 @@
         <mxCell id="c-rr-map-note" value="Remote/business failures are valid responses; connection, protocol, and unavailable errors are technical failures." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="c1">
           <mxGeometry x="455" y="600" width="255" height="120" as="geometry" />
         </mxCell>
-
         <!-- Asynchronous messaging lifecycle -->
         <mxCell id="c-async-outbox" value="&lt;b&gt;1 · Persist Before Send&lt;/b&gt;&lt;br&gt;Workflow checkpoint + expected response&lt;br&gt;outbox record in one durable decision" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;strokeWidth=2;" vertex="1" parent="c1">
           <mxGeometry x="870" y="240" width="285" height="105" as="geometry" />
@@ -381,7 +360,6 @@
         <mxCell id="c-async-failure" value="&lt;b&gt;Delivery Failure Operations&lt;/b&gt;&lt;br&gt;Retry / backoff → dead-letter&lt;br&gt;operator escalation / reconciliation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;" vertex="1" parent="c1">
           <mxGeometry x="1245" y="680" width="260" height="100" as="geometry" />
         </mxCell>
-
         <!-- Shared normalized outcomes -->
         <mxCell id="c-normalize" value="&lt;b&gt;Normalize Activity Outcome&lt;/b&gt;&lt;br&gt;Transport-specific details remain diagnostic context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4f365b;spacing=8;strokeWidth=2;" vertex="1" parent="c1">
           <mxGeometry x="90" y="900" width="300" height="90" as="geometry" />
@@ -410,7 +388,6 @@
         <mxCell id="c-outcome-note" value="The workflow branches on normalized semantics, not HTTP status codes, broker errors, or vendor-specific response formats." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="c1">
           <mxGeometry x="520" y="1025" width="610" height="65" as="geometry" />
         </mxCell>
-
         <!-- Entry split -->
         <mxCell id="c-edge-runtime-rr" value="immediate mode" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;strokeWidth=2;" edge="1" parent="c1" source="c-runtime" target="c-rr-execute">
           <mxGeometry relative="1" as="geometry" />
@@ -418,45 +395,107 @@
         <mxCell id="c-edge-runtime-async" value="asynchronous mode" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="c1" source="c-runtime" target="c-async-outbox">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-
         <!-- Request-response flow and policy edges -->
-        <mxCell id="c-edge-rr-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="c1" source="c-rr-execute" target="c-rr-await"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-rr-2" value="response / exception" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="c1" source="c-rr-await" target="c-rr-classify"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-rr-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="c1" source="c-rr-classify" target="c-rr-finish"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-rr-timeout" value="bounds" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-rr-timeout" target="c-rr-await"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-rr-retry" value="repeat safely" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="c1" source="c-rr-retry" target="c-rr-execute"><mxGeometry relative="1" as="geometry" /></mxCell>
-
+        <mxCell id="c-edge-rr-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="c1" source="c-rr-execute" target="c-rr-await">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-rr-2" value="response / exception" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="c1" source="c-rr-await" target="c-rr-classify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-rr-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="c1" source="c-rr-classify" target="c-rr-finish">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-rr-timeout" value="bounds" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-rr-timeout" target="c-rr-await">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-rr-retry" value="repeat safely" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="c1" source="c-rr-retry" target="c-rr-execute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <!-- Async flow and safeguards -->
-        <mxCell id="c-edge-async-1" value="commit then dispatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-outbox" target="c-async-send"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-async-2" value="transition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-send" target="c-async-wait"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-async-3" value="correlate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-wait" target="c-async-event"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-async-4" value="apply once" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-event" target="c-async-resume"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-async-timeout" value="deadline wins" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-timeout" target="c-async-wait"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-async-dedup" value="guards" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="c1" source="c-async-delivery" target="c-async-event"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-async-late" value="unmatched" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#d6b656;" edge="1" parent="c1" source="c-async-event" target="c-async-late"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-async-failure" value="delivery exhausted" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-send" target="c-async-failure"><mxGeometry relative="1" as="geometry" /></mxCell>
-
+        <mxCell id="c-edge-async-1" value="commit then dispatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-outbox" target="c-async-send">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-async-2" value="transition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-send" target="c-async-wait">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-async-3" value="correlate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-wait" target="c-async-event">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-async-4" value="apply once" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="c1" source="c-async-event" target="c-async-resume">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-async-timeout" value="deadline wins" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-timeout" target="c-async-wait">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-async-dedup" value="guards" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="c1" source="c-async-delivery" target="c-async-event">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-async-late" value="unmatched" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#d6b656;" edge="1" parent="c1" source="c-async-event" target="c-async-late">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-async-failure" value="delivery exhausted" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-send" target="c-async-failure">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <!-- Convergence and workflow policy -->
-        <mxCell id="c-edge-rr-normalize" value="direct outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="c1" source="c-rr-finish" target="c-normalize"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-rr-normalize" value="direct outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="c1" source="c-rr-finish" target="c-normalize">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="c-edge-async-normalize" value="resumed outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="c1" source="c-async-resume" target="c-normalize">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1013" y="855" /><mxPoint x="240" y="855" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1013" y="855" />
+              <mxPoint x="240" y="855" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="c-edge-timeout-normalize" value="timeout outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-timeout" target="c-normalize">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1525" y="298" /><mxPoint x="1525" y="825" /><mxPoint x="240" y="825" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1525" y="298" />
+              <mxPoint x="1525" y="825" />
+              <mxPoint x="240" y="825" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="c-edge-failure-normalize" value="technical outcome" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-async-failure" target="c-normalize">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1375" y="805" /><mxPoint x="420" y="805" /><mxPoint x="420" y="945" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1375" y="805" />
+              <mxPoint x="420" y="805" />
+              <mxPoint x="420" y="945" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="c-edge-normalize-success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="c1" source="c-normalize" target="c-success"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-normalize-business" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="c1" source="c-normalize" target="c-business-failure"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-normalize-technical" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-normalize" target="c-technical-failure"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-normalize-timeout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-normalize" target="c-timeout"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-success-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="c1" source="c-success" target="c-outcome-gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-business-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="c1" source="c-business-failure" target="c-outcome-gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-technical-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-technical-failure" target="c-outcome-gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-timeout-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-timeout" target="c-outcome-gateway"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-policy-branch" value="continue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="c1" source="c-outcome-gateway" target="c-branch"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="c-edge-policy-compensate" value="recover" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-outcome-gateway" target="c-compensate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c-edge-normalize-success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="c1" source="c-normalize" target="c-success">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-normalize-business" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="c1" source="c-normalize" target="c-business-failure">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-normalize-technical" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-normalize" target="c-technical-failure">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-normalize-timeout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-normalize" target="c-timeout">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-success-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="c1" source="c-success" target="c-outcome-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-business-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="c1" source="c-business-failure" target="c-outcome-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-technical-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-technical-failure" target="c-outcome-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-timeout-policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-timeout" target="c-outcome-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-policy-branch" value="continue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="c1" source="c-outcome-gateway" target="c-branch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c-edge-policy-compensate" value="recover" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="c1" source="c-outcome-gateway" target="c-compensate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
@@ -465,11 +504,9 @@
       <root>
         <mxCell id="t0" />
         <mxCell id="t1" parent="t0" />
-
         <mxCell id="t-title" value="&lt;b&gt;Workflow Runtime — Transactional Decision Cycle&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Decide and persist atomically; execute external work only after commit&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#333333;" vertex="1" parent="t1">
           <mxGeometry x="430" y="20" width="790" height="65" as="geometry" />
         </mxCell>
-
         <!-- Input is serialized per workflow instance -->
         <mxCell id="t-input" value="&lt;b&gt;External Input&lt;/b&gt;&lt;br&gt;Start · command · result/event&lt;br&gt;timer / durable timeout" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1f3b64;spacing=8;" vertex="1" parent="t1">
           <mxGeometry x="65" y="105" width="260" height="90" as="geometry" />
@@ -483,7 +520,6 @@
         <mxCell id="t-cycle-repeat" value="Next input repeats the same cycle" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="t1">
           <mxGeometry x="1290" y="110" width="220" height="75" as="geometry" />
         </mxCell>
-
         <!-- Transaction boundary: pure decision + durable writes -->
         <mxCell id="t-tx-lane" value="DATABASE TRANSACTION — LOAD, DECIDE, AND PERSIST (NO EXTERNAL CALLS)" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;strokeWidth=2;" vertex="1" parent="t1">
           <mxGeometry x="40" y="235" width="1120" height="390" as="geometry" />
@@ -521,7 +557,6 @@
         <mxCell id="t-no-external" value="&lt;b&gt;NO EXTERNAL CALLS IN THIS TRANSACTION&lt;/b&gt;&lt;br&gt;Only deterministic computation and database writes. Network/broker/vendor latency cannot hold locks or make commit ambiguous." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;fontSize=11;fontStyle=1;" vertex="1" parent="t1">
           <mxGeometry x="835" y="475" width="175" height="115" as="geometry" />
         </mxCell>
-
         <!-- Separate post-commit dispatcher -->
         <mxCell id="t-dispatch-lane" value="SEPARATE OUTBOX DISPATCHER — POST-COMMIT" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eee8f7;swimlaneFillColor=#faf8fd;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;strokeWidth=2;" vertex="1" parent="t1">
           <mxGeometry x="1190" y="235" width="380" height="390" as="geometry" />
@@ -535,7 +570,6 @@
         <mxCell id="t-dispatch-policy" value="&lt;b&gt;Idempotency / retry&lt;/b&gt;&lt;br&gt;stable execution-intent ID&lt;br&gt;retry + backoff; complete/park/escalate&lt;br&gt;claim expiry enables recovery" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="t1">
           <mxGeometry x="1240" y="545" width="280" height="105" as="geometry" />
         </mxCell>
-
         <!-- External execution occurs only here -->
         <mxCell id="t-execution-lane" value="POST-COMMIT ACTIVITY EXECUTION — EXTERNAL CALLS OCCUR HERE" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;strokeWidth=2;" vertex="1" parent="t1">
           <mxGeometry x="40" y="660" width="1530" height="390" as="geometry" />
@@ -567,56 +601,160 @@
         <mxCell id="t-response-note" value="Every response re-enters the runtime. It cannot mutate workflow state directly or bypass the transactional inbox / waiting-state gate." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="t1">
           <mxGeometry x="1215" y="875" width="315" height="110" as="geometry" />
         </mxCell>
-
         <!-- Input and transaction sequence -->
-        <mxCell id="t-edge-input-handler" value="instance key" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="t1" source="t-input" target="t-instance-handler"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-ordering" value="guards" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-ordering-note" target="t-instance-handler"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-input-handler" value="instance key" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="t1" source="t-input" target="t-instance-handler">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-ordering" value="guards" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-ordering-note" target="t-instance-handler">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="t-edge-handler-begin" value="serialize" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-instance-handler" target="t-begin">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="560" y="220" /><mxPoint x="123" y="220" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="220" />
+              <mxPoint x="123" y="220" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="t-edge-begin-load" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-begin" target="t-load"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-load-validate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-load" target="t-validate"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-validate-safety" value="for response / event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-validate" target="t-inbound-safety"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-validate-compute" value="start / timer / command" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="t1" source="t-validate" target="t-compute"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-safety-compute" value="unseen + expected" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-inbound-safety" target="t-compute"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-safety-duplicate" value="result ID exists" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-inbound-safety" target="t-duplicate-exit"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-safety-late" value="not valid Waiting state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-inbound-safety" target="t-late-conflict"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-duplicate-commit" value="no-op / acknowledge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-duplicate-exit" target="t-commit"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-late-commit" value="audit only" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-late-conflict" target="t-commit"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-compute-persist" value="new state + intents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-compute" target="t-persist"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-store-load" value="read" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#82b366;" edge="1" parent="t1" source="t-store" target="t-load"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-persist-store" value="state + outbox (atomic)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-persist" target="t-store"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-persist-commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-persist" target="t-commit"><mxGeometry relative="1" as="geometry" /></mxCell>
-
+        <mxCell id="t-edge-begin-load" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-begin" target="t-load">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-load-validate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-load" target="t-validate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-validate-safety" value="for response / event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-validate" target="t-inbound-safety">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-validate-compute" value="start / timer / command" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="t1" source="t-validate" target="t-compute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-safety-compute" value="unseen + expected" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-inbound-safety" target="t-compute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-safety-duplicate" value="result ID exists" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-inbound-safety" target="t-duplicate-exit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-safety-late" value="not valid Waiting state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-inbound-safety" target="t-late-conflict">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-duplicate-commit" value="no-op / acknowledge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-duplicate-exit" target="t-commit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-late-commit" value="audit only" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-late-conflict" target="t-commit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-compute-persist" value="new state + intents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="t1" source="t-compute" target="t-persist">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-store-load" value="read" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#82b366;" edge="1" parent="t1" source="t-store" target="t-load">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-persist-store" value="state + outbox (atomic)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-persist" target="t-store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-persist-commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-persist" target="t-commit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <!-- Post-commit dispatch -->
-        <mxCell id="t-edge-commit-dispatcher" value="after commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="t1" source="t-commit" target="t-dispatcher"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-store-dispatcher" value="poll / claim committed outbox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#9673a6;" edge="1" parent="t1" source="t-store" target="t-dispatcher">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="290" y="525" /><mxPoint x="1175" y="525" /><mxPoint x="1175" y="343" /></Array></mxGeometry>
+        <mxCell id="t-edge-commit-dispatcher" value="after commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="t1" source="t-commit" target="t-dispatcher">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="t-edge-dispatcher-selector" value="execution intent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="t1" source="t-dispatcher" target="t-selector"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-policy-dispatcher" value="governs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-dispatch-policy" target="t-dispatcher"><mxGeometry relative="1" as="geometry" /></mxCell>
-
+        <mxCell id="t-edge-store-dispatcher" value="poll / claim committed outbox" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#9673a6;" edge="1" parent="t1" source="t-store" target="t-dispatcher">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="290" y="525" />
+              <mxPoint x="1175" y="525" />
+              <mxPoint x="1175" y="343" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-dispatcher-selector" value="execution intent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="t1" source="t-dispatcher" target="t-selector">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-policy-dispatcher" value="governs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-dispatch-policy" target="t-dispatcher">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <!-- Adapter selection fan-out -->
-        <mxCell id="t-edge-selector-message" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-message"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="203" y="640" /></Array></mxGeometry></mxCell>
-        <mxCell id="t-edge-selector-http" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-http"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="470" y="640" /></Array></mxGeometry></mxCell>
-        <mxCell id="t-edge-selector-db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-db"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="725" y="640" /></Array></mxGeometry></mxCell>
-        <mxCell id="t-edge-selector-sap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-sap"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="988" y="640" /></Array></mxGeometry></mxCell>
-        <mxCell id="t-edge-selector-other" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-other"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1380" y="640" /><mxPoint x="1253" y="640" /></Array></mxGeometry></mxCell>
-        <mxCell id="t-edge-adapters-external" value="external calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="t1" source="t-adapter-other" target="t-external-system"><mxGeometry relative="1" as="geometry" /></mxCell>
-
+        <mxCell id="t-edge-selector-message" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-message">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1380" y="640" />
+              <mxPoint x="203" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-selector-http" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-http">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1380" y="640" />
+              <mxPoint x="470" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-selector-db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-db">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1380" y="640" />
+              <mxPoint x="725" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-selector-sap" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-sap">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1380" y="640" />
+              <mxPoint x="988" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-selector-other" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-selector" target="t-adapter-other">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1380" y="640" />
+              <mxPoint x="1253" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t-edge-adapters-external" value="external calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="t1" source="t-adapter-other" target="t-external-system">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <!-- Immediate and asynchronous feedback paths -->
-        <mxCell id="t-edge-http-immediate" value="direct" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-adapter-http" target="t-immediate"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-db-immediate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-adapter-db" target="t-immediate"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-message-later" value="event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-adapter-message" target="t-later"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-sap-immediate" value="sync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-adapter-sap" target="t-immediate"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="t-edge-sap-later" value="job / callback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-adapter-sap" target="t-later"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-http-immediate" value="direct" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-adapter-http" target="t-immediate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-db-immediate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d6b656;" edge="1" parent="t1" source="t-adapter-db" target="t-immediate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-message-later" value="event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-adapter-message" target="t-later">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-sap-immediate" value="sync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-adapter-sap" target="t-immediate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t-edge-sap-later" value="job / callback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="t1" source="t-adapter-sap" target="t-later">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="t-edge-immediate-input" value="new input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-immediate" target="t-input">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="505" y="1030" /><mxPoint x="20" y="1030" /><mxPoint x="20" y="150" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="505" y="1030" />
+              <mxPoint x="20" y="1030" />
+              <mxPoint x="20" y="150" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="t-edge-later-input" value="correlated input" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="t1" source="t-later" target="t-input">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="993" y="1010" /><mxPoint x="35" y="1010" /><mxPoint x="35" y="165" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="993" y="1010" />
+              <mxPoint x="35" y="1010" />
+              <mxPoint x="35" y="165" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="t-edge-input-repeat" value="accepted transition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-instance-handler" target="t-cycle-repeat"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="t-edge-input-repeat" value="accepted transition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="t1" source="t-instance-handler" target="t-cycle-repeat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
@@ -625,11 +763,9 @@
       <root>
         <mxCell id="p0" />
         <mxCell id="p1" parent="p0" />
-
         <mxCell id="p-title" value="&lt;b&gt;Parallel Fan-Out — Idempotent Responses and Exactly-Once Logical Join&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Persist the expected child set first; let conditional child state and a versioned join provide logical exactly-once behavior&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#333333;" vertex="1" parent="p1">
           <mxGeometry x="310" y="20" width="1030" height="65" as="geometry" />
         </mxCell>
-
         <!-- Fan-out planning is one transaction -->
         <mxCell id="p-fanout-lane" value="FAN-OUT DECISION — ONE DATABASE TRANSACTION" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;strokeWidth=2;" vertex="1" parent="p1">
           <mxGeometry x="40" y="100" width="1530" height="300" as="geometry" />
@@ -658,7 +794,6 @@
         <mxCell id="p-tx-note" value="No child execution occurs before commit." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#7a2220;spacing=8;fontSize=11;fontStyle=1;" vertex="1" parent="p1">
           <mxGeometry x="1110" y="305" width="340" height="70" as="geometry" />
         </mxCell>
-
         <!-- Dispatcher executes children after commit -->
         <mxCell id="p-execution-lane" value="POST-COMMIT DISPATCH AND PARALLEL CHILD EXECUTION" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;strokeWidth=2;" vertex="1" parent="p1">
           <mxGeometry x="40" y="425" width="1530" height="270" as="geometry" />
@@ -684,7 +819,6 @@
         <mxCell id="p-response-id-note" value="Each response must echo child ID + activity execution ID + attempt (and a result/message ID for diagnostics)." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="p1">
           <mxGeometry x="520" y="605" width="760" height="65" as="geometry" />
         </mxCell>
-
         <!-- Conditional response update and logical join -->
         <mxCell id="p-response-lane" value="RESPONSE TRANSACTION AND EXACTLY-ONCE LOGICAL JOIN" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eee8f7;swimlaneFillColor=#faf8fd;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;strokeWidth=2;" vertex="1" parent="p1">
           <mxGeometry x="40" y="720" width="1530" height="450" as="geometry" />
@@ -725,46 +859,108 @@
         <mxCell id="p-join-note" value="Logical exactly-once does not promise exactly-once delivery. Many responses may arrive, but conditional child updates and the versioned join permit only one effective child transition and one continuation." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;fontSize=11;" vertex="1" parent="p1">
           <mxGeometry x="800" y="1080" width="520" height="70" as="geometry" />
         </mxCell>
-
         <!-- Fan-out transaction flow -->
-        <mxCell id="p-edge-parent-plan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-parent" target="p-plan"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-plan-set" value="complete set" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-plan" target="p-expected-set"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-set-persist" value="state + intents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-expected-set" target="p-atomic-persist"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-persist-commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-atomic-persist" target="p-commit"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-commit-end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-commit" target="p-tx-end"><mxGeometry relative="1" as="geometry" /></mxCell>
-
+        <mxCell id="p-edge-parent-plan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-parent" target="p-plan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-plan-set" value="complete set" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-plan" target="p-expected-set">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-set-persist" value="state + intents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-expected-set" target="p-atomic-persist">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-persist-commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-atomic-persist" target="p-commit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-commit-end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-commit" target="p-tx-end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <!-- Dispatch and parallel execution -->
         <mxCell id="p-edge-commit-dispatch" value="post-commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="p1" source="p-tx-end" target="p-dispatcher">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1490" y="410" /><mxPoint x="198" y="410" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1490" y="410" />
+              <mxPoint x="198" y="410" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="p-edge-dispatch-fork" value="claim intents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="p1" source="p-dispatcher" target="p-fork"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-fork-a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-fork" target="p-child-a"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-fork-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-fork" target="p-child-b"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-fork-n" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-fork" target="p-child-n"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-a-external" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-child-a" target="p-external"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-b-external" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-child-b" target="p-external"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-n-external" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-child-n" target="p-external"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-dispatch-fork" value="claim intents" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="p1" source="p-dispatcher" target="p-fork">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-fork-a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-fork" target="p-child-a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-fork-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-fork" target="p-child-b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-fork-n" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-fork" target="p-child-n">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-a-external" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-child-a" target="p-external">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-b-external" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-child-b" target="p-external">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-n-external" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="p1" source="p-child-n" target="p-external">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="p-edge-external-response" value="one or many deliveries" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="p1" source="p-external" target="p-response">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1540" y="530" /><mxPoint x="1540" y="705" /><mxPoint x="178" y="705" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1540" y="530" />
+              <mxPoint x="1540" y="705" />
+              <mxPoint x="178" y="705" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-
         <!-- Conditional child update -->
-        <mxCell id="p-edge-response-update" value="response transaction" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-response" target="p-conditional-update"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-update-result" value="rows affected?" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-conditional-update" target="p-update-result"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-result-accepted" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-update-result" target="p-accepted"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-result-duplicate" value="same execution; non-Waiting" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="p1" source="p-update-result" target="p-duplicate"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-result-old" value="execution / attempt mismatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#d6b656;" edge="1" parent="p1" source="p-update-result" target="p-old-response"><mxGeometry relative="1" as="geometry" /></mxCell>
-
+        <mxCell id="p-edge-response-update" value="response transaction" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-response" target="p-conditional-update">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-update-result" value="rows affected?" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-conditional-update" target="p-update-result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-result-accepted" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-update-result" target="p-accepted">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-result-duplicate" value="same execution; non-Waiting" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#666666;" edge="1" parent="p1" source="p-update-result" target="p-duplicate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-result-old" value="execution / attempt mismatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#d6b656;" edge="1" parent="p1" source="p-update-result" target="p-old-response">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <!-- Join observes the full persisted set and continues once -->
         <mxCell id="p-edge-set-join" value="authoritative expected set" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#9673a6;" edge="1" parent="p1" source="p-expected-set" target="p-join-observer">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="788" y="290" /><mxPoint x="1070" y="290" /><mxPoint x="1070" y="830" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="788" y="290" />
+              <mxPoint x="1070" y="290" />
+              <mxPoint x="1070" y="830" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="p-edge-accepted-join" value="re-evaluate in same TX" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-accepted" target="p-join-observer"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-join-predicate" value="count / observe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="p1" source="p-join-observer" target="p-join-predicate"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-predicate-wait" value="false" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="p1" source="p-join-predicate" target="p-wait-more"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="p-edge-predicate-continue" value="true + version matches" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-join-predicate" target="p-continue-once"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="p-edge-accepted-join" value="re-evaluate in same TX" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-accepted" target="p-join-observer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-join-predicate" value="count / observe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;" edge="1" parent="p1" source="p-join-observer" target="p-join-predicate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-predicate-wait" value="false" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;" edge="1" parent="p1" source="p-join-predicate" target="p-wait-more">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-edge-predicate-continue" value="true + version matches" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="p1" source="p-join-predicate" target="p-continue-once">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="p-edge-continue-parent" value="next workflow transition" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#82b366;" edge="1" parent="p1" source="p-continue-once" target="p-parent">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1535" y="1010" /><mxPoint x="1535" y="1185" /><mxPoint x="20" y="1185" /><mxPoint x="20" y="210" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1535" y="1010" />
+              <mxPoint x="1535" y="1185" />
+              <mxPoint x="20" y="1185" />
+              <mxPoint x="20" y="210" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
@@ -774,11 +970,9 @@
       <root>
         <mxCell id="o0" />
         <mxCell id="o1" parent="o0" />
-
         <mxCell id="o-title" value="&lt;b&gt;Ordered Dispatch Groups — Optional Ordered Outbox Dispatch&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 12px;&quot;&gt;Collection iteration order is intuitive; runtime delivery order is guaranteed only when the user chooses it explicitly&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontColor=#333333;" vertex="1" parent="o1">
           <mxGeometry x="300" y="20" width="1050" height="65" as="geometry" />
         </mxCell>
-
         <!-- Developer-facing transition -->
         <mxCell id="o-transition" value="&lt;b&gt;One Workflow Transition&lt;/b&gt;&lt;br&gt;produces outgoing intents" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;" vertex="1" parent="o1">
           <mxGeometry x="65" y="105" width="245" height="80" as="geometry" />
@@ -792,7 +986,6 @@
         <mxCell id="o-dx-note" value="&lt;b&gt;Developer-experience rule&lt;/b&gt;&lt;br&gt;Enumerating intents in order must not silently promise that independent workers dispatch—or receivers observe—the same order." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;spacing=8;fontSize=11;" vertex="1" parent="o1">
           <mxGeometry x="900" y="95" width="570" height="100" as="geometry" />
         </mxCell>
-
         <!-- Default mode -->
         <mxCell id="o-independent-lane" value="DEFAULT — INDEPENDENT INTENTS (PARALLEL, NO ORDERING GUARANTEE)" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eaf2ff;swimlaneFillColor=#f7faff;strokeColor=#6c8ebf;fontColor=#1f3b64;fontStyle=1;strokeWidth=2;" vertex="1" parent="o1">
           <mxGeometry x="40" y="225" width="745" height="670" as="geometry" />
@@ -821,7 +1014,6 @@
         <mxCell id="o-independent-benefit" value="&lt;b&gt;Use when intents are independent&lt;/b&gt;&lt;br&gt;maximum throughput; separate workflows and every intent may progress in parallel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;spacing=8;fontSize=11;" vertex="1" parent="o1">
           <mxGeometry x="155" y="795" width="420" height="70" as="geometry" />
         </mxCell>
-
         <!-- Explicit ordered mode -->
         <mxCell id="o-ordered-lane" value="OPTIONAL — ORDERED DISPATCH GROUP (EXPLICIT HEAD-OF-LINE ORDER)" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#e9f6ec;swimlaneFillColor=#f7fcf8;strokeColor=#82b366;fontColor=#315b24;fontStyle=1;strokeWidth=2;" vertex="1" parent="o1">
           <mxGeometry x="825" y="225" width="745" height="670" as="geometry" />
@@ -856,7 +1048,6 @@
         <mxCell id="o-group-complete" value="Group complete&lt;br&gt;release lease" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#254d1c;" vertex="1" parent="o1">
           <mxGeometry x="890" y="795" width="190" height="65" as="geometry" />
         </mxCell>
-
         <!-- Cross-cutting explicit contract -->
         <mxCell id="o-contract-lane" value="EXPLICIT USER CHOICE AND END-TO-END ORDER" style="swimlane;horizontal=1;startSize=36;rounded=1;html=1;whiteSpace=wrap;fillColor=#eee8f7;swimlaneFillColor=#faf8fd;strokeColor=#9673a6;fontColor=#4f365b;fontStyle=1;strokeWidth=2;" vertex="1" parent="o1">
           <mxGeometry x="40" y="920" width="1530" height="210" as="geometry" />
@@ -873,43 +1064,188 @@
         <mxCell id="o-choice-summary" value="Ordering is a deliberate semantic and throughput tradeoff—not an accidental guarantee inferred from collection order." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontColor=#4f365b;" vertex="1" parent="o1">
           <mxGeometry x="430" y="1080" width="750" height="35" as="geometry" />
         </mxCell>
-
         <!-- Authoring choice -->
-        <mxCell id="o-edge-transition-collection" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="o1" source="o-transition" target="o-collection"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-collection-choice" value="explicit policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="o1" source="o-collection" target="o-choice"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-transition-collection" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="o1" source="o-transition" target="o-collection">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-collection-choice" value="explicit policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;" edge="1" parent="o1" source="o-collection" target="o-choice">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="o-edge-choice-independent" value="no / default" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="o1" source="o-choice" target="o-independent-persist">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="763" y="215" /><mxPoint x="248" y="215" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="763" y="215" />
+              <mxPoint x="248" y="215" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="o-edge-choice-ordered" value="yes / opt in" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-choice" target="o-group-persist">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="763" y="215" /><mxPoint x="1015" y="215" /></Array></mxGeometry>
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="763" y="215" />
+              <mxPoint x="1015" y="215" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-
         <!-- Independent dispatch -->
-        <mxCell id="o-edge-persist-pool" value="eligible independently" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-independent-persist" target="o-worker-pool"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-pool-a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-pool" target="o-worker-a"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-pool-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-pool" target="o-worker-b"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-pool-c" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-pool" target="o-worker-c"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-a-arrival" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-a" target="o-independent-arrival"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-b-arrival" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-b" target="o-independent-arrival"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-c-arrival" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-c" target="o-independent-arrival"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-arrival-warning" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-independent-arrival" target="o-no-order"><mxGeometry relative="1" as="geometry" /></mxCell>
-
+        <mxCell id="o-edge-persist-pool" value="eligible independently" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-independent-persist" target="o-worker-pool">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-pool-a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-pool" target="o-worker-a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-pool-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-pool" target="o-worker-b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-pool-c" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-pool" target="o-worker-c">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-a-arrival" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-a" target="o-independent-arrival">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-b-arrival" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-b" target="o-independent-arrival">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-c-arrival" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-worker-c" target="o-independent-arrival">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-arrival-warning" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-independent-arrival" target="o-no-order">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <!-- Ordered group dispatch -->
-        <mxCell id="o-edge-group-claim" value="committed group" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-group-persist" target="o-group-claim"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-claim-head" value="only minimum pending seq" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-group-claim" target="o-seq-1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-seq1-gate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-seq-1" target="o-success-gate"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-gate-success" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-success-gate" target="o-release-next"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-release-seq2" value="release seq 2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-release-next" target="o-seq-2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-gate-retry" value="no / retryable" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-success-gate" target="o-retry-block"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-retry-head" value="retry same head" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-retry-block" target="o-seq-1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-retry-blocks-seq2" value="blocked" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-retry-block" target="o-seq-2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-seq2-seq3" value="on seq 2 success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-seq-2" target="o-seq-3"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-seq3-complete" value="on seq 3 success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-seq-3" target="o-group-complete"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-claim-other-groups" value="other leases" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-group-claim" target="o-other-groups"><mxGeometry relative="1" as="geometry" /></mxCell>
-
+        <mxCell id="o-edge-group-claim" value="committed group" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-group-persist" target="o-group-claim">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-claim-head" value="only minimum pending seq" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-group-claim" target="o-seq-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-seq1-gate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-seq-1" target="o-success-gate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-gate-success" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-success-gate" target="o-release-next">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-release-seq2" value="release seq 2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-release-next" target="o-seq-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-gate-retry" value="no / retryable" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-success-gate" target="o-retry-block">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-retry-head" value="retry same head" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-retry-block" target="o-seq-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-retry-blocks-seq2" value="blocked" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#b85450;" edge="1" parent="o1" source="o-retry-block" target="o-seq-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-seq2-seq3" value="on seq 2 success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="o1" source="o-seq-2" target="o-seq-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-seq3-complete" value="on seq 3 success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-seq-3" target="o-group-complete">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-claim-other-groups" value="other leases" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-group-claim" target="o-other-groups">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <!-- Explicit contract references -->
-        <mxCell id="o-edge-independent-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-independent-benefit" target="o-default-choice"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="o-edge-group-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-group-complete" target="o-ordered-choice"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="o-edge-independent-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="o1" source="o-independent-benefit" target="o-default-choice">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="o-edge-group-contract" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#82b366;" edge="1" parent="o1" source="o-group-complete" target="o-ordered-choice">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="IkHlQWpKWTtKimJohPgq" name="Outbox Processing">
+    <mxGraphModel dx="2054" dy="1390" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-5" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" value="" vertex="1">
+          <mxGeometry height="80" width="60" x="340" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-16" parent="1" style="swimlane;whiteSpace=wrap;html=1;" value="One Service Process" vertex="1">
+          <mxGeometry height="470" width="940" x="520" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-18" parent="3bzMX8eaTgy96IjeCmYx-16" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;" value="&lt;b&gt;Observability&lt;/b&gt;&lt;br&gt;Processors send slowly (x% of Processors send less than one message per second)&lt;div&gt;Number of Processors&lt;/div&gt;" vertex="1">
+          <mxGeometry height="85" width="230" x="680" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-14" parent="3bzMX8eaTgy96IjeCmYx-16" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" value="SAP" vertex="1">
+          <mxGeometry height="60" width="120" x="1035" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-11" parent="3bzMX8eaTgy96IjeCmYx-16" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" value="Database" vertex="1">
+          <mxGeometry height="60" width="120" x="1035" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-10" parent="3bzMX8eaTgy96IjeCmYx-16" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" value="Web Service" vertex="1">
+          <mxGeometry height="60" width="120" x="1035" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-9" parent="3bzMX8eaTgy96IjeCmYx-16" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" value="Message Broker" vertex="1">
+          <mxGeometry height="60" width="120" x="1035" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-19" parent="3bzMX8eaTgy96IjeCmYx-16" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#6b5600;spacing=8;" value="&lt;b&gt;Change Listener Workload Management&lt;/b&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Minimum: 1&lt;/div&gt;&lt;div&gt;Maximum: 4 (but configurable, in second step with association groups)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="190" width="300" x="270" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-3" parent="3bzMX8eaTgy96IjeCmYx-16" style="rounded=0;whiteSpace=wrap;html=1;" value="Outbox Item Processor" vertex="1">
+          <mxGeometry height="60" width="120" x="360" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-2" edge="1" parent="3bzMX8eaTgy96IjeCmYx-16" source="3bzMX8eaTgy96IjeCmYx-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="3bzMX8eaTgy96IjeCmYx-10" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-12" edge="1" parent="3bzMX8eaTgy96IjeCmYx-16" source="3bzMX8eaTgy96IjeCmYx-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="3bzMX8eaTgy96IjeCmYx-9" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="435" y="200" as="sourcePoint" />
+            <mxPoint x="505" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-13" edge="1" parent="3bzMX8eaTgy96IjeCmYx-16" source="3bzMX8eaTgy96IjeCmYx-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="3bzMX8eaTgy96IjeCmYx-11" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="535" y="180" as="sourcePoint" />
+            <mxPoint x="725" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-15" edge="1" parent="3bzMX8eaTgy96IjeCmYx-16" source="3bzMX8eaTgy96IjeCmYx-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="3bzMX8eaTgy96IjeCmYx-14" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="555" y="240" as="sourcePoint" />
+            <mxPoint x="749" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-22" parent="3bzMX8eaTgy96IjeCmYx-16" style="rounded=0;whiteSpace=wrap;html=1;" value="Domain-specific Service" vertex="1">
+          <mxGeometry height="60" width="120" x="50" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-23" parent="3bzMX8eaTgy96IjeCmYx-16" style="rounded=0;whiteSpace=wrap;html=1;" value="Outbox Coordinator" vertex="1">
+          <mxGeometry height="60" width="120" x="50" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-1" edge="1" parent="3bzMX8eaTgy96IjeCmYx-16" source="3bzMX8eaTgy96IjeCmYx-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="3bzMX8eaTgy96IjeCmYx-3" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="90" y="150" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-26" edge="1" parent="3bzMX8eaTgy96IjeCmYx-16" source="3bzMX8eaTgy96IjeCmYx-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="3bzMX8eaTgy96IjeCmYx-23" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="230" as="sourcePoint" />
+            <mxPoint x="520" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="HTTP Call" vertex="1">
+          <mxGeometry height="60" width="120" x="310" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Message" vertex="1">
+          <mxGeometry height="60" width="120" x="310" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Database Call" vertex="1">
+          <mxGeometry height="60" width="120" x="310" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-24" edge="1" parent="1" source="3bzMX8eaTgy96IjeCmYx-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" target="3bzMX8eaTgy96IjeCmYx-5" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="860" y="390" as="sourcePoint" />
+            <mxPoint x="1050" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3bzMX8eaTgy96IjeCmYx-25" connectable="0" parent="3bzMX8eaTgy96IjeCmYx-24" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="push / pull" vertex="1">
+          <mxGeometry relative="1" x="0.3529" y="-2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
