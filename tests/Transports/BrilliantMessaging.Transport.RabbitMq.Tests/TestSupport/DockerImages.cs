@@ -2,5 +2,5 @@ namespace BrilliantMessaging.Transport.RabbitMq.Tests.TestSupport;
 
 public static class DockerImages
 {
-    public const string RabbitMq = "rabbitmq:4.3.5-management-alpine";
+    public const string RabbitMq = "rabbitmq:4.3.6-management-alpine";
 }
