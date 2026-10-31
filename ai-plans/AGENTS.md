@@ -1,13 +1,13 @@
-# AGENTS.md for AI Plans
+# AGENTS.md for AI plans
 
-In this folder, we only keep Markdown files for AI plans. Each file has a four-digit prefix which corresponds to the GitHub issue number.
+<!-- guided-coding-version: 2.0.0 -->
 
-## How to Write Plans
+This directory is the append-only record of how work in this repository was planned and how it turned out, similar to Event Sourcing. It follows the [Guided Coding](https://kenny-codes.net/docs/guided-coding/) approach.
 
-1. Each plan consists of exactly the three following elements: a rationale, acceptance criteria, and technical details.
-2. A rationale describes the overarching goal of the plan. Keep this concise, only elaborate when special circumstances require it. Use free text in this section of the plan.
-3. Acceptance criteria is a list of requirements that must be met for the plan to be considered complete. Use check marks `- [ ]` for these in Markdown.
-4. Technical details describes the changes on a technical level. Which classes and members should be extended, which design patterns should be used? How do we ensure performance? Avoid going into too much detail (do not write the finished implementation), but focus on the high-level design and how parts of the codebase are affected. It should give the implementer a clear picture of what needs to be done.
-5. Regarding automated tests: it is usually enough to note that 'automated tests need to be written' as one check mark in the acceptance criteria list. If there are special requirements for the tests, these can be elaborated in the technical details section. But normally, you can simply leave these technical details out if the automated tests can be written in a straightforward way.
-6. When a plan should involve micro benchmarks, these need to be included in the acceptance criteria list and optionally in the technical details section. As with automated tests, if the BenchmarkDotNet benchmarks can be written in a straightforward way, leave out the technical details.
-7. In general, keep the plan concise and to the point. Do not include general information that the implementer already knows.
+Frozen Plan file names use `YYYY-MM-DD-HHMM-<ticket-id>-<short-title>.md`, timestamped in UTC. The `<ticket-id>` is omitted when work has no ticket. It also carries a `*Frozen at <timestamp-utc>` line directly below its title. When a plan is not frozen yet, its file name is typically `<short-title>.md`. Plan Deviations filenames use `YYYY-MM-DD-HHMM-<ticket-id>-plan-deviations.md` or `YYYY-MM-DD-HHMM-<short-title>-plan-deviations.md`.
+
+Plans are frozen when their Planning Phase ends. From then on, the only permitted edit is checking an acceptance criterion (`- [ ]` to `- [x]`) after the implementation and relevant feedback loops verify it. Never reword, add, remove, or reorder criteria in a frozen plan. Plan Deviations documents are frozen once committed.
+
+A Follow-Up Plan supersedes decisions of a Frozen Plan. The decision to write one is made in the Guiding Phase, when the review of the implementation calls for larger changes.
+
+A Plan Deviations document records all changes from the Initial Plan to the final implementation; it is only written when Follow-Up Plans exist or the implementation materially deviates from the plans. Reading the Initial Plan and, if present, the Plan Deviations document is enough to understand all work related to a ticket.

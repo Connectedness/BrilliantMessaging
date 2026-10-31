@@ -145,7 +145,7 @@ services.TryAddSingleton<IMessageDeserializer>(
 ### Tests
 
 - `tests/Usf.Core.Tests/Messaging/TestSupport/ThrowingSerializer.cs` (and any other test double implementing `IMessageSerializer.DeserializeAsync`) splits: an outbound `ThrowingSerializer : IMessageSerializer` and an inbound `ThrowingDeserializer : IMessageDeserializer` for the deserialization-failure path. The failure test asserts the exception flows to NACK requeue=false.
-- The custom non-CloudEvents inspector test required by [0004-0](0004-0-message-consumers.md) is realized as an inspector returning `(discriminator, type)` with no `Items` contribution, paired with a custom `IMessageDeserializer`, asserting end-to-end delivery with no CloudEvents type referenced and no eager deserialization in the inspector.
+- The custom non-CloudEvents inspector test required by [0004-0](2026-06-06-0542-0004-message-consumers.md) is realized as an inspector returning `(discriminator, type)` with no `Items` contribution, paired with a custom `IMessageDeserializer`, asserting end-to-end delivery with no CloudEvents type referenced and no eager deserialization in the inspector.
 - Add a default-deserializer test decoding from `TransportMessage.Body`, and a context test asserting `Endpoint`/`Transport`/`Services`/`Acknowledgement`/`MessageType` are set at construction and have no setters while `Message`/items remain mutable.
 - Review `RabbitMqTopologyRuntime`/consume tests in `tests/Transports/Usf.Transport.RabbitMq.Tests/Unit/AddRabbitMqConsumeTopologyTests.cs` for `WithSerializer` → `WithDeserializer` renames and any assertion on the removed `inspectResult.Envelope` handoff.
 

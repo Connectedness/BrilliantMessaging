@@ -1,6 +1,6 @@
 ## Rationale
 
-BMF instruments the outbound path end to end: `OutboundDiagnostics` owns the `Bmf.Outbound` `ActivitySource`/`Meter`, `OutboundTarget` opens a `Producer` activity and records attempt/failure/duration metrics for every publish, and `TraceContextHeaders.Inject` writes the W3C `traceparent`/`tracestate`/baggage onto the wire (see `ai-plans/0001-8-publish-trace-and-span-ids.md`). The consumer side was explicitly deferred there.
+BMF instruments the outbound path end to end: `OutboundDiagnostics` owns the `Bmf.Outbound` `ActivitySource`/`Meter`, `OutboundTarget` opens a `Producer` activity and records attempt/failure/duration metrics for every publish, and `TraceContextHeaders.Inject` writes the W3C `traceparent`/`tracestate`/baggage onto the wire (see `ai-plans/2026-06-02-0356-0001-publish-trace-and-span-ids.md`). The consumer side was explicitly deferred there.
 
 The consequence is that the producer span is a dead end: the `traceparent` we publish is never read on receive, so every distributed trace breaks at the broker hop and the consumer has no span to link back to. There are also no inbound metrics, so consumer throughput, failures, and processing latency are invisible.
 

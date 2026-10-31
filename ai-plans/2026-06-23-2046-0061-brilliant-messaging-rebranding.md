@@ -9,7 +9,7 @@ there are no external clients, so all renames — including public API and obser
 contracts — are safe breaking changes.
 
 This is the same class of mechanical rename as the earlier `Usf → Bmf` rebrand
-(`ai-plans/0040-bmf-rebranding.md`), with two differences that need extra care this time: the
+(`ai-plans/2026-06-16-2040-0040-bmf-rebranding.md`), with two differences that need extra care this time: the
 `.csproj` files carry `Description` text (and redundant explicit `PackageId`s) that mention the old
 name, and there is package metadata (`PackageTags`) plus a CI guard script
 (`scripts/verify-packages.sh`) that hard-codes the `bmf` tag. The `bmf` token appears in ~257 files
