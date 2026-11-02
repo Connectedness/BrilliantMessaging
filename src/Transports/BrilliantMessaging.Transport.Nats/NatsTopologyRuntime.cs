@@ -374,7 +374,7 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         if (inspectionFailure is null)
         {
             _logger.LogWarning(
-                "NATS topology '{Topology}' consumer '{Consumer}' received a message with no matching handler; {Action}",
+                "NATS topology '{Topology}' consumer '{Consumer}' received a message that no inspector recognized or no handler accepts; {Action}",
                 _topology.Name,
                 consumer.DurableName,
                 action

@@ -156,7 +156,8 @@ through `WithDeserializer<T>()`, so recognize in the chain and deserialize on th
 Keep these rules in mind:
 
 - Order matters. A recognizer placed before `CloudEvents()` can shadow genuine CloudEvents, so put broad recognizers
-  last.
+  last. `CloudEvents()` also rejects a `ce-type` without a registered contract, so later entries never see that
+  delivery and it is dead-lettered. To consume such CloudEvents, put a narrow recognizer for them before `CloudEvents()`.
 - `TransportMessage.Source` is the NATS subject, which is often the most reliable signal for third-party messages.
   Third-party publishers may not set `content-type`, so don't rely on `WhenContentType(...)` without checking.
 - `ce-` headers reach recognizers under the `cloudEvents:` prefix, so `WhenHeader("ce-type")` never matches. Use
