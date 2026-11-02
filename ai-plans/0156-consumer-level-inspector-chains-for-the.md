@@ -21,16 +21,16 @@ This is one story delivered as a stack: moving the chain to Core changes RabbitM
 
 ### Layer 2: NATS
 
-- [ ] `NatsInboundConsumerBuilder` exposes `UseInspector<TInspector>(ServiceLifetime)` and `UseInspectors(Action<InboundMessageInspectorChainBuilder>)` with the same semantics as `RabbitMqInboundConsumerBuilder`.
-- [ ] Consumers without an inspector configuration keep today's behavior: a single CloudEvents inspector resolved against the topology's effective message contract registry, including topology-local contracts.
-- [ ] A `CloudEvents()` entry in a NATS chain also resolves types against the effective registry.
-- [ ] `NatsTopologyCompiler` rejects an empty chain, service inspectors that don't implement `IInboundMessageInspector` or aren't registered, and `As<T>()` on an unregistered type (with a hint to `As<T>(explicitDiscriminator)`). Every recognizer discriminator must map to one handler on the same consumer: the handler for exactly the recognizer's `T` if there is one, otherwise the only handler whose message type is assignable from `T`. No match or several assignable matches fail validation.
-- [ ] A NATS handler without a registered contract is valid when a recognizer on the same consumer maps to it. Recognizer discriminators join the consumer's dispatch table, take part in duplicate detection, and supply the primary discriminator and default endpoint name when no contract exists.
-- [ ] Inspector types from `UseInspector<T>()` / `Use<T>()` are auto-registered with their configured lifetime without overwriting existing registrations.
-- [ ] At runtime the chain is evaluated in declaration order (first match wins). Recognizer inspectors are built once at compile time; only DI-resolved inspectors are fetched from the per-delivery scope.
-- [ ] NATS settlement semantics stay unchanged: an inspector exception, a `null` chain result, an unknown discriminator, or a non-assignable message type still dead-letters or terminates the message immediately without consuming retries.
-- [ ] A delivery without CloudEvents headers can be recognized by a `When`/`WhenHeader` recognizer and handled by an endpoint with a custom `IMessageDeserializer` configured through `WithDeserializer<T>()`.
-- [ ] `docs/nats-transport.md` documents inspector chains, including:
+- [x] `NatsInboundConsumerBuilder` exposes `UseInspector<TInspector>(ServiceLifetime)` and `UseInspectors(Action<InboundMessageInspectorChainBuilder>)` with the same semantics as `RabbitMqInboundConsumerBuilder`.
+- [x] Consumers without an inspector configuration keep today's behavior: a single CloudEvents inspector resolved against the topology's effective message contract registry, including topology-local contracts.
+- [x] A `CloudEvents()` entry in a NATS chain also resolves types against the effective registry.
+- [x] `NatsTopologyCompiler` rejects an empty chain, service inspectors that don't implement `IInboundMessageInspector` or aren't registered, and `As<T>()` on an unregistered type (with a hint to `As<T>(explicitDiscriminator)`). Every recognizer discriminator must map to one handler on the same consumer: the handler for exactly the recognizer's `T` if there is one, otherwise the only handler whose message type is assignable from `T`. No match or several assignable matches fail validation.
+- [x] A NATS handler without a registered contract is valid when a recognizer on the same consumer maps to it. Recognizer discriminators join the consumer's dispatch table, take part in duplicate detection, and supply the primary discriminator and default endpoint name when no contract exists.
+- [x] Inspector types from `UseInspector<T>()` / `Use<T>()` are auto-registered with their configured lifetime without overwriting existing registrations.
+- [x] At runtime the chain is evaluated in declaration order (first match wins). Recognizer inspectors are built once at compile time; only DI-resolved inspectors are fetched from the per-delivery scope.
+- [x] NATS settlement semantics stay unchanged: an inspector exception, a `null` chain result, an unknown discriminator, or a non-assignable message type still dead-letters or terminates the message immediately without consuming retries.
+- [x] A delivery without CloudEvents headers can be recognized by a `When`/`WhenHeader` recognizer and handled by an endpoint with a custom `IMessageDeserializer` configured through `WithDeserializer<T>()`.
+- [x] `docs/nats-transport.md` documents inspector chains, including:
   - the recognize-here/deserialize-there pairing
   - recognizers placed before `CloudEvents()` shadowing genuine CloudEvents
   - `TransportMessage.Source` being the NATS subject
@@ -39,9 +39,9 @@ This is one story delivered as a stack: moving the chain to Core changes RabbitM
   - inspectors having to be deterministic and avoid I/O, because a throwing inspector counts as a poison message and `AckProgress` doesn't run during inspection
   - handler types without a registered contract requiring a recognizer, so a custom inspector alone cannot route to them
   - `ce-` headers being exposed to recognizers under the `cloudEvents:` prefix, so `WhenHeader("ce-type")` never matches
-- [ ] `docs/nats-transport.md` also covers S3 specifics: one delivery carries a `Records` array and is settled as a unit, object keys are URL-encoded, and handlers and deserializers must tolerate the `s3:TestEvent` shape without `Records`.
-- [ ] All public types and members added in this layer carry XML doc comments.
-- [ ] Automated tests are written, including a broker integration test that consumes a JetStream message with an S3 event notification body and no CloudEvents headers end to end.
+- [x] `docs/nats-transport.md` also covers S3 specifics: one delivery carries a `Records` array and is settled as a unit, object keys are URL-encoded, and handlers and deserializers must tolerate the `s3:TestEvent` shape without `Records`.
+- [x] All public types and members added in this layer carry XML doc comments.
+- [x] Automated tests are written, including a broker integration test that consumes a JetStream message with an S3 event notification body and no CloudEvents headers end to end.
 
 ## Technical Details
 

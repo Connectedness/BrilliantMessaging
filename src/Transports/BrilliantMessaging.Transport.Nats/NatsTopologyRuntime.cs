@@ -25,7 +25,6 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
 
     private static readonly TimeSpan ConsumerRecoveryDelay = TimeSpan.FromSeconds(1);
 
-    private readonly CloudEventsInboundMessageInspector _inspector;
     private readonly ILogger<NatsTopologyRuntime> _logger;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly NatsTopology _topology;
@@ -45,10 +44,6 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         _topology = topology.MustNotBeNull();
         _serviceScopeFactory = serviceScopeFactory.MustNotBeNull();
         _logger = logger ?? NullLogger<NatsTopologyRuntime>.Instance;
-
-        // The inspector must resolve CloudEvents types against the topology's effective contract registry;
-        // the DI singleton only knows the globally mapped contracts, not topology-local dialects.
-        _inspector = new CloudEventsInboundMessageInspector(_topology.MessageContractRegistry);
     }
 
     /// <inheritdoc />
@@ -217,10 +212,16 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
             (uint) (message.Metadata?.NumDelivered ?? 1)
         );
 
+        // Created before inspection because DI-resolved inspectors honour a scoped or transient lifetime.
+        await using var scope = _serviceScopeFactory.CreateAsyncScope();
+
         InboundMessageInspectionResult? inspectResult;
         try
         {
-            inspectResult = await _inspector.InspectAsync(transportMessage, cancellationToken).ConfigureAwait(false);
+            inspectResult = await consumer
+               .InspectorChain
+               .InspectAsync(scope.ServiceProvider, transportMessage, cancellationToken)
+               .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -228,10 +229,10 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
         }
         catch (Exception exception)
         {
-            // Inspection is pure computation over the received headers, so any failure - unknown contract,
-            // missing required attribute, malformed timestamp - is deterministic malformation. Redelivery
-            // can never succeed; settling the message immediately prevents it from stranding once
-            // MaxDeliver is exhausted.
+            // Inspectors are expected to be deterministic computation over the delivery, so any failure -
+            // unknown contract, missing required attribute, malformed timestamp, a throwing custom inspector, or
+            // one that cannot be resolved - is treated as malformation. Redelivery is not expected to succeed;
+            // settling the message immediately prevents it from stranding once MaxDeliver is exhausted.
             await DeadLetterOrTerminateAsync(
                     consumer,
                     message,
@@ -273,8 +274,6 @@ public sealed class NatsTopologyRuntime : ITopologyRuntime
                .ConfigureAwait(false);
             return;
         }
-
-        await using var scope = _serviceScopeFactory.CreateAsyncScope();
 
         var deliveryAttempt = (uint) (message.Metadata?.NumDelivered ?? 1);
         var acknowledgement = new NatsMessageAcknowledgement(
