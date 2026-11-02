@@ -78,7 +78,7 @@ public sealed class CompiledInboundMessageInspectorChainTests
         );
 
         result.Should().NotBeNull();
-        result!.Discriminator.Should().Be("tests.service");
+        result.Discriminator.Should().Be("tests.service");
         result.MessageType.Should().Be(typeof(ServiceMessage));
     }
 

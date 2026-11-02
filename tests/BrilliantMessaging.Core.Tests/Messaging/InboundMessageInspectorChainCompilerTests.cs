@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.GuardClauses.Exceptions;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -25,6 +26,21 @@ public sealed class InboundMessageInspectorChainCompilerTests
 
         errors.Should().ContainSingle().Which.Should()
            .Be("Inbound inspector chain for consumer 'orders' must contain at least one entry.");
+    }
+
+    [Fact]
+    public void DefaultChain_IsReportedAsEmptyAndRejectedByCompile()
+    {
+        List<string> errors = [];
+
+        InboundMessageInspectorChainCompiler.Validate(default, Kind, Name, static _ => true, errors);
+        var recognizers = InboundMessageInspectorChainCompiler.ResolveRecognizers(default, CreateRegistry(), Kind, Name, errors);
+        var compile = () => InboundMessageInspectorChainCompiler.Compile(default, CreateRegistry(), Kind, Name);
+
+        errors.Should().ContainSingle().Which.Should()
+           .Be("Inbound inspector chain for consumer 'orders' must contain at least one entry.");
+        recognizers.Should().BeEmpty();
+        compile.Should().Throw<EmptyCollectionException>();
     }
 
     [Fact]

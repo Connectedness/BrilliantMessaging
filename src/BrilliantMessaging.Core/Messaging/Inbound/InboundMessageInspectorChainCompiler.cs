@@ -43,7 +43,7 @@ public static class InboundMessageInspectorChainCompiler
         isServiceRegistered.MustNotBeNull();
         validationErrors.MustNotBeNull();
 
-        if (chain.Length == 0)
+        if (chain.IsDefaultOrEmpty)
         {
             validationErrors.Add($"Inbound inspector chain for {consumer} must contain at least one entry.");
             return;
@@ -117,6 +117,12 @@ public static class InboundMessageInspectorChainCompiler
         var consumer = DescribeConsumer(consumerKind, consumerName);
 
         List<ResolvedInboundMessageRecognizer> recognizers = [];
+
+        // Compilers resolve recognizers right after Validate, which already reported a default chain as empty.
+        if (chain.IsDefault)
+        {
+            return recognizers;
+        }
 
         foreach (var recognizerEntry in chain.OfType<RecognizerInboundMessageInspectorChainEntry>())
         {
@@ -232,6 +238,9 @@ public static class InboundMessageInspectorChainCompiler
     /// Thrown when <paramref name="effectiveMessageContracts" />, <paramref name="consumerKind" />, or
     /// <paramref name="consumerName" /> is <see langword="null" />.
     /// </exception>
+    /// <exception cref="BrilliantMessaging.GuardClauses.Exceptions.EmptyCollectionException">
+    /// Thrown when <paramref name="chain" /> is default or empty.
+    /// </exception>
     /// <exception cref="BrilliantMessaging.GuardClauses.Exceptions.EmptyStringException">
     /// Thrown when <paramref name="consumerKind" /> or <paramref name="consumerName" /> is empty.
     /// </exception>
@@ -248,6 +257,7 @@ public static class InboundMessageInspectorChainCompiler
     {
         effectiveMessageContracts.MustNotBeNull();
         var consumer = DescribeConsumer(consumerKind, consumerName);
+        chain.MustNotBeDefaultOrEmpty();
 
         List<CompiledInboundMessageInspectorChainEntry> entries = [];
 
