@@ -29,6 +29,11 @@ public sealed class InboundMessageInspectorChainBuilder : IBuildable<ImmutableAr
     /// <summary>
     /// Adds the default CloudEvents inspector to the chain with the requested auto-registration lifetime.
     /// </summary>
+    /// <remarks>
+    /// Topology compilation binds this entry to an inspector instance that uses the topology's effective message
+    /// contract registry, so <paramref name="serviceLifetime" /> and any custom dependency-injection registration of
+    /// <see cref="CloudEventsInboundMessageInspector" /> are ignored at runtime.
+    /// </remarks>
     /// <param name="serviceLifetime">The lifetime used when the inspector type is auto-registered.</param>
     /// <returns>The same builder for chaining.</returns>
     /// <exception cref="BrilliantMessaging.GuardClauses.Exceptions.EnumValueNotDefinedException">

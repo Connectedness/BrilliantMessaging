@@ -12,12 +12,12 @@ This is one story delivered as a stack: moving the chain to Core changes RabbitM
 
 ### Layer 1: Shared chain
 
-- [ ] The compiled chain and its entries live in `BrilliantMessaging.Core.Messaging.Inbound` as `CompiledInboundMessageInspectorChain`, `CompiledInboundMessageInspectorChainEntry`, `CompiledServiceInboundMessageInspectorChainEntry`, and `CompiledInstanceInboundMessageInspectorChainEntry`. The RabbitMQ-prefixed types are removed.
-- [ ] A public Core helper performs chain validation, recognizer discriminator resolution, recognizer-to-handler mapping, and chain compilation. `RabbitMqTopologyCompiler` uses it, and its validation messages are unchanged.
-- [ ] A `CloudEvents()` entry in a RabbitMQ chain resolves types against the topology's effective message contract registry, covered by a regression test for a topology that publishes and consumes a topology-locally mapped type.
-- [ ] The XML docs on `CloudEvents()` state that its `ServiceLifetime` and any custom DI registration of that inspector are ignored at runtime.
-- [ ] All public types and members added in this layer carry XML doc comments.
-- [ ] Automated tests cover the moved chain and the shared helper.
+- [x] The compiled chain and its entries live in `BrilliantMessaging.Core.Messaging.Inbound` as `CompiledInboundMessageInspectorChain`, `CompiledInboundMessageInspectorChainEntry`, `CompiledServiceInboundMessageInspectorChainEntry`, and `CompiledInstanceInboundMessageInspectorChainEntry`. The RabbitMQ-prefixed types are removed.
+- [x] A public Core helper performs chain validation, recognizer discriminator resolution, recognizer-to-handler mapping, and chain compilation. `RabbitMqTopologyCompiler` uses it, and its validation messages are unchanged.
+- [x] A `CloudEvents()` entry in a RabbitMQ chain resolves types against the topology's effective message contract registry, covered by a regression test for a topology that publishes and consumes a topology-locally mapped type.
+- [x] The XML docs on `CloudEvents()` state that its `ServiceLifetime` and any custom DI registration of that inspector are ignored at runtime.
+- [x] All public types and members added in this layer carry XML doc comments.
+- [x] Automated tests cover the moved chain and the shared helper.
 
 ### Layer 2: NATS
 

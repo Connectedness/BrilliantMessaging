@@ -2,14 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.GuardClauses;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
+namespace BrilliantMessaging.Core.Messaging.Inbound;
 
 /// <summary>
-/// The compiled inspector chain for a RabbitMQ inbound consumer.
+/// The compiled inspector chain for a transport's inbound consumer.
 /// </summary>
 /// <remarks>
 /// This is the compiled, service-provider-aware counterpart of
@@ -20,15 +19,15 @@ namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
 /// deliveries, so it stays stateless and threads the service provider through each evaluation rather than capturing
 /// it; that is why the first-match loop is not shared with <see cref="CompositeInboundMessageInspector" />.
 /// </remarks>
-public sealed class RabbitMqInboundMessageInspectorChain
+public sealed class CompiledInboundMessageInspectorChain
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="RabbitMqInboundMessageInspectorChain" /> class.
+    /// Initializes a new instance of the <see cref="CompiledInboundMessageInspectorChain" /> class.
     /// </summary>
     /// <param name="entries">The compiled chain entries in evaluation order.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="entries" /> is <see langword="null" />.</exception>
     /// <exception cref="BrilliantMessaging.GuardClauses.Exceptions.ExistingItemException">Thrown when an entry is <see langword="null" />.</exception>
-    public RabbitMqInboundMessageInspectorChain(IReadOnlyList<RabbitMqInboundMessageInspectorChainEntry> entries)
+    public CompiledInboundMessageInspectorChain(IReadOnlyList<CompiledInboundMessageInspectorChainEntry> entries)
     {
         Entries = entries.MustNotBeNull().MustNotContainNull(nameof(entries));
     }
@@ -36,7 +35,7 @@ public sealed class RabbitMqInboundMessageInspectorChain
     /// <summary>
     /// Gets the compiled chain entries in evaluation order.
     /// </summary>
-    public IReadOnlyList<RabbitMqInboundMessageInspectorChainEntry> Entries { get; }
+    public IReadOnlyList<CompiledInboundMessageInspectorChainEntry> Entries { get; }
 
     /// <summary>
     /// Inspects a delivery by evaluating each chain entry in order and returning the first result.
@@ -76,11 +75,11 @@ public sealed class RabbitMqInboundMessageInspectorChain
 }
 
 /// <summary>
-/// A compiled RabbitMQ inspector-chain entry.
+/// A compiled inspector-chain entry.
 /// </summary>
-public abstract class RabbitMqInboundMessageInspectorChainEntry
+public abstract class CompiledInboundMessageInspectorChainEntry
 {
-    private protected RabbitMqInboundMessageInspectorChainEntry() { }
+    private protected CompiledInboundMessageInspectorChainEntry() { }
 
     /// <summary>
     /// Inspects a delivery through this chain entry.
@@ -99,15 +98,15 @@ public abstract class RabbitMqInboundMessageInspectorChainEntry
 /// <summary>
 /// A compiled inspector-chain entry that resolves an inspector type from dependency injection for each delivery.
 /// </summary>
-public sealed class RabbitMqServiceInboundMessageInspectorChainEntry : RabbitMqInboundMessageInspectorChainEntry
+public sealed class CompiledServiceInboundMessageInspectorChainEntry : CompiledInboundMessageInspectorChainEntry
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="RabbitMqServiceInboundMessageInspectorChainEntry" /> class.
+    /// Initializes a new instance of the <see cref="CompiledServiceInboundMessageInspectorChainEntry" /> class.
     /// </summary>
     /// <param name="inspectorType">The inspector type to resolve from dependency injection.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="inspectorType" /> is <see langword="null" />.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="inspectorType" /> does not implement <see cref="IInboundMessageInspector" />.</exception>
-    public RabbitMqServiceInboundMessageInspectorChainEntry(Type inspectorType)
+    public CompiledServiceInboundMessageInspectorChainEntry(Type inspectorType)
     {
         InspectorType = inspectorType
            .MustBeAssignableTo(typeof(IInboundMessageInspector))
@@ -136,14 +135,14 @@ public sealed class RabbitMqServiceInboundMessageInspectorChainEntry : RabbitMqI
 /// <summary>
 /// A compiled inspector-chain entry that reuses an already-created inspector instance.
 /// </summary>
-public sealed class RabbitMqInstanceInboundMessageInspectorChainEntry : RabbitMqInboundMessageInspectorChainEntry
+public sealed class CompiledInstanceInboundMessageInspectorChainEntry : CompiledInboundMessageInspectorChainEntry
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="RabbitMqInstanceInboundMessageInspectorChainEntry" /> class.
+    /// Initializes a new instance of the <see cref="CompiledInstanceInboundMessageInspectorChainEntry" /> class.
     /// </summary>
     /// <param name="inspector">The inspector instance to reuse.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="inspector" /> is <see langword="null" />.</exception>
-    public RabbitMqInstanceInboundMessageInspectorChainEntry(IInboundMessageInspector inspector)
+    public CompiledInstanceInboundMessageInspectorChainEntry(IInboundMessageInspector inspector)
     {
         Inspector = inspector.MustNotBeNull();
     }
