@@ -288,7 +288,9 @@ public static class InboundMessageInspectorChainCompiler
                     );
                     break;
                 case null:
-                    throw new InvalidOperationException($"Inbound inspector chain for {consumer} contains a null entry.");
+                    throw new InvalidOperationException(
+                        $"Inbound inspector chain for {consumer} contains a null entry."
+                    );
                 default:
                     throw new InvalidOperationException(
                         $"Inbound inspector chain entry '{GetTypeName(entry.GetType())}' for {consumer} is not supported."
@@ -317,72 +319,4 @@ public static class InboundMessageInspectorChainCompiler
     {
         return type.FullName ?? type.Name;
     }
-}
-
-/// <summary>
-/// A recognizer chain entry together with the discriminator it resolves to on its topology.
-/// </summary>
-public sealed class ResolvedInboundMessageRecognizer
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ResolvedInboundMessageRecognizer" /> class.
-    /// </summary>
-    /// <param name="entry">The declared recognizer entry.</param>
-    /// <param name="discriminator">The resolved discriminator.</param>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="entry" /> or <paramref name="discriminator" /> is <see langword="null" />.
-    /// </exception>
-    /// <exception cref="BrilliantMessaging.GuardClauses.Exceptions.EmptyStringException">
-    /// Thrown when <paramref name="discriminator" /> is empty.
-    /// </exception>
-    /// <exception cref="BrilliantMessaging.GuardClauses.Exceptions.WhiteSpaceStringException">
-    /// Thrown when <paramref name="discriminator" /> contains only whitespace.
-    /// </exception>
-    public ResolvedInboundMessageRecognizer(RecognizerInboundMessageInspectorChainEntry entry, string discriminator)
-    {
-        Entry = entry.MustNotBeNull();
-        Discriminator = discriminator.MustNotBeNullOrWhiteSpace();
-    }
-
-    /// <summary>
-    /// Gets the declared recognizer entry.
-    /// </summary>
-    public RecognizerInboundMessageInspectorChainEntry Entry { get; }
-
-    /// <summary>
-    /// Gets the resolved discriminator.
-    /// </summary>
-    public string Discriminator { get; }
-}
-
-/// <summary>
-/// Associates a resolved recognizer with the handler its discriminator dispatches to.
-/// </summary>
-/// <typeparam name="THandler">The transport's handler definition type.</typeparam>
-public sealed class InboundRecognizerHandlerMapping<THandler>
-    where THandler : class
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="InboundRecognizerHandlerMapping{THandler}" /> class.
-    /// </summary>
-    /// <param name="recognizer">The resolved recognizer.</param>
-    /// <param name="handler">The handler the recognizer maps to.</param>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="recognizer" /> or <paramref name="handler" /> is <see langword="null" />.
-    /// </exception>
-    public InboundRecognizerHandlerMapping(ResolvedInboundMessageRecognizer recognizer, THandler handler)
-    {
-        Recognizer = recognizer.MustNotBeNull();
-        Handler = handler.MustNotBeNull();
-    }
-
-    /// <summary>
-    /// Gets the resolved recognizer.
-    /// </summary>
-    public ResolvedInboundMessageRecognizer Recognizer { get; }
-
-    /// <summary>
-    /// Gets the handler the recognizer maps to.
-    /// </summary>
-    public THandler Handler { get; }
 }
