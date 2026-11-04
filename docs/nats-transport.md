@@ -131,8 +131,9 @@ Each consumer owns an ordered, first-match-wins inspector chain. The default is 
 empty chain, unregistered inspectors, `As<T>()` on an unregistered type, and recognizers without a matching handler.
 
 The following consumer handles bucket notifications that S3-compatible stores such as MinIO and RustFS publish in
-[S3's event message format](https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html),
-next to regular CloudEvents on the same consumer:
+[S3's event message format](https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html).
+These messages carry no CloudEvents headers, so the chain consists of a single recognizer instead of the default
+CloudEvents inspector:
 
 ```csharp
 services.AddSingleton<S3EventDeserializer>();
@@ -141,13 +142,25 @@ nats.Consume(
     "BUCKETS",
     "bucket-worker",
     consumer => consumer
+        .FilterSubject("bucket.events")
         .UseInspectors(chain => chain
-            .CloudEvents()
-            .When(message => message.Source == "bucket.events").As<S3Event>("s3.event")
+            .When(_ => true).As<S3Event>("s3.event")
         )
-        .Handle<OrderPlaced, OrderPlacedHandler>()
         .Handle<S3Event, S3EventHandler>(handler => handler.WithDeserializer<S3EventDeserializer>())
 );
+```
+
+To receive regular CloudEvents on the same consumer, add `CloudEvents()` back to the chain, because
+`UseInspectors(...)` replaces the default. `CloudEvents()` only matches deliveries that carry a `ce-type` header and
+passes everything else on to the next entry:
+
+```csharp
+.UseInspectors(chain => chain
+    .CloudEvents()
+    .When(message => message.Source == "bucket.events").As<S3Event>("s3.event")
+)
+.Handle<OrderPlaced, OrderPlacedHandler>()
+.Handle<S3Event, S3EventHandler>(handler => handler.WithDeserializer<S3EventDeserializer>())
 ```
 
 Recognizers only decide what a delivery is. The handler that the discriminator selects still owns body decoding
@@ -157,7 +170,10 @@ Keep these rules in mind:
 
 - Order matters. A recognizer placed before `CloudEvents()` can shadow genuine CloudEvents, so put broad recognizers
   last. `CloudEvents()` also rejects a `ce-type` without a registered contract, so later entries never see that
-  delivery and it is dead-lettered. To consume such CloudEvents, put a narrow recognizer for them before `CloudEvents()`.
+  delivery and it is dead-lettered. To consume such CloudEvents, register the type with `Map<T>(...)`, or accept it
+  on an existing contract with `WithInboundAlias(...)`. A narrow recognizer placed before `CloudEvents()` also routes
+  them, but the handler then receives no CloudEvents envelope, so attributes such as id, source, and time are not
+  available to it.
 - `TransportMessage.Source` is the NATS subject, which is often the most reliable signal for third-party messages.
   Third-party publishers may not set `content-type`, so don't rely on `WhenContentType(...)` without checking.
 - `ce-` headers reach recognizers under the `cloudEvents:` prefix, so `WhenHeader("ce-type")` never matches. Use
