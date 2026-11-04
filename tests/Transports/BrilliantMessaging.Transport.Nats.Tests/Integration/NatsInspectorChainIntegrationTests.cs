@@ -279,9 +279,13 @@ public sealed class NatsInspectorChainIntegrationTests : IAsyncLifetime
         {
             consumer.UseInspector<UnknownDiscriminatorInspector>();
         }
-        else
+        else if (inspectorType == typeof(MismatchedTypeInspector))
         {
             consumer.UseInspector<MismatchedTypeInspector>();
+        }
+        else
+        {
+            throw new ArgumentOutOfRangeException(nameof(inspectorType), inspectorType, "Unsupported inspector type.");
         }
     }
 
