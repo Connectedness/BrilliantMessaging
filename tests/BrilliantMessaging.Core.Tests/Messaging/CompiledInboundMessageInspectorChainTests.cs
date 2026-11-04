@@ -4,14 +4,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.GuardClauses.Exceptions;
-using BrilliantMessaging.Transport.RabbitMq.Inbound;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace BrilliantMessaging.Transport.RabbitMq.Tests.Unit;
+namespace BrilliantMessaging.Core.Tests.Messaging;
 
-public sealed class RabbitMqInboundMessageInspectorChainTests
+public sealed class CompiledInboundMessageInspectorChainTests
 {
     [Fact]
     public async Task InspectAsync_ReturnsFirstRecognizedResultAndStops()
@@ -20,11 +19,11 @@ public sealed class RabbitMqInboundMessageInspectorChainTests
         var secondResult = new InboundMessageInspectionResult("tests.second", typeof(SecondMessage));
         var second = new TestInspector(secondResult);
         var third = new TestInspector(new InboundMessageInspectionResult("tests.third", typeof(ThirdMessage)));
-        RabbitMqInboundMessageInspectorChain chain = new (
+        CompiledInboundMessageInspectorChain chain = new (
             [
-                new RabbitMqInstanceInboundMessageInspectorChainEntry(first),
-                new RabbitMqInstanceInboundMessageInspectorChainEntry(second),
-                new RabbitMqInstanceInboundMessageInspectorChainEntry(third)
+                new CompiledInstanceInboundMessageInspectorChainEntry(first),
+                new CompiledInstanceInboundMessageInspectorChainEntry(second),
+                new CompiledInstanceInboundMessageInspectorChainEntry(third)
             ]
         );
         await using var serviceProvider = new ServiceCollection().BuildServiceProvider();
@@ -44,9 +43,9 @@ public sealed class RabbitMqInboundMessageInspectorChainTests
     [Fact]
     public async Task InspectAsync_ReturnsNullWhenNoEntryRecognizesDelivery()
     {
-        RabbitMqInboundMessageInspectorChain chain = new (
+        CompiledInboundMessageInspectorChain chain = new (
             [
-                new RabbitMqInstanceInboundMessageInspectorChainEntry(new TestInspector(null))
+                new CompiledInstanceInboundMessageInspectorChainEntry(new TestInspector(null))
             ]
         );
         await using var serviceProvider = new ServiceCollection().BuildServiceProvider();
@@ -63,9 +62,9 @@ public sealed class RabbitMqInboundMessageInspectorChainTests
     [Fact]
     public async Task ServiceEntry_ResolvesInspectorFromPerDeliveryServiceProvider()
     {
-        RabbitMqInboundMessageInspectorChain chain = new (
+        CompiledInboundMessageInspectorChain chain = new (
             [
-                new RabbitMqServiceInboundMessageInspectorChainEntry(typeof(ServiceInspector))
+                new CompiledServiceInboundMessageInspectorChainEntry(typeof(ServiceInspector))
             ]
         );
         var services = new ServiceCollection();
@@ -79,17 +78,17 @@ public sealed class RabbitMqInboundMessageInspectorChainTests
         );
 
         result.Should().NotBeNull();
-        result!.Discriminator.Should().Be("tests.service");
+        result.Discriminator.Should().Be("tests.service");
         result.MessageType.Should().Be(typeof(ServiceMessage));
     }
 
     [Fact]
     public void Constructors_ValidateArguments()
     {
-        var constructNullChain = () => new RabbitMqInboundMessageInspectorChain(null!);
-        var constructChainWithNullEntry = () => new RabbitMqInboundMessageInspectorChain([null!]);
-        var constructInvalidServiceEntry = () => new RabbitMqServiceInboundMessageInspectorChainEntry(typeof(string));
-        var constructNullInstanceEntry = () => new RabbitMqInstanceInboundMessageInspectorChainEntry(null!);
+        var constructNullChain = () => new CompiledInboundMessageInspectorChain(null!);
+        var constructChainWithNullEntry = () => new CompiledInboundMessageInspectorChain([null!]);
+        var constructInvalidServiceEntry = () => new CompiledServiceInboundMessageInspectorChainEntry(typeof(string));
+        var constructNullInstanceEntry = () => new CompiledInstanceInboundMessageInspectorChainEntry(null!);
 
         constructNullChain.Should().Throw<ArgumentNullException>().WithParameterName("entries");
         constructChainWithNullEntry.Should().Throw<ExistingItemException>().WithParameterName("entries");
@@ -100,9 +99,9 @@ public sealed class RabbitMqInboundMessageInspectorChainTests
     [Fact]
     public async Task InspectAsync_ValidatesArguments()
     {
-        RabbitMqInboundMessageInspectorChain chain = new (
+        CompiledInboundMessageInspectorChain chain = new (
             [
-                new RabbitMqInstanceInboundMessageInspectorChainEntry(new TestInspector(null))
+                new CompiledInstanceInboundMessageInspectorChainEntry(new TestInspector(null))
             ]
         );
         await using var serviceProvider = new ServiceCollection().BuildServiceProvider();

@@ -1005,7 +1005,8 @@ public sealed class NatsTopologyCompilerTests
             42,
             16,
             "orders.dead",
-            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal)
+            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal),
+            new CompiledInboundMessageInspectorChain([])
         );
 
         var config = NatsTopologyProvisioner.ToConsumerConfig(consumer);

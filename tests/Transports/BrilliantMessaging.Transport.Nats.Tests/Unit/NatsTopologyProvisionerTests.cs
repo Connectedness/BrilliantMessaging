@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using BrilliantMessaging.Core.Messaging;
+using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Transport.Nats.Inbound;
 using BrilliantMessaging.Transport.Nats.Tests.TestSupport;
 using FluentAssertions;
@@ -164,7 +165,8 @@ public sealed class NatsTopologyProvisionerTests
             1024,
             8,
             null,
-            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal)
+            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal),
+            new CompiledInboundMessageInspectorChain([])
         );
 
         var config = NatsTopologyProvisioner.ToConsumerConfig(consumer);
@@ -188,7 +190,8 @@ public sealed class NatsTopologyProvisionerTests
             1024,
             8,
             null,
-            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal)
+            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal),
+            new CompiledInboundMessageInspectorChain([])
         );
 
         var config = NatsTopologyProvisioner.ToConsumerConfig(consumer);

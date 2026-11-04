@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using BrilliantMessaging.Core.Messaging;
 using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.GuardClauses;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BrilliantMessaging.Transport.Nats.Inbound;
 
@@ -22,6 +23,12 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
     private int _deadLetterAfterDeliveryAttempt = 5;
     private string? _deadLetterSubject;
     private string? _filterSubject;
+
+    private ImmutableArray<InboundMessageInspectorChainEntry> _inspectorChain =
+    [
+        new ServiceInboundMessageInspectorChainEntry(typeof(CloudEventsInboundMessageInspector))
+    ];
+
     private int _maxAckPending = 1024;
     private int _maxBufferedMessages = NatsTopologyBuilderDefaults.DefaultMaxBufferedMessages;
     private int _maxDeliver = 10;
@@ -56,7 +63,8 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
             _maxBufferedMessages,
             _deadLetterSubject,
             _redeliveryClassifier,
-            _handlers.ToImmutable()
+            _handlers.ToImmutable(),
+            _inspectorChain
         );
     }
 
@@ -166,6 +174,41 @@ public sealed class NatsInboundConsumerBuilder : IBuildable<NatsInboundConsumerD
         RedeliveryClassifierBuilder builder = new ();
         configure(builder);
         _redeliveryClassifier = ((IBuildable<RedeliveryClassifier>) builder).Build();
+        return this;
+    }
+
+    /// <summary>
+    /// Overrides the inbound message inspector chain with <typeparamref name="TInspector" /> instead of the default
+    /// CloudEvents inspector, using the requested auto-registration lifetime.
+    /// </summary>
+    /// <typeparam name="TInspector">The inspector type to use.</typeparam>
+    /// <param name="serviceLifetime">The optional lifetime used when the inspector type is auto-registered.</param>
+    /// <returns>The same builder for chaining.</returns>
+    public NatsInboundConsumerBuilder UseInspector<TInspector>(
+        ServiceLifetime serviceLifetime = ServiceLifetime.Singleton
+    )
+        where TInspector : class, IInboundMessageInspector
+    {
+        _inspectorChain =
+        [
+            new ServiceInboundMessageInspectorChainEntry(typeof(TInspector), serviceLifetime)
+        ];
+        return this;
+    }
+
+    /// <summary>
+    /// Configures an ordered inbound message inspector chain for this consumer.
+    /// </summary>
+    /// <param name="configure">The callback that adds inspector and recognizer entries.</param>
+    /// <returns>The same builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="configure" /> is <see langword="null" />.</exception>
+    public NatsInboundConsumerBuilder UseInspectors(Action<InboundMessageInspectorChainBuilder> configure)
+    {
+        configure.MustNotBeNull();
+
+        InboundMessageInspectorChainBuilder builder = new ();
+        configure(builder);
+        _inspectorChain = ((IBuildable<ImmutableArray<InboundMessageInspectorChainEntry>>) builder).Build();
         return this;
     }
 

@@ -405,7 +405,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
         consumer
            .InspectorChain.Entries.Should().ContainSingle().Which.Should()
-           .BeOfType<RabbitMqServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
+           .BeOfType<CompiledServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
            .Be(typeof(RawInspector));
         endpoint.DeserializerType.Should().Be(typeof(RawDeserializer));
         endpoint.AckMode.Should().Be(MessageAckMode.Manual);
@@ -447,11 +447,63 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
         consumer.InspectorChain.Entries.Should().HaveCount(2);
         consumer.InspectorChain.Entries[0].Should()
-           .BeOfType<RabbitMqServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
-           .Be(typeof(CloudEventsInboundMessageInspector));
+           .BeOfType<CompiledInstanceInboundMessageInspectorChainEntry>().Which.Inspector.Should()
+           .BeOfType<CloudEventsInboundMessageInspector>();
         var recognizer = consumer.InspectorChain.Entries[1].Should()
-           .BeOfType<RabbitMqInstanceInboundMessageInspectorChainEntry>().Which.Inspector;
+           .BeOfType<CompiledInstanceInboundMessageInspectorChainEntry>().Which.Inspector;
         recognizer.Should().BeOfType<PredicateInboundMessageInspector>();
+    }
+
+    [Fact]
+    public async Task CloudEventsEntry_ResolvesTopologyLocalContract()
+    {
+        var services = new ServiceCollection();
+        services
+           .AddBrilliantMessaging()
+           .UseCloudEvents(options => options.Source = "/tests/rabbitmq")
+           .AddRabbitMqTopology(
+                builder =>
+                {
+                    builder.UseConnectionFactory(static _ => new ConnectionFactory());
+                    builder.MapMessageContracts(contracts => contracts.Map<ValidationMessageA>("tests.local"));
+                    builder.Exchange("orders", ExchangeType.Fanout);
+                    builder.Publish<ValidationMessageA>(
+                        target => target
+                           .ToFanoutExchange("orders")
+                           .WithSerializer<CloudEventMessageSerializer>()
+                    );
+                    builder.Queue("inbound");
+                    builder.Consume(
+                        "inbound",
+                        consumer => consumer
+                           .UseInspectors(chain => chain.CloudEvents())
+                           .Handle<ValidationMessageA, ValidationMessageAHandler>()
+                    );
+                }
+            );
+        await using var serviceProvider = services.BuildServiceProvider();
+        var topology = serviceProvider.GetRequiredService<RabbitMqTopology>();
+        var consumer = topology.Consumers.Should().ContainSingle().Which;
+        await using var scope = serviceProvider.CreateAsyncScope();
+
+        var result = await consumer.InspectorChain.InspectAsync(
+            scope.ServiceProvider,
+            new TestTransportMessage(
+                new Dictionary<string, object?>
+                {
+                    ["cloudEvents:specversion"] = "1.0",
+                    ["cloudEvents:id"] = "message-1",
+                    ["cloudEvents:source"] = "/tests/rabbitmq",
+                    ["cloudEvents:type"] = "tests.local",
+                    ["cloudEvents:time"] = DateTimeOffset.UtcNow.ToString("O")
+                }
+            ),
+            TestContext.Current.CancellationToken
+        );
+
+        result.Should().NotBeNull();
+        result.MessageType.Should().Be(typeof(ValidationMessageA));
+        topology.TryGetEndpoint("inbound", result.Discriminator, out _).Should().BeTrue();
     }
 
     [Fact]
@@ -751,7 +803,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
         consumer.ChannelGroup.PrefetchCount.Should().Be(8);
         consumer.ChannelGroup.ConsumerDispatchConcurrency.Should().Be(3);
         consumer.InspectorChain.Entries.Should().ContainSingle().Which.Should()
-           .BeOfType<RabbitMqServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
+           .BeOfType<CompiledServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
            .Be(typeof(RawInspector));
         topology.Pipeline.Should().NotBeNull();
     }
@@ -1231,7 +1283,7 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
         consumer.Endpoints.Should().HaveCount(2);
         consumer.InspectorChain.Entries.Should().ContainSingle().Which.Should()
-           .BeOfType<RabbitMqServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
+           .BeOfType<CompiledServiceInboundMessageInspectorChainEntry>().Which.InspectorType.Should()
            .Be(typeof(RawInspector));
         consumer.CopyBody.Should().BeFalse();
         consumer.ChannelGroup.MaximumChannelCount.Should().Be(2);
@@ -1549,8 +1601,8 @@ public sealed class AddRabbitMqConsumeTopologyTests
 
     private sealed class TestTransportMessage : TransportMessage
     {
-        public TestTransportMessage()
-            : base("test", "source", ReadOnlyMemory<byte>.Empty, new Dictionary<string, object?>()) { }
+        public TestTransportMessage(IReadOnlyDictionary<string, object?>? headers = null)
+            : base("test", "source", ReadOnlyMemory<byte>.Empty, headers ?? new Dictionary<string, object?>()) { }
     }
 
     private sealed class NoOpAcknowledgement : IMessageAcknowledgement

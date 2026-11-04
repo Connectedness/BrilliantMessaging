@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.GuardClauses;
 
 namespace BrilliantMessaging.Transport.RabbitMq.Inbound;
@@ -33,7 +34,7 @@ public sealed class RabbitMqInboundConsumer
     /// </exception>
     public RabbitMqInboundConsumer(
         string queueName,
-        RabbitMqInboundMessageInspectorChain inspectorChain,
+        CompiledInboundMessageInspectorChain inspectorChain,
         bool copyBody,
         RabbitMqInboundChannelGroup channelGroup,
         IReadOnlyList<RabbitMqInboundEndpoint> endpoints
@@ -54,7 +55,7 @@ public sealed class RabbitMqInboundConsumer
     /// <summary>
     /// Gets the compiled inbound message inspector chain.
     /// </summary>
-    public RabbitMqInboundMessageInspectorChain InspectorChain { get; }
+    public CompiledInboundMessageInspectorChain InspectorChain { get; }
 
     /// <summary>
     /// Gets a value indicating whether the delivery body is copied into message-owned memory.

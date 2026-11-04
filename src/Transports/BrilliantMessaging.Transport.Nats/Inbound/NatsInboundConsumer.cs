@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using BrilliantMessaging.Core.Messaging.Inbound;
+using BrilliantMessaging.GuardClauses;
 
 namespace BrilliantMessaging.Transport.Nats.Inbound;
 
@@ -22,7 +24,8 @@ public sealed class NatsInboundConsumer
         int maxAckPending,
         int maxBufferedMessages,
         string? deadLetterSubject,
-        IReadOnlyDictionary<string, NatsInboundEndpoint> endpointsByDiscriminator
+        IReadOnlyDictionary<string, NatsInboundEndpoint> endpointsByDiscriminator,
+        CompiledInboundMessageInspectorChain inspectorChain
     )
     {
         StreamName = streamName;
@@ -36,6 +39,7 @@ public sealed class NatsInboundConsumer
         MaxBufferedMessages = maxBufferedMessages;
         DeadLetterSubject = deadLetterSubject;
         EndpointsByDiscriminator = endpointsByDiscriminator;
+        InspectorChain = inspectorChain.MustNotBeNull();
     }
 
     /// <summary>
@@ -92,7 +96,12 @@ public sealed class NatsInboundConsumer
     public string? DeadLetterSubject { get; }
 
     /// <summary>
-    /// Gets endpoints by CloudEvents discriminator.
+    /// Gets endpoints by inbound discriminator, covering message contract and recognizer discriminators.
     /// </summary>
     public IReadOnlyDictionary<string, NatsInboundEndpoint> EndpointsByDiscriminator { get; }
+
+    /// <summary>
+    /// Gets the compiled inspector chain that identifies each delivery.
+    /// </summary>
+    public CompiledInboundMessageInspectorChain InspectorChain { get; }
 }

@@ -97,8 +97,8 @@ the expected retry window.
 
 ## Consuming
 
-Consumed messages flow through the normal inbound path: CloudEvents inspection, trace context, deserialization
-middleware, acknowledgement middleware, handler invocation, and inbound diagnostics. Inbound header names are
+Consumed messages flow through the normal inbound path: inspection (CloudEvents by default), trace context,
+deserialization middleware, acknowledgement middleware, handler invocation, and inbound diagnostics. Inbound header names are
 matched case-insensitively, so external producers may use canonical HTTP-style casing (`Content-Type`,
 `Ce-Type`); CloudEvents attribute names are canonicalized to their lowercase spec form during mapping. Handler-level
 deserializer overrides, `HandleNamed`, manual acknowledgement, and handler-level acknowledgement options are
@@ -108,17 +108,93 @@ Successful automatic handler completion sends JetStream `Ack`. Retryable handler
 delay. `RetryMessageException` is classified as retryable; `RejectMessageException` is classified as rejected.
 Rejected messages and retry exhaustion publish the original payload and headers to the configured dead-letter
 subject, wait for the JetStream publish acknowledgement, and then terminate the original message. Messages
-that cannot enter the pipeline at all — an unregistered CloudEvents type, no matching handler, or a malformed
-CloudEvents envelope — take the same dead-letter-then-terminate path immediately, without consuming retries. The
+that cannot enter the pipeline at all — an unregistered CloudEvents type, a delivery no inspector recognizes, no
+matching handler, a message type the handler cannot accept, a malformed CloudEvents envelope, or an inspector that
+throws or cannot be resolved — take the same dead-letter-then-terminate path immediately, without consuming retries. The
 dead-letter copy is published under a message id derived from the original id (or the stream sequence), the
 durable consumer name, and the dead-letter subject, so a stream-wide duplicate window neither suppresses the
 copy as a duplicate of the original nor stores a second copy when a retried delivery repeats the dead-letter
-publish. The original CloudEvents id remains available on the copy via the `ce-id` header.
+publish. For CloudEvents deliveries, the original id remains available on the copy via the `ce-id` header.
 
 The originating consumer must not select its own dead-letter subject. When one stream captures both the live and
 dead-letter subjects, configure `FilterSubject(...)` so the durable excludes the dead-letter subject. An unfiltered
 originating consumer requires the dead-letter subject to be captured by a different declared stream; topology
 compilation rejects configurations that would feed dead-letter copies back into the same consumer.
+
+## Consuming non-CloudEvents messages
+
+Each consumer owns an ordered, first-match-wins inspector chain. The default is a single CloudEvents inspector.
+`UseInspector<T>()` replaces it with one custom inspector, and `UseInspectors(...)` composes a chain from
+`CloudEvents()`, `Use<TInspector>()`, and the recognizers `When(...)`, `WhenHeader(...)`, and
+`WhenContentType(...)`. Each recognizer finishes with `As<T>()`, which uses the message contract registry, or
+`As<T>("explicit.discriminator")` for formats that are not registered contracts. Topology compilation rejects an
+empty chain, unregistered inspectors, `As<T>()` on an unregistered type, and recognizers without a matching handler.
+
+The following consumer handles bucket notifications that S3-compatible stores such as MinIO and RustFS publish in
+[S3's event message format](https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html).
+These messages carry no CloudEvents headers, so the chain consists of a single recognizer instead of the default
+CloudEvents inspector:
+
+```csharp
+services.AddSingleton<S3EventDeserializer>();
+
+nats.Consume(
+    "BUCKETS",
+    "bucket-worker",
+    consumer => consumer
+        .FilterSubject("bucket.events")
+        .UseInspectors(chain => chain
+            .When(_ => true).As<S3Event>("s3.event")
+        )
+        .Handle<S3Event, S3EventHandler>(handler => handler.WithDeserializer<S3EventDeserializer>())
+);
+```
+
+To receive regular CloudEvents on the same consumer, add `CloudEvents()` back to the chain, because
+`UseInspectors(...)` replaces the default. `CloudEvents()` only matches deliveries that carry a `ce-type` header and
+passes everything else on to the next entry:
+
+```csharp
+.UseInspectors(chain => chain
+    .CloudEvents()
+    .When(message => message.Source == "bucket.events").As<S3Event>("s3.event")
+)
+.Handle<OrderPlaced, OrderPlacedHandler>()
+.Handle<S3Event, S3EventHandler>(handler => handler.WithDeserializer<S3EventDeserializer>())
+```
+
+Recognizers only decide what a delivery is. The handler that the discriminator selects still owns body decoding
+through `WithDeserializer<T>()`, so recognize in the chain and deserialize on the handler.
+
+Keep these rules in mind:
+
+- Order matters. A recognizer placed before `CloudEvents()` can shadow genuine CloudEvents, so put broad recognizers
+  last. `CloudEvents()` also rejects a `ce-type` without a registered contract, so later entries never see that
+  delivery and it is dead-lettered. To consume such CloudEvents, register the type with `Map<T>(...)`, or accept it
+  on an existing contract with `WithInboundAlias(...)`. A narrow recognizer placed before `CloudEvents()` also routes
+  them, but the handler then receives no CloudEvents envelope, so attributes such as id, source, and time are not
+  available to it.
+- `TransportMessage.Source` is the NATS subject, which is often the most reliable signal for third-party messages.
+  Third-party publishers may not set `content-type`, so don't rely on `WhenContentType(...)` without checking.
+- `ce-` headers reach recognizers under the `cloudEvents:` prefix, so `WhenHeader("ce-type")` never matches. Use
+  `WhenHeader("cloudEvents:type")` instead.
+- A handler type without a registered contract needs a recognizer that maps to it. A custom inspector alone cannot
+  route to such a handler; register the contract with `Map<T>(...)` instead.
+- Custom deserializers are not auto-registered. Register them yourself, as shown above.
+- Inspectors must be deterministic and should avoid I/O. A throwing inspector counts as a poison message: the delivery
+  is dead-lettered, or terminated when no dead-letter subject is configured, without retries. `AckProgress` does not
+  run during inspection either, so a slow inspector can exceed `AckWait`.
+- `CloudEvents()` is bound to the topology's effective message contract registry, so its `ServiceLifetime` and any
+  custom registration of `CloudEventsInboundMessageInspector` are ignored at runtime.
+
+For S3 events specifically, the following belongs in your handler or deserializer because the framework doesn't
+interpret the body:
+
+- One delivery carries a `Records` array and is settled as a unit, so a failed record retries the whole delivery.
+- Object keys are URL-encoded; `red flower.jpg` arrives as `red+flower.jpg`.
+- S3 documents an `s3:TestEvent` message without `Records`, so tolerate that shape.
+- The default deserializer matches property names case-sensitively and ignores unknown members. Without a custom
+  deserializer, map the camelCase fields with `[JsonPropertyName]`, or they silently stay unset.
 
 ## Reliability
 

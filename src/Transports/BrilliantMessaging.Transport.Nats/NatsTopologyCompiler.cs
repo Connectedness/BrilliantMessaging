@@ -17,6 +17,8 @@ namespace BrilliantMessaging.Transport.Nats;
 /// </summary>
 public sealed class NatsTopologyCompiler
 {
+    private const string ConsumerKind = "NATS consumer";
+
     private static readonly MethodInfo CreateEndpointMethod = typeof(NatsTopologyCompiler)
        .GetMethod(nameof(CreateEndpointCore), BindingFlags.Static | BindingFlags.NonPublic)!;
 
@@ -105,23 +107,23 @@ public sealed class NatsTopologyCompiler
         {
             Dictionary<string, NatsInboundEndpoint> endpointsByDiscriminator = new (StringComparer.Ordinal);
             var source = consumer.FilterSubject ?? consumer.DurableName;
+            var recognizerMappings = MapRecognizers(consumer, messageContractRegistry, validationErrors: null);
             foreach (var handler in consumer.Handlers)
             {
-                var discriminator = messageContractRegistry.GetDiscriminator(handler.MessageType);
-                var inboundDiscriminators = messageContractRegistry.GetInboundDiscriminators(handler.MessageType);
+                var discriminators = ResolveEndpointDiscriminators(handler, messageContractRegistry, recognizerMappings);
                 var endpointName = handler.EndpointName ??
-                                   $"{consumer.StreamName}:{consumer.DurableName}:{discriminator}";
+                                   $"{consumer.StreamName}:{consumer.DurableName}:{discriminators.Primary}";
                 var endpoint = CreateEndpoint(
                     handler,
                     consumer.RedeliveryClassifier,
                     topologyName,
                     source,
                     endpointName,
-                    discriminator
+                    discriminators.Primary!
                 );
-                foreach (var inboundDiscriminator in inboundDiscriminators)
+                foreach (var dispatchDiscriminator in discriminators.Dispatch)
                 {
-                    endpointsByDiscriminator.Add(inboundDiscriminator, endpoint);
+                    endpointsByDiscriminator.Add(dispatchDiscriminator, endpoint);
                 }
 
                 endpointsByName.Add(endpoint.Name, endpoint);
@@ -139,12 +141,63 @@ public sealed class NatsTopologyCompiler
                     consumer.MaxAckPending,
                     consumer.MaxBufferedMessages,
                     consumer.DeadLetterSubject,
-                    endpointsByDiscriminator
+                    endpointsByDiscriminator,
+                    InboundMessageInspectorChainCompiler.Compile(
+                        consumer.InspectorChain,
+                        messageContractRegistry,
+                        ConsumerKind,
+                        consumer.DurableName
+                    )
                 )
             );
         }
 
         return consumers;
+    }
+
+    private static IReadOnlyList<InboundRecognizerHandlerMapping<NatsInboundHandlerDefinition>> MapRecognizers(
+        NatsInboundConsumerDefinition consumer,
+        IMessageContractRegistry messageContractRegistry,
+        ICollection<string>? validationErrors
+    )
+    {
+        var recognizers = InboundMessageInspectorChainCompiler.ResolveRecognizers(
+            consumer.InspectorChain,
+            messageContractRegistry,
+            ConsumerKind,
+            consumer.DurableName,
+            validationErrors
+        );
+        return InboundMessageInspectorChainCompiler.MapRecognizersToHandlers(
+            recognizers,
+            consumer.Handlers,
+            static handler => handler.MessageType,
+            ConsumerKind,
+            consumer.DurableName,
+            validationErrors
+        );
+    }
+
+    private static EndpointDiscriminators ResolveEndpointDiscriminators(
+        NatsInboundHandlerDefinition handler,
+        IMessageContractRegistry messageContractRegistry,
+        IReadOnlyList<InboundRecognizerHandlerMapping<NatsInboundHandlerDefinition>> recognizerMappings
+    )
+    {
+        var hasContract = messageContractRegistry.TryGetDiscriminator(handler.MessageType, out var canonical);
+        var inboundDiscriminators = hasContract ?
+            messageContractRegistry.GetInboundDiscriminators(handler.MessageType) :
+            Array.Empty<string>();
+        var recognizerDiscriminators = recognizerMappings
+           .Where(mapping => ReferenceEquals(mapping.Handler, handler))
+           .Select(static mapping => mapping.Recognizer.Discriminator)
+           .ToArray();
+
+        return new EndpointDiscriminators(
+            hasContract,
+            inboundDiscriminators.Count > 0 ? canonical : recognizerDiscriminators.FirstOrDefault() ?? canonical,
+            inboundDiscriminators.Concat(recognizerDiscriminators).Distinct(StringComparer.Ordinal).ToArray()
+        );
     }
 
     private (IReadOnlyList<OutboundTarget> Targets, Dictionary<Type, OutboundTarget> DefaultTargets,
@@ -481,6 +534,15 @@ public sealed class NatsTopologyCompiler
                 errors.Add($"NATS consumer '{consumer.DurableName}' must configure at least one handler.");
             }
 
+            InboundMessageInspectorChainCompiler.Validate(
+                consumer.InspectorChain,
+                ConsumerKind,
+                consumer.DurableName,
+                _serviceIsRegistered,
+                errors
+            );
+            var recognizerMappings = MapRecognizers(consumer, messageContractRegistry, errors);
+
             foreach (var handler in consumer.Handlers)
             {
                 if (!handlerMessageTypes.Add(handler.MessageType))
@@ -490,40 +552,37 @@ public sealed class NatsTopologyCompiler
                     );
                 }
 
-                if (!messageContractRegistry.TryGetDiscriminator(handler.MessageType, out var handlerDiscriminator))
+                var discriminators = ResolveEndpointDiscriminators(
+                    handler,
+                    messageContractRegistry,
+                    recognizerMappings
+                );
+
+                if (discriminators.Dispatch.Count == 0)
                 {
                     errors.Add(
-                        $"NATS handler '{handler.HandlerType.FullName}' handles message '{handler.MessageType.FullName}' which has no registered CloudEvents discriminator."
+                        discriminators.HasContract ?
+                            $"Inbound endpoint for message '{handler.MessageType.FullName}' has no inbound CloudEvents discriminators. Use MessageContractRegistryBuilder.Map<T>(...) instead of MapOutbound<T>(...)." :
+                            $"NATS handler '{handler.HandlerType.FullName}' handles message '{handler.MessageType.FullName}' which has no registered CloudEvents discriminator."
                     );
                 }
-                else
+
+                foreach (var discriminator in discriminators.Dispatch)
                 {
-                    var handlerInboundDiscriminators =
-                        messageContractRegistry.GetInboundDiscriminators(handler.MessageType);
-                    if (handlerInboundDiscriminators.Count == 0)
+                    if (!inboundDiscriminators.Add(discriminator))
                     {
                         errors.Add(
-                            $"Inbound endpoint for message '{handler.MessageType.FullName}' has no inbound CloudEvents discriminators. Use MessageContractRegistryBuilder.Map<T>(...) instead of MapOutbound<T>(...)."
+                            $"Inbound endpoint discriminator '{discriminator}' is configured multiple times for NATS consumer '{consumer.DurableName}' on stream '{consumer.StreamName}'."
                         );
-                    }
-
-                    foreach (var discriminator in handlerInboundDiscriminators)
-                    {
-                        if (!inboundDiscriminators.Add(discriminator))
-                        {
-                            errors.Add(
-                                $"Inbound endpoint discriminator '{discriminator}' is configured multiple times for NATS consumer '{consumer.DurableName}' on stream '{consumer.StreamName}'."
-                            );
-                        }
                     }
                 }
 
                 // Mirrors the name the compiler derives; skipped when the discriminator is missing, because
                 // validation has already failed above and compilation never runs.
                 var endpointName = handler.EndpointName ??
-                                   (handlerDiscriminator is null ?
+                                   (discriminators.Primary is null ?
                                        null :
-                                       $"{consumer.StreamName}:{consumer.DurableName}:{handlerDiscriminator}");
+                                       $"{consumer.StreamName}:{consumer.DurableName}:{discriminators.Primary}");
                 if (endpointName is not null && !endpointNames.Add(endpointName))
                 {
                     errors.Add($"Inbound endpoint name '{endpointName}' is configured multiple times.");
@@ -768,4 +827,10 @@ public sealed class NatsTopologyCompiler
 
         return leftTokens.Length == rightTokens.Length;
     }
+
+    private sealed record EndpointDiscriminators(
+        bool HasContract,
+        string? Primary,
+        IReadOnlyList<string> Dispatch
+    );
 }

@@ -132,6 +132,14 @@ public static class NatsTransportModule
             services.TryAddScoped(handler.HandlerType);
         }
 
+        foreach (var inspector in configuration
+                    .Consumers
+                    .SelectMany(static consumer => consumer.InspectorChain)
+                    .OfType<ServiceInboundMessageInspectorChainEntry>())
+        {
+            RegisterInspector(services, inspector);
+        }
+
         services.AddKeyedSingleton<NatsTopology>(
             topologyName,
             (serviceProvider, _) =>
@@ -195,6 +203,23 @@ public static class NatsTransportModule
         }
 
         return Task.FromResult(options);
+    }
+
+    private static void RegisterInspector(
+        IServiceCollection services,
+        ServiceInboundMessageInspectorChainEntry inspector
+    )
+    {
+        // Auto-registration yields to any existing registration regardless of lifetime: the first registration of
+        // the inspector type wins, so a user's explicit registration is never overwritten. TryAdd matches on the
+        // service type only, so the configured lifetime is honoured only when no registration exists yet.
+        services.TryAdd(
+            ServiceDescriptor.Describe(
+                inspector.InspectorType,
+                inspector.InspectorType,
+                inspector.ServiceLifetime
+            )
+        );
     }
 
     private static bool IsServiceRegistered(IServiceProvider serviceProvider, Type serviceType)

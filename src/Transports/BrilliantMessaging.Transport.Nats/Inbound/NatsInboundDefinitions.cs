@@ -19,7 +19,8 @@ public sealed record NatsInboundConsumerDefinition(
     int MaxBufferedMessages,
     string? DeadLetterSubject,
     RedeliveryClassifier? RedeliveryClassifier,
-    ImmutableArray<NatsInboundHandlerDefinition> Handlers
+    ImmutableArray<NatsInboundHandlerDefinition> Handlers,
+    ImmutableArray<InboundMessageInspectorChainEntry> InspectorChain
 );
 
 /// <summary>

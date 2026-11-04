@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using BrilliantMessaging.Core.Messaging.Inbound;
 using BrilliantMessaging.Transport.Nats.Inbound;
 using FluentAssertions;
 using NATS.Client.Core;
@@ -371,7 +372,8 @@ public sealed class NatsMessageMappingTests
             1024,
             8,
             deadLetterSubject,
-            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal)
+            new Dictionary<string, NatsInboundEndpoint>(StringComparer.Ordinal),
+            new CompiledInboundMessageInspectorChain([])
         );
     }
 
